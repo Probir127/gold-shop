@@ -2,7 +2,7 @@ from __future__ import annotations
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from ..models import Client, Conversation
+from ..models import Client, Conversation, BotAnalytics
 from ..utils.ai_bot import generate_reply
 from rest_framework import status
 
@@ -74,6 +74,21 @@ class BotTestView(APIView):
             direction='outbound',
             channel='web',
             message_text=reply_text
+        )
+
+        # Record Bot Analytics
+        BotAnalytics.objects.create(
+            tenant=tenant,
+            client=client,
+            channel='web',
+            user_message=message_text,
+            bot_reply=reply_text,
+            intent=result.get('intent', 'general'),
+            sentiment=result.get('sentiment', 'neutral'),
+            response_time_ms=result.get('response_time_ms', 150),
+            was_fallback=result.get('was_fallback', False),
+            was_escalated=result.get('was_escalated', False),
+            is_resolved=not result.get('was_escalated', False),
         )
 
         return Response({
