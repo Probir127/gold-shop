@@ -1,0 +1,10 @@
+version: "2"
+tunnels:
+  shop:
+    proto: http
+    addr: 5173
+    host_header: localhost:5173
+  api:
+    proto: http
+    addr: 8000
+    host_header: localhost:8000
