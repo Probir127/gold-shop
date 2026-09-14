@@ -1,0 +1,16 @@
+{
+  "include": [
+    "backend"
+  ],
+  "exclude": [
+    "backend/venv",
+    "backend/**/__pycache__"
+  ],
+  "pythonVersion": "3.9",
+  "pythonPlatform": "Linux",
+  "venvPath": "backend",
+  "venv": "venv",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": false,
+  "reportMissingModuleSource": false
+}

@@ -28,7 +28,8 @@ staticfiles/
 backend/.env
 
 # Node / React
-frontend/node_modules/
+node_modules/
+**/node_modules/
 frontend/build/
 frontend/dist/
 frontend/.env

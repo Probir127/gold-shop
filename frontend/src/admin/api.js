@@ -124,7 +124,8 @@ export const markInvoicePaid = (id)    => api.post(`/invoices/${id}/mark-paid/`)
 // ── Phase 2: Handoff & Analytics ─────────────────────────────
 export const claimHandoff    = (clientId) => api.post(`/clients/${clientId}/claim-handoff/`)
 export const releaseHandoff  = (clientId) => api.post(`/clients/${clientId}/release-handoff/`)
-export const getBotAnalytics = (params)   => api.get('/analytics/bot/', { params })
+export const getBotAnalytics  = (params) => api.get('/analytics/bot/', { params })
+export const getAIAnalytics   = (params) => api.get('/analytics/ai-stats/', { params })
 
 // ── Phase 7: Bot Training ─────────────────────────────────────
 export const getBotConfig    = ()     => api.get('/bot-config/')

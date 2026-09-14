@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sahara Gold Invoice - {{ invoice_number }} ({{ copy_title }})</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold-primary: #b8860b;
+            --gold-dark: #8c6808;
+            --gold-light: #f5eedb;
+            --slate-dark: #1e2229;
+            --text-dark: #1a1a1a;
+            --text-muted: #555555;
+            --border-color: #e2d7be;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: var(--text-dark);
+            line-height: 1.5;
+            padding: 24px;
+        }
+
+        /* Top Interactive Action Bar (Hidden on Print) */
+        .action-bar {
+            max-width: 840px;
+            margin: 0 auto 20px auto;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .action-bar .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .action-bar .btn-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 8px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-print {
+            background: linear-gradient(135deg, #d4af37, #b8860b);
+            color: #ffffff;
+            box-shadow: 0 2px 6px rgba(184, 134, 11, 0.3);
+        }
+        .btn-print:hover {
+            background: linear-gradient(135deg, #c49d2b, #a37508);
+        }
+
+        .btn-toggle {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+        .btn-toggle:hover {
+            background: #e5e7eb;
+        }
+
+        /* The Printable Invoice Sheet (A4 Dimensions) */
+        .invoice-sheet {
+            max-width: 840px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 44px 48px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Luxury Gold Header Border */
+        .invoice-sheet::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, #d4af37, #fef3c7, #b8860b, #d4af37);
+        }
+
+        /* Watermark for Store Copy */
+        {% if is_admin_copy %}
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-32deg);
+            font-family: 'Cinzel', serif;
+            font-size: 80px;
+            font-weight: 900;
+            color: rgba(184, 134, 11, 0.05);
+            letter-spacing: 12px;
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 0;
+            text-transform: uppercase;
+        }
+        {% endif %}
+
+        .content-wrap {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header Layout */
+        .inv-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding-bottom: 24px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .store-brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .store-logo {
+            height: 68px;
+            max-width: 190px;
+            object-fit: contain;
+        }
+
+        .store-info {
+            font-size: 11.5px;
+            color: var(--text-muted);
+            line-height: 1.45;
+        }
+
+        .store-info .tagline {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-size: 13px;
+            color: var(--gold-dark);
+            margin-bottom: 3px;
+        }
+
+        .inv-badge-area {
+            text-align: right;
+        }
+
+        .copy-type-badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 4px 12px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .badge-customer {
+            background-color: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+
+        .badge-admin {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .inv-title {
+            font-family: 'Cinzel', serif;
+            font-size: 26px;
+            font-weight: 900;
+            color: var(--slate-dark);
+            letter-spacing: 1px;
+            line-height: 1.1;
+        }
+
+        .inv-meta-table {
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+            border-collapse: collapse;
+            float: right;
+        }
+
+        .inv-meta-table td {
+            padding: 2px 6px;
+        }
+        .inv-meta-table td.label {
+            font-weight: 600;
+            color: #4b5563;
+        }
+        .inv-meta-table td.val {
+            font-weight: 700;
+            color: #111827;
+            font-family: monospace;
+            font-size: 13px;
+        }
+
+        /* Two-Column Info Bar */
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+            margin-top: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px dashed #d1d5db;
+        }
+
+        .info-box h4 {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--gold-dark);
+            margin-bottom: 8px;
+        }
+
+        .info-box p {
+            font-size: 13px;
+            color: #374151;
+            margin-bottom: 2px;
+        }
+
+        .info-box p strong {
+            color: #111827;
+        }
+
+        /* Items Table */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 24px;
+            font-size: 12.5px;
+        }
+
+        .items-table th {
+            background: #faf7f0;
+            color: #374151;
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            padding: 10px 12px;
+            border-top: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .items-table td {
+            padding: 12px 12px;
+            border-bottom: 1px solid #f3f4f6;
+            color: #1f2937;
+        }
+
+        .items-table tr:hover td {
+            background-color: #fafafa;
+        }
+
+        .purity-pill {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid #fcd34d;
+        }
+
+        /* Summary & Totals Area */
+        .summary-wrap {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 24px;
+            margin-top: 24px;
+            padding-top: 12px;
+        }
+
+        .hallmark-cert {
+            background: #fffdf9;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 14px 16px;
+        }
+
+        .hallmark-cert h5 {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: var(--gold-dark);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .hallmark-cert p {
+            font-size: 11px;
+            color: #6b7280;
+            line-height: 1.45;
+        }
+
+        .totals-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .totals-table td {
+            padding: 6px 10px;
+        }
+
+        .totals-table tr.total-row td {
+            padding-top: 10px;
+            border-top: 2px solid var(--slate-dark);
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--gold-dark);
+        }
+
+        /* Admin Dispatch Slip / Checklist (Only for Admin Copy) */
+        .dispatch-slip {
+            margin-top: 24px;
+            background: #fdfaf7;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 16px;
+        }
+
+        .dispatch-slip h5 {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #991b1b;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 8px;
+        }
+
+        .checklist-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 11.5px;
+            color: #4b5563;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .checkbox-square {
+            width: 14px;
+            height: 14px;
+            border: 1.5px solid #9ca3af;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        /* Signatures */
+        .signatures-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 48px;
+            padding-top: 12px;
+        }
+
+        .signature-box {
+            text-align: center;
+        }
+
+        .sig-line {
+            border-top: 1px solid #9ca3af;
+            margin-bottom: 6px;
+        }
+
+        .sig-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        /* Footer */
+        .inv-footer {
+            margin-top: 36px;
+            padding-top: 18px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            font-size: 11px;
+            color: #9ca3af;
+        }
+
+        .inv-footer p {
+            margin-bottom: 3px;
+        }
+
+        /* ── Print Specific Styles ───────────────────────────────────────── */
+        @media print {
+            body {
+                background-color: #ffffff;
+                padding: 0;
+                color: #000000;
+            }
+
+            .action-bar {
+                display: none !important;
+            }
+
+            .invoice-sheet {
+                box-shadow: none;
+                border: none;
+                padding: 24px 30px;
+                max-width: 100%;
+                width: 100%;
+            }
+
+            @page {
+                size: A4;
+                margin: 10mm;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Action Bar (Print / Switch Copy) -->
+    <div class="action-bar">
+        <div class="brand">
+            <span style="color: var(--gold-dark); font-size: 16px;">🪙</span>
+            <span>Sahara Gold Command Center — Invoice System</span>
+        </div>
+        <div class="btn-group">
+            {% if is_admin_copy %}
+            <a href="?copy=customer" class="btn btn-toggle">👤 Switch to Customer Copy</a>
+            {% else %}
+            <a href="?copy=admin" class="btn btn-toggle">🏢 Switch to Store/Admin Copy</a>
+            {% endif %}
+            <button onclick="window.print()" class="btn btn-print">
+                🖨️ Print / Save as PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- The Invoice Sheet -->
+    <div class="invoice-sheet">
+        {% if is_admin_copy %}
+        <div class="watermark">STORE COPY</div>
+        {% endif %}
+
+        <div class="content-wrap">
+            <!-- Header -->
+            <div class="inv-header">
+                <div class="store-brand">
+                    <img src="/media/logo.png" alt="Sahara Gold Logo" class="store-logo" onerror="this.src='/assets/images/logo.png'; this.onerror=null;">
+                    <div class="store-info">
+                        <div class="tagline">Sahara Gold &amp; Diamond Jewellers</div>
+                        <div>Bashundhara City Level 7, Block-A Shop-19, Dhaka</div>
+                        <div>Hotline: 01799-281878 | WhatsApp: +880 1799-281878</div>
+                        <div>BSTI Hallmark Reg: #DH-22K-8812 | Trade Lic: TRAD/DSCC/019284</div>
+                    </div>
+                </div>
+
+                <div class="inv-badge-area">
+                    {% if is_admin_copy %}
+                    <div class="copy-type-badge badge-admin">STORE &amp; ACCOUNTS COPY</div>
+                    {% else %}
+                    <div class="copy-type-badge badge-customer">ORIGINAL CUSTOMER INVOICE</div>
+                    {% endif %}
+                    
+                    <div class="inv-title">INVOICE</div>
+                    
+                    <table class="inv-meta-table">
+                        <tr>
+                            <td class="label">Invoice No:</td>
+                            <td class="val">{{ invoice_number }}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Order Ref:</td>
+                            <td class="val">#{{ order.order_id }}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Date:</td>
+                            <td class="val">{{ order.created_at|date:"d M Y, h:i A" }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Customer & Delivery Info -->
+            <div class="info-grid">
+                <div class="info-box">
+                    <h4>Billed &amp; Delivered To:</h4>
+                    <p><strong>{{ order.customer_name }}</strong></p>
+                    <p>📞 {{ order.customer_phone }}</p>
+                    {% if order.customer_email %}
+                    <p>✉️ {{ order.customer_email }}</p>
+                    {% endif %}
+                    <p>📍 {{ order.shipping_address }}</p>
+                    <p>🏙️ {{ order.city }}</p>
+                </div>
+
+                <div class="info-box" style="text-align: right;">
+                    <h4>Payment &amp; Delivery Status:</h4>
+                    <p>Method: <strong>{{ order.get_payment_method_display }}</strong></p>
+                    <p>Payment: <strong style="color: {% if order.payment_status == 'paid' %}#15803d{% else %}#b45309{% endif %};">{{ order.get_payment_status_display|upper }}</strong></p>
+                    <p>Order Status: <strong>{{ order.get_order_status_display|upper }}</strong></p>
+                    <p>Currency: <strong>BDT (৳)</strong></p>
+                </div>
+            </div>
+
+            <!-- Items Table -->
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th style="width: 5%;">#</th>
+                        <th style="width: 45%;">Jewelry Item / Description</th>
+                        <th style="width: 15%; text-align: center;">Purity</th>
+                        <th style="width: 15%; text-align: right;">Weight (gm)</th>
+                        <th style="width: 20%; text-align: right;">Total Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td style="color: #9ca3af; font-family: monospace;">{{ forloop.counter }}</td>
+                        <td>
+                            <strong>{{ item.product_name }}</strong>
+                            {% if item.product.sku %}
+                            <div style="font-size: 10.5px; color: #6b7280; font-family: monospace;">SKU: {{ item.product.sku }}</div>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            <span class="purity-pill">{{ item.product.purity|default:"22K" }}</span>
+                        </td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 600;">
+                            {{ item.weight }}g
+                        </td>
+                        <td style="text-align: right; font-weight: 700; font-family: monospace;">
+                            ৳{{ item.price_at_purchase|floatformat:2 }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #9ca3af; padding: 20px;">No items attached to this order.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Summary Section -->
+            <div class="summary-wrap">
+                <!-- Hallmark & Terms (Customer Copy) OR Quality Dispatch Slip (Admin Copy) -->
+                <div>
+                    {% if is_admin_copy %}
+                    <div class="dispatch-slip">
+                        <h5>📦 Store Dispatch &amp; Vault Verification</h5>
+                        <div class="checklist-grid">
+                            <div class="checklist-item"><span class="checkbox-square"></span> Digital Scale Net Weight Verified</div>
+                            <div class="checklist-item"><span class="checkbox-square"></span> Laser Hallmark (#BSTI) Checked</div>
+                            <div class="checklist-item"><span class="checkbox-square"></span> Luxury Velvet Case &amp; Bag Sealed</div>
+                            <div class="checklist-item"><span class="checkbox-square"></span> Security Tamper Seal Affixed</div>
+                        </div>
+                        <div style="margin-top: 10px; font-size: 11px; color: #6b7280;">
+                            Courier Bag Seal ID: __________________ &nbsp;|&nbsp; Rider: __________________
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="hallmark-cert">
+                        <h5>✨ 100% BSTI Hallmarked Authenticity Guarantee</h5>
+                        <p>
+                            Every piece is hallmarked and crafted with certified gold purity.
+                            Compliant with Bangladesh Jewellers Association (BAJUS) standard:
+                        </p>
+                        <p style="margin-top: 4px;">
+                            • <strong>Exchange Policy:</strong> 100% current market rate value for Sahara Gold jewelry.<br>
+                            • <strong>Buyback Policy:</strong> 80% net gold value buyback guarantee.<br>
+                            • <strong>Free Lifetime Care:</strong> Complimentary ultrasonic cleaning at our showroom.
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Totals -->
+                <div>
+                    <table class="totals-table">
+                        <tr>
+                            <td style="color: #6b7280;">Jewelry Subtotal:</td>
+                            <td style="text-align: right; font-weight: 600; font-family: monospace;">৳{{ order.subtotal|floatformat:2 }}</td>
+                        </tr>
+                        <tr>
+                            <td style="color: #6b7280;">Government VAT (5%):</td>
+                            <td style="text-align: right; font-weight: 600; font-family: monospace;">৳{{ order.vat|floatformat:2 }}</td>
+                        </tr>
+                        <tr class="total-row">
+                            <td>Grand Total:</td>
+                            <td style="text-align: right; font-family: monospace;">৳{{ order.total|floatformat:2 }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Signatures -->
+            <div class="signatures-area">
+                <div class="signature-box">
+                    <div class="sig-line"></div>
+                    <div class="sig-title">{% if is_admin_copy %}Dispatch Officer / Prepared By{% else %}Customer Acknowledgment{% endif %}</div>
+                </div>
+                <div class="signature-box">
+                    <div class="sig-line"></div>
+                    <div class="sig-title">Authorized Store Manager (Sahara Gold)</div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="inv-footer">
+                <p><strong>Sahara Gold &amp; Diamond Ltd.</strong> · Level 7, Block-A Shop-19, Bashundhara City Shopping Mall, Dhaka 1205</p>
+                <p>Hotline / WhatsApp: 01799-281878 · Official Email: saharagold19@gmail.com</p>
+                <p style="font-size: 10px; margin-top: 4px; color: #9ca3af;">This is an electronically certified and generated gold jewelry sales invoice.</p>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
