@@ -2,8 +2,8 @@ from __future__ import annotations
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from ..models import Client, Conversation, BotAnalytics
-from ..utils.ai_bot import generate_reply
+from core.models import Client, Conversation, BotAnalytics
+from core.utils.ai_bot import generate_reply
 from rest_framework import status
 
 TEST_BOT_PHONE = "TEST_BOT_000"
