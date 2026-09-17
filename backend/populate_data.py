@@ -3,21 +3,16 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "sahara_gold.settings")
 django.setup()
 from products.models import Category, Product
-from rates.models import GoldRate
+from rates.services import sync_live_rate_to_database
 from decimal import Decimal
-from django.utils import timezone
 
-# Create/Update Gold Rate
-rate, _ = GoldRate.objects.update_or_create(
-    date=timezone.now().date(),
-    defaults={
-        'rate_22k': 9850, 
-        'rate_21k': 9400, 
-        'rate_18k': 8050, 
-        'rate_traditional': 6500
-    }
-)
-print(f"Gold Rate: 22K={rate.rate_22k}, 21K={rate.rate_21k}")
+# Synchronize rates from the live provider only. Never overwrite production
+# data with development/demo values during a deploy.
+rate, market = sync_live_rate_to_database()
+if rate:
+    print(f"Live Gold Rate: 22K={rate.rate_22k}, 21K={rate.rate_21k}")
+else:
+    print(f"Live Gold Rate sync skipped: {market.get('message', 'provider unavailable')}")
 
 # Categories
 categories_data = ['rings', 'earrings', 'bangles', 'wristlets', 'necklace']
