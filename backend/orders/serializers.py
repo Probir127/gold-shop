@@ -130,7 +130,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
         # Trigger Email (Sends customer invoice & store admin notification after DB commit)
         try:
-            from orders.emails import send_order_confirmation_email
+            from .emails import send_order_confirmation_email
             transaction.on_commit(lambda: send_order_confirmation_email(order.order_id))
         except Exception as e:
             logger.error("Email trigger scheduling error: %s", e)

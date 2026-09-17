@@ -120,7 +120,7 @@ class CustomerVerifyEmailView(APIView):
         user = User.objects.filter(email__iexact=email).first()
         verification = CustomerEmailVerification.objects.filter(user=user).first() if user else None
 
-        if not verification or user.is_active:
+        if not user or not verification or user.is_active:
             return Response({'detail': 'Verification request is invalid or already completed.'}, status=status.HTTP_400_BAD_REQUEST)
         if verification.expires_at <= timezone.now():
             return Response({'detail': 'This verification code has expired. Please register again.'}, status=status.HTTP_400_BAD_REQUEST)

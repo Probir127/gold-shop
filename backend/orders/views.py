@@ -35,20 +35,20 @@ class OrderInvoiceAccessPermission(BasePermission):
 class OrderAccessPermission(BasePermission):
     """Allow an order owner or a signed customer capability to view an order."""
 
-    def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated) or validate_invoice_access_token(
+    def has_permission(self, request, view) -> bool:
+        return bool(request.user and request.user.is_authenticated) or bool(validate_invoice_access_token(
             request.query_params.get('token'),
             'order',
             getattr(view, 'kwargs', {}).get('order_id'),
-        )
+        ))
 
-    def has_object_permission(self, request, view, obj):
+    def has_object_permission(self, request, view, obj) -> bool:
         if validate_invoice_access_token(request.query_params.get('token'), 'order', obj.order_id):
             return True
         user = request.user
         if not user or not user.is_authenticated:
             return False
-        return (
+        return bool(
             user.is_staff
             or user.email.lower() == obj.customer_email.lower()
             or normalize_phone(user.username) == normalize_phone(obj.customer_phone)
