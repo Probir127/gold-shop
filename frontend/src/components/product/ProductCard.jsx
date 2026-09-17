@@ -5,6 +5,8 @@ import { formatPrice } from '../../utils/formatters';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 
+const FALLBACK_JEWELRY_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'%3E%3Crect width='600' height='600' fill='%23141416'/%3E%3Ccircle cx='300' cy='270' r='110' fill='none' stroke='%23d4af37' stroke-width='2' stroke-dasharray='6 6' opacity='0.3'/%3E%3Cpath d='M300 180 L380 240 L350 330 L250 330 L220 240 Z' fill='none' stroke='%23d4af37' stroke-width='3.5' stroke-linejoin='round'/%3E%3Cpath d='M300 205 L360 250 L300 320 L240 250 Z' fill='%23d4af37' fill-opacity='0.12' stroke='%23d4af37' stroke-width='1.5' stroke-linejoin='round'/%3E%3Ctext x='300' y='385' fill='%23d4af37' font-family='serif' font-size='20' font-weight='600' letter-spacing='4' text-anchor='middle'%3ESAHARA GOLD%3C/text%3E%3Ctext x='300' y='412' fill='%23888' font-family='sans-serif' font-size='11' letter-spacing='3' text-anchor='middle'%3ELUXURY CRAFTSMANSHIP%3C/text%3E%3C/svg%3E";
+
 const ProductCard = ({ product }) => {
     const { addToCart } = useCart();
     const ref = useRef(null);
@@ -86,8 +88,9 @@ const ProductCard = ({ product }) => {
                     {/* Image Container */}
                     <div className="product-card-image" style={{ position: 'relative', paddingTop: '100%', overflow: 'hidden' }}>
                         <img
-                            src={product.image}
+                            src={product.image || FALLBACK_JEWELRY_IMG}
                             alt={product.name}
+                            onError={(e) => { e.currentTarget.src = FALLBACK_JEWELRY_IMG; }}
                             style={{
                                 position: 'absolute',
                                 top: 0,

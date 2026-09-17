@@ -1,103 +1,68 @@
-// Helper to generate price
-const getPrice = () => {
-    return null;
-};
-
+// Fallback products if backend is not reachable or still loading
 export const products = [
     {
         id: 1,
-        name: "Royal Gold Ring",
+        name: "Floral Cutout Gold Ring",
         category: "rings",
-        image: "/assets/images/1.jpg.jpeg",
-        weight: 2.5,
+        image: "/assets/images/ring-floral-cutout.jpg",
+        weight: 1.13,
         purity: "22K",
-        price: getPrice(2.5, "22K"),
-        bestseller: true
+        making_charge_per_gram: 500,
+        description: "Handcrafted 22K gold ring with exquisite floral cutout openwork pattern (1.13 GM).",
+        bestseller: true,
+        new: false,
+        in_stock: true
     },
     {
         id: 2,
-        name: "Diamond Cut Ring",
-        category: "rings",
-        image: "/assets/images/10.jpg.jpeg",
-        weight: 3.1,
+        name: "Classic Gold Hoop Earrings",
+        category: "earrings",
+        image: "/assets/images/earring-classic-hoops.jpg",
+        weight: 0.99,
         purity: "22K",
-        price: getPrice(3.1, "22K"),
-        new: true
+        making_charge_per_gram: 400,
+        description: "Lightweight 22K gold hoop earrings with delicate beaded drop charms (0.99 GM).",
+        bestseller: false,
+        new: true,
+        in_stock: true
     },
     {
         id: 3,
-        name: "Premium Wristlet",
-        category: "wristlets",
-        image: "/assets/images/WRISTLET.jpg.jpeg",
-        weight: 5.2,
-        purity: "21K",
-        price: getPrice(5.2, "21K"),
-        bestseller: true
+        name: "Royal Rose Filigree Gold Ring",
+        category: "rings",
+        image: "/assets/images/ring-rose-filigree.jpg",
+        weight: 2.50,
+        purity: "22K",
+        making_charge_per_gram: 700,
+        description: "Intricate blossoming rose ring in 22K pure gold featuring layered filigree mesh petals (2.50 GM).",
+        bestseller: true,
+        new: true,
+        in_stock: true
     },
     {
         id: 4,
-        name: "Luxury Gold Earrings",
+        name: "Textured Gold Hoop Earrings",
         category: "earrings",
-        image: "/assets/images/5.jpg.jpeg",
-        weight: 4.8,
+        image: "/assets/images/earring-textured-hoops.jpg",
+        weight: 0.94,
         purity: "22K",
-        price: getPrice(4.8, "22K"),
-        bestseller: true
+        making_charge_per_gram: 400,
+        description: "Classic circular 22K gold hoops with diagonal diamond-cut light reflection texture (0.94 GM).",
+        bestseller: false,
+        new: false,
+        in_stock: true
     },
     {
         id: 5,
-        name: "Floral Gold Ring",
+        name: "Two-Stone Diamond Leaf Gold Ring",
         category: "rings",
-        image: "/assets/images/15.jpg.jpeg",
-        weight: 1.8,
+        image: "/assets/images/ring-diamond-leaf.jpg",
+        weight: 1.80,
         purity: "22K",
-        price: getPrice(1.8, "22K")
-    },
-    {
-        id: 6,
-        name: "Heavy Gold Bangle",
-        category: "bangles",
-        image: "/assets/images/16.jpg.jpeg",
-        weight: 10.5,
-        purity: "22K",
-        price: getPrice(10.5, "22K")
-    },
-    {
-        id: 7,
-        name: "Elegant Wristlet",
-        category: "wristlets",
-        image: "/assets/images/WRISTLET 2.jpg.jpeg",
-        weight: 4.2,
-        purity: "21K",
-        price: getPrice(4.2, "21K")
-    },
-    {
-        id: 8,
-        name: "Traditional Earrings",
-        category: "earrings",
-        image: "/assets/images/12.jpg.jpeg",
-        weight: 6.5,
-        purity: "22K",
-        price: getPrice(6.5, "22K")
-    },
-    {
-        id: 9,
-        name: "Engagement Ring",
-        category: "rings",
-        image: "/assets/images/11.jpg.jpeg",
-        weight: 3.8,
-        purity: "22K",
-        price: getPrice(3.8, "22K")
-    },
-    {
-        id: 10,
-        name: "Designer Bangle",
-        category: "bangles",
-        image: "/assets/images/17.jpg.jpeg",
-        weight: 8.9,
-        purity: "22K",
-        price: getPrice(8.9, "22K")
+        making_charge_per_gram: 600,
+        description: "Contemporary 22K yellow gold bypass leaf ring crowned with two sparkling brilliant zircons (1.80 GM).",
+        bestseller: true,
+        new: false,
+        in_stock: true
     }
 ];
-
-export const getFeaturedProducts = () => products.filter(p => p.bestseller || p.new).slice(0, 4);
