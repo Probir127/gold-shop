@@ -315,6 +315,8 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Sahara Gold <saharagold19@gmail.com>')
 STORE_EMAIL = os.getenv('STORE_EMAIL', 'saharagold19@gmail.com')
 EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '25'))
+RESEND_API_KEY = os.getenv('RESEND_API_KEY', '').strip()
+RESEND_FROM_EMAIL = os.getenv('RESEND_FROM_EMAIL', DEFAULT_FROM_EMAIL)
 
 if EMAIL_USE_TLS and EMAIL_USE_SSL:
     raise RuntimeError('EMAIL_USE_TLS and EMAIL_USE_SSL cannot both be enabled.')
