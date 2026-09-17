@@ -4,12 +4,29 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import TemplateView
 from django.views.static import serve
-from django.http import Http404
+from django.http import Http404, JsonResponse
+from django.shortcuts import render
 import os
 
 
 def reject_sensitive_path(request, path=''):
     raise Http404
+
+
+def spa_fallback(request):
+    index_file = os.path.join(settings.FRONTEND_DIR, 'index.html')
+    if os.path.exists(index_file):
+        return render(request, 'index.html')
+    return JsonResponse({
+        'status': 'online',
+        'service': 'Sahara Gold Backend API',
+        'endpoints': {
+            'rates': '/api/rates/latest/',
+            'products': '/api/products/',
+            'admin': '/django-admin/',
+        },
+        'frontend_url': settings.FRONTEND_URL,
+    })
 
 # Admin Config
 admin.site.site_header = "Sahara Gold Admin"
@@ -46,6 +63,6 @@ urlpatterns = [
     }),
 
     # Single Page App fallback (Storefront, Admin Login, Command Center Dashboard)
-    re_path(r'^(?!api/|django-admin/|media/|static/).*$', TemplateView.as_view(template_name='index.html')),
+    re_path(r'^(?!api/|django-admin/|media/|static/).*$', spa_fallback),
 ]
 
