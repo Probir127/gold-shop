@@ -58,7 +58,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     - Public: POST (Create), GET (Track), GET (Invoice)
     - Admin: GET (List all), PATCH/PUT (Update status), DELETE
     """
-    queryset = Order.objects.all().order_by('-created_at')
+    queryset = Order.objects.prefetch_related('items__product').order_by('-created_at')
     serializer_class = OrderSerializer
     lookup_field = 'order_id'
 
@@ -81,13 +81,13 @@ class OrderViewSet(viewsets.ModelViewSet):
         """
         if request.user.is_staff:
             # Staff can see all orders (useful for admin tools)
-            qs = Order.objects.all().order_by('-created_at')
+            qs = Order.objects.prefetch_related('items__product').order_by('-created_at')
         else:
             # Customers see only their own orders matched by their account phone/email
             account_phone = (request.user.username or '').strip()
             account_email = (request.user.email or '').strip().lower()
             from django.db.models import Q
-            qs = Order.objects.filter(
+            qs = Order.objects.prefetch_related('items__product').filter(
                 Q(customer_phone__iexact=account_phone) |
                 (Q(customer_email__iexact=account_email) if account_email else Q())
             ).order_by('-created_at')

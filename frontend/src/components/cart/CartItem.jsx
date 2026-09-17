@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { formatPrice } from '../../utils/formatters';
 import { useCart } from '../../context/CartContext';
@@ -75,4 +75,5 @@ const CartItem = ({ item }) => {
     );
 };
 
-export default CartItem;
+// memo: only re-renders when this item's own data changes, not when siblings change
+export default memo(CartItem);

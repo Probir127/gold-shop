@@ -2,6 +2,8 @@ from __future__ import annotations
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from ..models import Tenant, BotConfig, Client, Conversation, BotAnalytics
 from ..utils.knowledge_engine import KnowledgeEngine
 import uuid
@@ -9,6 +11,7 @@ import uuid
 class PublicBotConfigView(APIView):
     permission_classes = [permissions.AllowAny]
 
+    @method_decorator(cache_page(60 * 10))
     def get(self, request, tenant_slug):
         try:
             tenant = Tenant.objects.get(slug=tenant_slug, is_active=True)

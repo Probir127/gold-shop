@@ -4,6 +4,8 @@ from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from .models import AIChatSession, AIChatMessage
 from .services import generate_ai_response, get_latest_rates_dict
 import logging
@@ -109,6 +111,7 @@ class AIRecommendView(APIView):
     """
     permission_classes = [permissions.AllowAny]
 
+    @method_decorator(cache_page(60 * 5))
     def get(self, request):
         budget = request.query_params.get('budget')
         purity = request.query_params.get('purity')
@@ -145,6 +148,7 @@ class AIPriceInsightView(APIView):
     """
     permission_classes = [permissions.AllowAny]
 
+    @method_decorator(cache_page(60 * 5))
     def get(self, request):
         rates = get_latest_rates_dict()
         insight = {

@@ -1,6 +1,8 @@
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from .models import GoldRate
 from .serializers import GoldRateSerializer
 from .services import fetch_live_gold_price, sync_live_rate_to_database
@@ -11,6 +13,10 @@ class LatestGoldRateView(generics.RetrieveAPIView):
     queryset = GoldRate.objects.all().order_by('-date')
     serializer_class = GoldRateSerializer
     permission_classes = [permissions.AllowAny]
+
+    @method_decorator(cache_page(60 * 5))
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
 
     def get_object(self):
         obj = self.get_queryset().first()
@@ -47,6 +53,7 @@ class LiveGoldMarketView(APIView):
     """
     permission_classes = [permissions.AllowAny]
 
+    @method_decorator(cache_page(60 * 2))
     def get(self, request):
         data = fetch_live_gold_price()
         return Response(data)

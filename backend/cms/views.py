@@ -1,6 +1,8 @@
 from rest_framework import viewsets, mixins
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from .models import HeroBanner, Testimonial, SocialPost, SiteStat, LuxuryFeature, Collection, SiteSettings
 from .serializers import (
     HeroBannerSerializer, TestimonialSerializer, SocialPostSerializer,
@@ -14,6 +16,7 @@ class CMSViewSet(viewsets.ViewSet):
     permission_classes = [] 
 
     @action(detail=False, methods=['get'])
+    @method_decorator(cache_page(60 * 10))
     def homepage(self, request):
         """Fetch all homepage content in one go."""
         hero = HeroBanner.objects.filter(is_active=True)
