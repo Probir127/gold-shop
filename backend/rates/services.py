@@ -24,33 +24,45 @@ def fetch_live_gold_price():
     # 1. Try APISED if key provided
     if api_key:
         try:
-            conn = http.client.HTTPSConnection("gold.g.apised.com", timeout=6)
+            conn = http.client.HTTPSConnection("gold.g.apised.com", timeout=8)
             headers = {"x-api-key": api_key}
             conn.request("GET", "/v1/latest?metals=XAU&weight_unit=gram&base_currency=USD", headers=headers)
             res = conn.getresponse()
             raw = res.read().decode('utf-8')
             if res.status == 200:
                 data = json.loads(raw)
-                price_per_gram_usd = None
-                if 'data' in data and 'rates' in data['data']:
-                    price_per_gram_usd = float(data['data']['rates'].get('XAU', 0))
-                elif 'rates' in data:
-                    price_per_gram_usd = float(data['rates'].get('XAU', 0))
-                elif 'price' in data:
-                    price_per_gram_usd = float(data['price'])
+                xau = {}
+                if isinstance(data, dict):
+                    if 'data' in data and isinstance(data['data'], dict):
+                        xau = data['data'].get('metal_prices', {}).get('XAU', {})
+                    elif 'metal_prices' in data:
+                        xau = data.get('metal_prices', {}).get('XAU', {})
 
-                if price_per_gram_usd and price_per_gram_usd > 0:
-                    rate_24k_bdt = round(price_per_gram_usd * usd_bdt)
+                price_24k_usd = float(xau.get('price_24k') or xau.get('price', 0))
+                if price_24k_usd > 0:
+                    price_22k_usd = float(xau.get('price_22k', 0))
+                    price_21k_usd = float(xau.get('price_21k', 0))
+                    price_18k_usd = float(xau.get('price_18k', 0))
+
+                    rate_24k_bdt = round(price_24k_usd * usd_bdt)
+                    rate_22k_bdt = round(price_22k_usd * usd_bdt) if price_22k_usd > 0 else round(rate_24k_bdt * 0.916)
+                    rate_21k_bdt = round(price_21k_usd * usd_bdt) if price_21k_usd > 0 else round(rate_24k_bdt * 0.875)
+                    rate_18k_bdt = round(price_18k_usd * usd_bdt) if price_18k_usd > 0 else round(rate_24k_bdt * 0.750)
+                    rate_trad_bdt = round(rate_24k_bdt * 0.625)
+
                     return {
-                        'source': 'APISED Gold API (Live)',
-                        'price_usd_per_gram': round(price_per_gram_usd, 2),
-                        'price_usd_per_oz': round(price_per_gram_usd * TROY_OZ_TO_GRAM, 2),
+                        'source': 'APISED Gold Market (Live)',
+                        'price_usd_per_gram': round(price_24k_usd, 2),
+                        'price_usd_per_oz': round(price_24k_usd * TROY_OZ_TO_GRAM, 2),
                         'usd_to_bdt': usd_bdt,
                         'rate_24k': rate_24k_bdt,
-                        'rate_22k': round(rate_24k_bdt * 0.916),
-                        'rate_21k': round(rate_24k_bdt * 0.875),
-                        'rate_18k': round(rate_24k_bdt * 0.750),
-                        'rate_traditional': round(rate_24k_bdt * 0.625),
+                        'rate_22k': rate_22k_bdt,
+                        'rate_21k': rate_21k_bdt,
+                        'rate_18k': rate_18k_bdt,
+                        'rate_traditional': rate_trad_bdt,
+                        'change': xau.get('change'),
+                        'change_percentage': xau.get('change_percentage'),
+                        'updated_at': 'Live Market',
                         'status': 'success'
                     }
         except Exception as e:

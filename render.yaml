@@ -56,6 +56,8 @@ services:
         value: "8801799281878"
       - key: STORE_ADDRESS
         value: "Level-7, Block-A, Shop-19, Bashundhara City Shopping Mall, Dhaka"
+      - key: APISED_API_KEY
+        value: "sk_4d2dB072e3BF68099002921813848002cce4e2Fa8e7bfe22"
       - key: DATABASE_URL
         fromDatabase:
           name: sahara-gold-db
@@ -85,6 +87,8 @@ services:
           type: web
           name: sahara-gold-backend
           envVarKey: RENDER_EXTERNAL_URL
+      - key: VITE_APISED_API_KEY
+        value: "sk_4d2dB072e3BF68099002921813848002cce4e2Fa8e7bfe22"
 
 databases:
   # ---------------------------------------------------------------------------
