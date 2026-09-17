@@ -59,9 +59,13 @@ class LiveGoldMarketView(APIView):
     """
     permission_classes = [permissions.AllowAny]
 
-    @method_decorator(cache_page(60 * 2))
     def get(self, request):
+        cached = cache.get('live_gold_market_cache')
+        if cached:
+            return Response(cached)
         data = fetch_live_gold_price()
+        if data.get('status') == 'success':
+            cache.set('live_gold_market_cache', data, timeout=120)
         return Response(data)
 
 class SyncLiveGoldRateView(APIView):
