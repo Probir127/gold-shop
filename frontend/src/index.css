@@ -2361,3 +2361,109 @@ body {
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.07); border-radius: 999px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
+/* ==========================================================================
+   Mobile Responsive Optimizations (Pure CSS Media Queries)
+   ========================================================================== */
+
+/* Product Gallery Sticky Behavior */
+.product-gallery-sticky {
+  position: relative;
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .product-gallery-sticky {
+    position: sticky;
+    top: 100px;
+  }
+}
+
+/* Product Page Mobile Layout */
+@media (max-width: 768px) {
+  .product-page {
+    padding-top: 20px !important;
+    padding-bottom: 95px !important; /* Space so bottom floating buttons don't block content */
+  }
+
+  .product-main-grid {
+    gap: 1.5rem !important;
+  }
+
+  .product-main-grid h1 {
+    font-size: 1.85rem !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Ensure product specs grid stays balanced on small screens */
+  .product-page [style*="gridTemplateColumns: '1fr 1fr'"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .spec-item-glass {
+    padding: 0.6rem !important;
+    gap: 0.5rem !important;
+  }
+
+  .spec-item-glass span:last-child {
+    font-size: 12px !important;
+  }
+
+  /* Trust badges 2 columns on mobile */
+  .trust-badge-container {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  .trust-badge-card {
+    padding: 8px 10px !important;
+  }
+}
+
+/* Floating Actions Cluster (WhatsApp & Sahara AI) */
+.floating-action-cluster {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ai-pill-desktop {
+  display: flex;
+}
+
+@media (max-width: 768px) {
+  /* Hide wide desktop text pill so it never takes up the entire mobile screen */
+  .ai-pill-desktop {
+    display: none !important;
+  }
+
+  /* Position floating buttons cleanly on mobile: WhatsApp on bottom-left, AI Chat on bottom-right */
+  .floating-action-cluster {
+    position: static !important;
+  }
+
+  .whatsapp-float-trigger {
+    position: fixed !important;
+    left: 16px !important;
+    bottom: 20px !important;
+    z-index: 9999 !important;
+    width: 44px !important;
+    height: 44px !important;
+    box-shadow: 0 4px 14px rgba(37, 211, 102, 0.4) !important;
+  }
+
+  .ai-chat-trigger {
+    position: fixed !important;
+    right: 16px !important;
+    bottom: 20px !important;
+    z-index: 9999 !important;
+    width: 48px !important;
+    height: 48px !important;
+    box-shadow: 0 4px 18px rgba(212, 175, 55, 0.45) !important;
+  }
+}

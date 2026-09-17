@@ -109,8 +109,9 @@ const GoldAIChat = () => {
 
   return (
     <>
-      {/* Floating Action Cluster - Aligned & Unified */}
+      {/* Floating Action Cluster - Responsive & Unified */}
       <div
+        className="floating-action-cluster"
         style={{
           position: 'fixed',
           bottom: '24px',
@@ -129,6 +130,7 @@ const GoldAIChat = () => {
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.94 }}
           onClick={openWhatsApp}
+          className="whatsapp-float-trigger"
           title="Chat directly on WhatsApp"
           aria-label="Chat on WhatsApp"
           style={{
@@ -152,16 +154,16 @@ const GoldAIChat = () => {
           </svg>
         </motion.button>
 
-        {/* AI Pill Label (Desktop) */}
+        {/* AI Pill Label (Desktop only) */}
         <AnimatePresence>
           {!isOpen && (
             <motion.div
+              className="ai-pill-desktop"
               initial={{ opacity: 0, x: 15, scale: 0.92 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 15, scale: 0.92 }}
               onClick={() => setIsOpen(true)}
               style={{
-                display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
                 background: 'linear-gradient(135deg, #1c1913, #2b2316)',
@@ -191,6 +193,7 @@ const GoldAIChat = () => {
           whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.94 }}
           onClick={() => setIsOpen(!isOpen)}
+          className="ai-chat-trigger"
           style={{
             position: 'relative',
             width: '54px',

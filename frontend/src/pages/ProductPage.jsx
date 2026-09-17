@@ -82,7 +82,7 @@ const ProductPage = () => {
                         initial={{ opacity: 0, x: -50 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.6 }}
-                        style={{ position: 'sticky', top: '100px' }}
+                        className="product-gallery-sticky"
                     >
                         <div style={{ border: '1px solid #222', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.5)', position: 'relative' }}>
                             <ImageZoom src={product.image} alt={product.name} />
@@ -94,14 +94,16 @@ const ProductPage = () => {
                             )}
                         </div>
 
-                        {/* Product media */}
-                        <div className="custom-scrollbar" style={{ marginTop: '16px', display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '8px' }}>
-                            {[product.image].map((img, idx) => (
-                                <button key={idx} style={{ width: '80px', height: '80px', borderRadius: '8px', border: idx === 0 ? '2px solid var(--color-gold-primary)' : '1px solid #333', overflow: 'hidden', flexShrink: 0, cursor: 'pointer', padding: 0, backgroundColor: 'transparent' }}>
-                                    <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                </button>
-                            ))}
-                        </div>
+                        {/* Product media — only render when multiple images exist */}
+                        {Array.isArray(product.images) && product.images.length > 1 && (
+                            <div className="custom-scrollbar" style={{ marginTop: '16px', display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '8px' }}>
+                                {product.images.map((img, idx) => (
+                                    <button key={idx} style={{ width: '80px', height: '80px', borderRadius: '8px', border: idx === 0 ? '2px solid var(--color-gold-primary)' : '1px solid #333', overflow: 'hidden', flexShrink: 0, cursor: 'pointer', padding: 0, backgroundColor: 'transparent' }}>
+                                        <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </motion.div>
 
                     {/* Right Column: Product Info */}
