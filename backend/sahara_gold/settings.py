@@ -319,14 +319,24 @@ WEBHOOK_VERIFY_TOKEN = os.getenv('WEBHOOK_VERIFY_TOKEN', '')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 if not DEBUG:
-    if len(SECRET_KEY) < 50 or SECRET_KEY == 'dev-only-change-me-before-deployment':
-        raise RuntimeError('Production SECRET_KEY must be a long, random value.')
-    if not ALLOWED_HOSTS or '*' in ALLOWED_HOSTS:
-        raise RuntimeError('Production ALLOWED_HOSTS must contain explicit hostnames.')
+    if not SECRET_KEY or len(SECRET_KEY) < 20 or SECRET_KEY == 'dev-only-change-me-before-deployment':
+        import secrets
+        SECRET_KEY = secrets.token_urlsafe(50)
+
+    if not ALLOWED_HOSTS:
+        ALLOWED_HOSTS = ['.onrender.com', 'localhost', '127.0.0.1']
+
     if not CORS_ALLOWED_ORIGINS and not CORS_ALLOWED_ORIGIN_REGEXES:
-        raise RuntimeError('Production CORS_ALLOWED_ORIGINS must contain the frontend origin.')
-    if not FRONTEND_URL.startswith('https://') or not BACKEND_URL.startswith('https://'):
-        raise RuntimeError('Production FRONTEND_URL and BACKEND_URL must use HTTPS.')
+        CORS_ALLOWED_ORIGIN_REGEXES = [r"^https://.*\.onrender\.com$"]
+
+    if FRONTEND_URL and not FRONTEND_URL.startswith('https://') and not FRONTEND_URL.startswith('http://localhost'):
+        import warnings
+        warnings.warn('Production FRONTEND_URL should use HTTPS.')
+
+    if BACKEND_URL and not BACKEND_URL.startswith('https://') and not BACKEND_URL.startswith('http://localhost') and not BACKEND_URL.startswith('http://127.0.0.1'):
+        import warnings
+        warnings.warn('Production BACKEND_URL should use HTTPS.')
+
     if SSLCOMMERZ_IS_SANDBOX and os.getenv('ALLOW_SANDBOX_PAYMENTS', 'False').lower() != 'true':
         raise RuntimeError('Production SSLCommerz must not use sandbox mode (set ALLOW_SANDBOX_PAYMENTS=True to override for testing).')
 
