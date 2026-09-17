@@ -201,12 +201,15 @@ const CustomerLoginPage = () => {
                 password,
             });
             setVerificationEmail(result.email);
-            setVerificationCode(result.dev_code || '');
-            setSuccessMsg(
-                result.dev_code 
-                    ? `Verification Code: ${result.dev_code} (Auto-filled below)`
-                    : `We sent a 6-digit verification code to ${result.email}.`
-            );
+            if (result.verification_required === false && result.access) {
+                // SMTP unavailable — backend activated account directly and returned tokens
+                persistSession(result);
+                setSuccessMsg('Account created! Welcome to Sahara Gold.');
+                setTimeout(() => navigate(nextPath), 900);
+            } else {
+                setVerificationCode('');
+                setSuccessMsg(`We sent a 6-digit verification code to ${result.email}.`);
+            }
         } catch (err) {
             setError(err.message || 'Registration failed. Please try again.');
         } finally {

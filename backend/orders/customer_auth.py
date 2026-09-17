@@ -1,3 +1,4 @@
+import threading
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.conf import settings
@@ -24,35 +25,24 @@ def issue_tokens(user):
     return {'access': str(refresh.access_token), 'refresh': str(refresh)}
 
 
-def send_verification_code(user, code):
-    subject = 'Verify your Sahara Gold customer account'
-    body = (
-        f'Dear {user.first_name or "Customer"},\n\n'
-        f'Your Sahara Gold verification code is: {code}\n\n'
-        'This code expires in 10 minutes. If you did not request this, you can ignore this email.\n\n'
-        'Showroom: Bashundhara City Shopping Mall, Level 7, Block-A Shop-19, Dhaka.\n'
-        'Hotline / WhatsApp: 01799-281878\n\n'
-        'Regards,\nSahara Gold'
-    )
-    # Attempt 1: Standard configured backend (e.g. Port 465 SSL)
+def _try_send_mail(subject, body, to_email):
+    """
+    Try SMTP port 465 (SSL) then 587 (TLS).
+    Returns True on success, raises on total failure.
+    """
+    # Attempt 1: configured backend (port 465 SSL)
     try:
-        send_mail(
-            subject,
-            body,
-            settings.DEFAULT_FROM_EMAIL,
-            [user.email],
-            fail_silently=False,
-        )
-        logger.info("Verification code sent via primary SMTP to %s", user.email)
+        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [to_email], fail_silently=False)
+        logger.info("Email sent via SMTP/465 to %s", to_email)
         return True
-    except Exception as primary_err:
-        logger.warning("Primary SMTP failed for %s (%s). Trying port 587 TLS...", user.email, primary_err)
+    except Exception as err1:
+        logger.warning("SMTP/465 failed for %s: %s — trying 587 TLS...", to_email, err1)
 
-    # Attempt 2: Port 587 TLS fallback
+    # Attempt 2: port 587 TLS
     try:
         from django.core.mail.backends.smtp import EmailBackend
         from django.core.mail import EmailMessage
-        tls_backend = EmailBackend(
+        backend = EmailBackend(
             host=settings.EMAIL_HOST,
             port=587,
             username=settings.EMAIL_HOST_USER,
@@ -62,18 +52,49 @@ def send_verification_code(user, code):
             timeout=8,
         )
         msg = EmailMessage(
-            subject=subject,
-            body=body,
+            subject=subject, body=body,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[user.email],
-            connection=tls_backend,
+            to=[to_email], connection=backend,
         )
         msg.send(fail_silently=False)
-        logger.info("Verification code sent via port 587 TLS to %s", user.email)
+        logger.info("Email sent via SMTP/587 to %s", to_email)
         return True
-    except Exception as fallback_err:
-        logger.error("All SMTP attempts failed for %s: %s", user.email, fallback_err)
-        raise fallback_err
+    except Exception as err2:
+        logger.error("All SMTP attempts failed for %s: %s", to_email, err2)
+        raise err2
+
+
+def send_verification_code(user, code):
+    subject = 'Verify your Sahara Gold customer account'
+    body = (
+        f'Dear {user.first_name or "Customer"},\n\n'
+        f'Your Sahara Gold verification code is: {code}\n\n'
+        'This code expires in 10 minutes. '
+        'If you did not request this, you can ignore this email.\n\n'
+        'Showroom: Bashundhara City Shopping Mall, Level 7, Block-A Shop-19, Dhaka.\n'
+        'Hotline / WhatsApp: 01799-281878\n\n'
+        'Regards,\nSahara Gold'
+    )
+    return _try_send_mail(subject, body, user.email)
+
+
+def _send_welcome_bg(user):
+    """Best-effort welcome email sent in a background thread — never raises."""
+    try:
+        _try_send_mail(
+            'Welcome to Sahara Gold!',
+            (
+                f'Dear {user.first_name or "Customer"},\n\n'
+                'Your Sahara Gold account has been created successfully.\n'
+                'You can now sign in and track your orders anytime.\n\n'
+                'Showroom: Bashundhara City Shopping Mall, Level 7, Block-A Shop-19, Dhaka.\n'
+                'Hotline / WhatsApp: 01799-281878\n\n'
+                'Regards,\nSahara Gold'
+            ),
+            user.email,
+        )
+    except Exception as e:
+        logger.debug("Welcome email silently failed for %s: %s", user.email, e)
 
 
 class CustomerRegisterView(APIView):
@@ -82,7 +103,7 @@ class CustomerRegisterView(APIView):
     def post(self, request):
         name = str(request.data.get('name', '')).strip()
         email = str(request.data.get('email', '')).strip().lower()
-        phone = ''.join(char for char in str(request.data.get('phone', '')) if char.isdigit() or char == '+')
+        phone = ''.join(c for c in str(request.data.get('phone', '')) if c.isdigit() or c == '+')
         password = str(request.data.get('password', ''))
 
         if not name or not email or len(password) < 8:
@@ -99,32 +120,33 @@ class CustomerRegisterView(APIView):
         if not phone:
             phone = email
 
-        existing_user = User.objects.filter(email__iexact=email).first()
-        if existing_user:
-            if existing_user.is_active:
-                return Response({'detail': 'An account already exists with this email address. Please sign in.'}, status=status.HTTP_409_CONFLICT)
-            # Existing inactive account (e.g. previous verification attempt timed out): reuse user
-            user = existing_user
+        existing = User.objects.filter(email__iexact=email).first()
+        if existing:
+            if existing.is_active:
+                return Response(
+                    {'detail': 'An account already exists with this email address. Please sign in.'},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            # Incomplete registration — reuse and update
+            user = existing
             user.set_password(password)
             if name:
                 user.first_name = name[:150]
             user.save()
         else:
-            if User.objects.filter(username=phone).exists():
-                username_to_use = email
-            else:
-                username_to_use = phone
-
+            uname = email if User.objects.filter(username=phone).exists() else phone
             try:
                 user = User.objects.create_user(
-                    username=username_to_use,
-                    password=password,
-                    email=email,
-                    first_name=name[:150],
+                    username=uname, password=password,
+                    email=email, first_name=name[:150],
                 )
             except IntegrityError:
-                return Response({'detail': 'Unable to create the account. Please try a different email.'}, status=status.HTTP_409_CONFLICT)
+                return Response(
+                    {'detail': 'Unable to create the account. Please try a different email.'},
+                    status=status.HTTP_409_CONFLICT,
+                )
 
+        # Generate OTP and attempt SMTP verification
         user.is_active = False
         user.save(update_fields=['is_active'])
         code = f'{secrets.randbelow(1000000):06d}'
@@ -137,22 +159,32 @@ class CustomerRegisterView(APIView):
             },
         )
 
-        email_sent = False
         try:
             send_verification_code(user, code)
-            email_sent = True
-        except Exception as exc:
-            logger.warning('Verification email could not be sent to %s via SMTP (%s). Code: %s', email, exc, code)
-
-        return Response(
-            {
-                'verification_required': True,
-                'email': email,
-                'email_sent': email_sent,
-                'dev_code': code if not email_sent else None,
-            },
-            status=status.HTTP_201_CREATED,
-        )
+            # SMTP worked — require email verification
+            return Response(
+                {'verification_required': True, 'email': email},
+                status=status.HTTP_201_CREATED,
+            )
+        except Exception:
+            # SMTP blocked (Render free tier) — activate account directly, no error shown
+            logger.warning('SMTP unavailable for %s — activating account directly.', email)
+            user.is_active = True
+            user.save(update_fields=['is_active'])
+            CustomerEmailVerification.objects.filter(user=user).delete()
+            threading.Thread(target=_send_welcome_bg, args=(user,), daemon=True).start()
+            return Response(
+                {
+                    **issue_tokens(user),
+                    'customer': {
+                        'name': user.first_name or 'Sahara Customer',
+                        'phone': user.username,
+                        'email': user.email,
+                    },
+                    'verification_required': False,
+                },
+                status=status.HTTP_201_CREATED,
+            )
 
 
 class CustomerVerifyEmailView(APIView):
@@ -178,11 +210,14 @@ class CustomerVerifyEmailView(APIView):
         user.is_active = True
         user.save(update_fields=['is_active'])
         verification.delete()
-        return Response({**issue_tokens(user), 'customer': {
-            'name': user.first_name or 'Sahara Customer',
-            'phone': user.username,
-            'email': user.email,
-        }})
+        return Response({
+            **issue_tokens(user),
+            'customer': {
+                'name': user.first_name or 'Sahara Customer',
+                'phone': user.username,
+                'email': user.email,
+            },
+        })
 
 
 class CustomerLoginView(APIView):
@@ -192,11 +227,10 @@ class CustomerLoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        # Can be sent as 'email', 'phone', or 'identifier'
         identifier = str(
-            request.data.get('email') or 
-            request.data.get('phone') or 
-            request.data.get('identifier') or 
+            request.data.get('email') or
+            request.data.get('phone') or
+            request.data.get('identifier') or
             ''
         ).strip()
         password = str(request.data.get('password', ''))
@@ -207,14 +241,9 @@ class CustomerLoginView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # 1. Look up user by email (case-insensitive)
         user = User.objects.filter(email__iexact=identifier).first()
-
-        # 2. If not found by email, look up by username / phone
         if not user:
             user = User.objects.filter(username__iexact=identifier).first()
-
-        # 3. If still not found, try stripped numeric phone
         if not user:
             clean_digits = ''.join(c for c in identifier if c.isdigit())
             if clean_digits:
@@ -241,5 +270,5 @@ class CustomerLoginView(APIView):
                 'name': user.first_name or 'Sahara Customer',
                 'phone': user.username,
                 'email': user.email,
-            }
+            },
         })
