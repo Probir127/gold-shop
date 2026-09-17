@@ -1,12 +1,56 @@
 from rest_framework import viewsets, mixins, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import BasePermission
 from django.shortcuts import render, get_object_or_404
 from .models import Order
 from .serializers import OrderSerializer
+from core.utils.invoice_access import validate_invoice_access_token
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def normalize_phone(value):
+    digits = ''.join(char for char in str(value) if char.isdigit())
+    return digits[2:] if digits.startswith('88') else digits
+
+
+class OrderInvoiceAccessPermission(BasePermission):
+    """Require a signed customer link or an authenticated owner/staff user."""
+
+    def has_permission(self, request, view):
+        copy_type = request.query_params.get('copy', 'customer').lower()
+        if copy_type in {'admin', 'store'}:
+            return bool(request.user and request.user.is_staff)
+        return bool(request.user and request.user.is_authenticated) or validate_invoice_access_token(
+            request.query_params.get('token'),
+            'order',
+            getattr(view, 'kwargs', {}).get('order_id'),
+        )
+
+
+class OrderAccessPermission(BasePermission):
+    """Allow an order owner or a signed customer capability to view an order."""
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated) or validate_invoice_access_token(
+            request.query_params.get('token'),
+            'order',
+            getattr(view, 'kwargs', {}).get('order_id'),
+        )
+
+    def has_object_permission(self, request, view, obj):
+        if validate_invoice_access_token(request.query_params.get('token'), 'order', obj.order_id):
+            return True
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        return (
+            user.is_staff
+            or user.email.lower() == obj.customer_email.lower()
+            or normalize_phone(user.username) == normalize_phone(obj.customer_phone)
+        )
 
 class OrderViewSet(viewsets.ModelViewSet):
     """
@@ -19,9 +63,37 @@ class OrderViewSet(viewsets.ModelViewSet):
     lookup_field = 'order_id'
 
     def get_permissions(self):
-        if self.action in ['create', 'track', 'retrieve', 'invoice']:
+        if self.action in ['create', 'track']:
             return [permissions.AllowAny()]
-        return [permissions.IsAuthenticated()]
+        if self.action == 'retrieve':
+            return [OrderAccessPermission()]
+        if self.action == 'invoice':
+            return [OrderInvoiceAccessPermission()]
+        if self.action == 'my_orders':
+            return [permissions.IsAuthenticated()]
+        return [permissions.IsAdminUser()]
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def my_orders(self, request):
+        """
+        Authenticated customer order history.
+        GET /api/orders/my_orders/  (requires Bearer token)
+        """
+        if request.user.is_staff:
+            # Staff can see all orders (useful for admin tools)
+            qs = Order.objects.all().order_by('-created_at')
+        else:
+            # Customers see only their own orders matched by their account phone/email
+            account_phone = (request.user.username or '').strip()
+            account_email = (request.user.email or '').strip().lower()
+            from django.db.models import Q
+            qs = Order.objects.filter(
+                Q(customer_phone__iexact=account_phone) |
+                (Q(customer_email__iexact=account_email) if account_email else Q())
+            ).order_by('-created_at')
+
+        serializer = self.get_serializer(qs[:50], many=True)
+        return Response({'orders': serializer.data})
 
     @action(detail=False, methods=['post'])
     def track(self, request):
@@ -36,7 +108,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         try:
             order = Order.objects.get(order_id__iexact=order_id)
-            if phone not in order.customer_phone:
+            if normalize_phone(phone) != normalize_phone(order.customer_phone):
                 return Response(
                     {"error": "Phone number does not match this order"}, 
                     status=status.HTTP_400_BAD_REQUEST
@@ -50,7 +122,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAdminUser])
     def update_status(self, request, order_id=None):
         """
         Admin update order status + trigger WhatsApp notification.
@@ -103,6 +175,18 @@ class OrderViewSet(viewsets.ModelViewSet):
         copy_type = request.query_params.get('copy', 'customer').lower()
         is_admin_copy = copy_type in ['admin', 'store']
         copy_title = "Store & Accounts Copy" if is_admin_copy else "Customer Copy"
+
+        if is_admin_copy and not request.user.is_staff:
+            return Response({'detail': 'Admin invoice access requires staff authentication.'}, status=status.HTTP_403_FORBIDDEN)
+        if not is_admin_copy and not validate_invoice_access_token(
+            request.query_params.get('token'), 'order', order.order_id
+        ):
+            user = request.user
+            if not user.is_authenticated or (
+                user.email.lower() != order.customer_email.lower()
+                and normalize_phone(user.username) != normalize_phone(order.customer_phone)
+            ):
+                return Response({'detail': 'This invoice link is invalid or expired.'}, status=status.HTTP_403_FORBIDDEN)
 
         if request.query_params.get('format') == 'json' or request.headers.get('Accept') == 'application/json':
             serializer = self.get_serializer(order)

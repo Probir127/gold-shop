@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useGoldRates } from '../hooks/useShopData';
+import { useGoldRates, useGoldRateHistory } from '../hooks/useShopData';
 import { Calculator, TrendingUp, Sparkles } from 'lucide-react';
 import { formatPrice } from '../utils/formatters';
 import SEO from '../components/SEO';
@@ -16,10 +16,11 @@ const GoldRatesPage = () => {
         rate_traditional: 0,
         date: new Date().toISOString()
     } } = useGoldRates();
+    const { data: rateHistory = [] } = useGoldRateHistory();
 
     const [weight, setWeight] = useState('');
     const [purity, setPurity] = useState('22K');
-    const [makingCharge, setMakingCharge] = useState(500);
+    const [makingCharge, setMakingCharge] = useState(0);
     const [calculatedPrice, setCalculatedPrice] = useState(null);
     const [showResult, setShowResult] = useState(false);
 
@@ -39,19 +40,16 @@ const GoldRatesPage = () => {
         const goldPrice = parseFloat(weight) * rate;
         const makingCost = parseFloat(weight) * parseInt(makingCharge || 0);
         const total = goldPrice + makingCost;
-        const vat = total * 0.05;
-
         setCalculatedPrice({
             goldPrice,
             makingCost,
-            vat,
-            total: total + vat
+            total
         });
         setShowResult(true);
     }, [weight, purity, makingCharge, goldRates]);
 
     return (
-        <div className="section" style={{ paddingTop: '40px' }}>
+        <div className="section gold-rates-page" style={{ paddingTop: '40px' }}>
             <SEO
                 title="Today's Gold Rates"
                 description={`Latest Gold Prices: 22K - ৳${goldRates.rate_22k}/g, 21K - ৳${goldRates.rate_21k}/g.`}
@@ -75,10 +73,10 @@ const GoldRatesPage = () => {
                 </div>
 
                 {/* Live Ticker */}
-                <GoldRateTicker rates={goldRates} />
+                <GoldRateTicker rates={goldRates} history={rateHistory} />
 
                 {/* Interactive Chart */}
-                <GoldRateChart currentRate={goldRates.rate_22k} purity="22K" />
+                <GoldRateChart history={rateHistory} currentRate={goldRates.rate_22k} purity="22K" />
 
                 {/* Main Content Grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px' }}>
@@ -194,10 +192,6 @@ const GoldRatesPage = () => {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '14px' }}>
                                     <span style={{ color: '#888' }}>Making Charges</span>
                                     <span style={{ color: '#fff' }}>{formatPrice(calculatedPrice.makingCost)}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', fontSize: '14px' }}>
-                                    <span style={{ color: '#888' }}>VAT (5%)</span>
-                                    <span style={{ color: '#fff' }}>{formatPrice(calculatedPrice.vat)}</span>
                                 </div>
                                 <div style={{
                                     display: 'flex',

@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, X, Send, Sparkles, TrendingUp, Minimize2, ExternalLink } from 'lucide-react';
+import { MessageSquare, X, Send, Sparkles, TrendingUp, Minimize2, ExternalLink, ShoppingBag, Eye } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
 import { STORE_INFO } from '../../utils/constants';
+import { useCart } from '../../context/CartContext';
 
 const GoldAIChat = () => {
+  const { isCartOpen, addToCart } = useCart();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
@@ -62,15 +65,16 @@ const GoldAIChat = () => {
     try {
       const data = await api.chatWithAI(text, sessionId);
 
-      if (data.session_id && !sessionId) {
-        setSessionId(data.session_id);
-        localStorage.setItem('sg_ai_session', data.session_id);
+      if (data.visitor_id && !sessionId) {
+        setSessionId(data.visitor_id);
+        localStorage.setItem('sg_ai_session', data.visitor_id);
       }
 
       const botMsg = {
         id: Date.now() + 1,
         role: 'assistant',
         content: data.reply,
+        products: data.products || [],
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages((prev) => [...prev, botMsg]);
@@ -81,7 +85,7 @@ const GoldAIChat = () => {
         {
           id: Date.now() + 1,
           role: 'assistant',
-          content: "Sorry, I am having trouble connecting right now. You can also reach our concierge directly at 01799-281878 (WhatsApp).",
+          content: `Sorry, I am having trouble connecting right now. You can also reach our concierge directly at ${STORE_INFO.phone} (WhatsApp).`,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
@@ -91,7 +95,8 @@ const GoldAIChat = () => {
   };
 
   const openWhatsApp = () => {
-    const phone = STORE_INFO?.whatsapp || '8801799281878';
+    const phone = STORE_INFO?.whatsapp;
+    if (!phone) return;
     window.open(`https://wa.me/${phone}?text=Hello%20Sahara%20Gold%2C%20I%20need%20assistance%20with%20jewelry`, '_blank');
   };
 
@@ -111,9 +116,12 @@ const GoldAIChat = () => {
           bottom: '24px',
           right: '24px',
           zIndex: 9999,
-          display: 'flex',
+          display: isCartOpen ? 'none' : 'flex',
           alignItems: 'center',
-          gap: '12px'
+          gap: '12px',
+          transition: 'opacity 0.2s ease',
+          opacity: isCartOpen ? 0 : 1,
+          pointerEvents: isCartOpen ? 'none' : 'auto'
         }}
       >
         {/* WhatsApp Direct Concierge Button */}
@@ -378,6 +386,113 @@ const GoldAIChat = () => {
                   >
                     {m.content}
                   </div>
+
+                  {/* Render Directly Recommended Products */}
+                  {m.products && m.products.length > 0 && (
+                    <div style={{
+                      marginTop: '8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      width: '100%',
+                      maxWidth: '92%'
+                    }}>
+                      {m.products.map((prod) => (
+                        <div
+                          key={prod.id}
+                          style={{
+                            display: 'flex',
+                            gap: '10px',
+                            background: '#191713',
+                            border: '1px solid rgba(212, 175, 55, 0.35)',
+                            borderRadius: '10px',
+                            padding: '8px',
+                            alignItems: 'center',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
+                          }}
+                        >
+                          <div style={{
+                            width: '54px',
+                            height: '54px',
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            backgroundColor: '#000',
+                            flexShrink: 0
+                          }}>
+                            <img
+                              src={prod.image || '/placeholder-gold.jpg'}
+                              alt={prod.name}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          </div>
+
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <h5 style={{
+                              margin: 0,
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: '#fff',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}>
+                              {prod.name}
+                            </h5>
+                            <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#9ca3af' }}>
+                              {prod.purity} • {prod.weight}g
+                            </p>
+                            <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#e5c100' }}>
+                              ৳{(prod.current_price || prod.price || 0).toLocaleString()}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <Link
+                              to={`/product/${prod.id}`}
+                              onClick={() => setIsOpen(false)}
+                              title="View Product Details"
+                              style={{
+                                padding: '6px',
+                                background: '#26221a',
+                                border: '1px solid rgba(212, 175, 55, 0.3)',
+                                borderRadius: '6px',
+                                color: '#e5c100',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                            >
+                              <Eye size={13} />
+                            </Link>
+                            <button
+                              onClick={() => {
+                                addToCart(prod);
+                                setIsOpen(false);
+                              }}
+                              title="Add Directly to Bag"
+                              style={{
+                                padding: '6px 10px',
+                                background: 'linear-gradient(135deg, #e5c100, #b89326)',
+                                border: 'none',
+                                borderRadius: '6px',
+                                color: '#000',
+                                fontWeight: 700,
+                                fontSize: '11px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <ShoppingBag size={12} />
+                              <span>Add</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <span style={{ fontSize: '10px', color: '#6b7280', marginTop: '4px', padding: '0 4px' }}>{m.time}</span>
                 </div>
               ))}

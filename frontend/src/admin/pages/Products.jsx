@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
-import { getProductsAdmin, createProductAdmin, updateProductAdmin, deleteProductAdmin } from '../api';
+import { getProductsAdmin, getCategories, createProductAdmin, updateProductAdmin, deleteProductAdmin } from '../api';
 import toast from '../components/Toast';
 import { queryClient } from '../../queryClient';
 import { Diamond, Plus, Search, Trash2, Edit2, CheckCircle2, XCircle, Image as ImageIcon } from 'lucide-react';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -16,7 +17,7 @@ const Products = () => {
   // Form State
   const [form, setForm] = useState({
     name: '',
-    category: '1',
+    category: '',
     description: '',
     weight: '',
     purity: '22K',
@@ -30,8 +31,9 @@ const Products = () => {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await getProductsAdmin();
-      setProducts(res.data.results || res.data || []);
+      const [productsRes, categoriesRes] = await Promise.all([getProductsAdmin(), getCategories()]);
+      setProducts(productsRes.data.results || productsRes.data || []);
+      setCategories(categoriesRes.data.results || categoriesRes.data || []);
     } catch (err) {
       toast.error('Failed to load products');
     } finally {
@@ -47,7 +49,7 @@ const Products = () => {
     setEditingProduct(null);
     setForm({
       name: '',
-      category: '1',
+      category: categories[0]?.id ? String(categories[0].id) : '',
       description: '',
       weight: '',
       purity: '22K',
@@ -64,7 +66,7 @@ const Products = () => {
     setEditingProduct(p);
     setForm({
       name: p.name || '',
-      category: p.category ? String(p.category) : '1',
+      category: p.category ? String(p.category) : '',
       description: p.description || '',
       weight: p.weight || '',
       purity: p.purity || '22K',
@@ -79,6 +81,10 @@ const Products = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.category) {
+      toast.error('Select a valid product category.');
+      return;
+    }
     setSubmitting(true);
 
     const formData = new FormData();
@@ -133,7 +139,7 @@ const Products = () => {
   );
 
   return (
-    <div className="flex bg-[#09090b] text-slate-100 min-h-screen">
+    <div className="admin-products flex bg-[#09090b] text-slate-100 min-h-screen">
       <Sidebar />
 
       <main className="flex-1 p-8 overflow-y-auto max-h-screen">
@@ -301,10 +307,10 @@ const Products = () => {
                       onChange={(e) => setForm({ ...form, category: e.target.value })}
                       className="w-full bg-[#18181b] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#d4af37]"
                     >
-                      <option value="1">Rings</option>
-                      <option value="2">Earrings</option>
-                      <option value="3">Necklaces</option>
-                      <option value="4">Wristlets / Bangles</option>
+                      <option value="">Select category</option>
+                      {categories.map(category => (
+                        <option key={category.id} value={category.id}>{category.name}</option>
+                      ))}
                     </select>
                   </div>
 

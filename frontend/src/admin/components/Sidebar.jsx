@@ -6,6 +6,7 @@ import {
   ChevronDown, Sparkles, Shield
 } from 'lucide-react';
 import { getMe } from '../api';
+import BrandMark from '../../components/BrandMark';
 
 const navSections = [
   {
@@ -47,11 +48,6 @@ const Sidebar = () => {
         if (active) {
           setActiveTenant(active);
           if (!currentSlug) localStorage.setItem('tenant_slug', active.tenant_slug);
-        } else if (res.data.user) {
-          // Default fallback
-          const defSlug = 'sahara-gold';
-          localStorage.setItem('tenant_slug', defSlug);
-          setActiveTenant({ tenant_name: 'Sahara Gold & Diamond', tenant_slug: defSlug, role: 'admin' });
         }
       } catch (e) {
         console.error("Failed to fetch profile");
@@ -71,14 +67,9 @@ const Sidebar = () => {
     <div className="w-64 bg-[#0c0c0e] h-screen sticky top-0 flex flex-col px-4 py-6 border-r border-white/5 select-none shrink-0 overflow-y-auto">
       
       {/* Sahara Gold Brand Identity */}
-      <div className="flex items-center gap-3 px-2 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#d4af37] to-[#f4d03f] flex items-center justify-center text-black font-serif font-black text-lg shadow-[0_0_15px_rgba(212,175,55,0.4)] border border-[#ffec99]">
-          SG
-        </div>
-        <div>
-          <h1 className="text-base font-bold text-[#f5ebd7] tracking-tight leading-none mb-1 font-serif">Sahara Gold</h1>
-          <p className="text-[10px] text-[#d4af37] font-semibold tracking-wider uppercase leading-none">Command Center</p>
-        </div>
+      <div className="admin-brand-lockup px-2 mb-8">
+        <BrandMark />
+        <span className="admin-brand-caption">COMMAND CENTER</span>
       </div>
 
       {/* Active Store Badge */}

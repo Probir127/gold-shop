@@ -57,7 +57,7 @@ const ProductPage = () => {
     };
 
     return (
-        <div className="section" style={{ paddingTop: '40px' }}>
+        <div className="section product-page" style={{ paddingTop: '40px' }}>
             <div className="container">
                 <SEO
                     title={product.name}
@@ -94,9 +94,9 @@ const ProductPage = () => {
                             )}
                         </div>
 
-                        {/* Thumbnails (Mock for now) */}
+                        {/* Product media */}
                         <div className="custom-scrollbar" style={{ marginTop: '16px', display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '8px' }}>
-                            {[product.image, product.image, product.image].map((img, idx) => (
+                            {[product.image].map((img, idx) => (
                                 <button key={idx} style={{ width: '80px', height: '80px', borderRadius: '8px', border: idx === 0 ? '2px solid var(--color-gold-primary)' : '1px solid #333', overflow: 'hidden', flexShrink: 0, cursor: 'pointer', padding: 0, backgroundColor: 'transparent' }}>
                                     <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 </button>
@@ -118,7 +118,7 @@ const ProductPage = () => {
                             <div style={{ display: 'flex', color: '#facc15' }}>
                                 {[...Array(5)].map((_, i) => <Star key={i} size={16} fill="currentColor" />)}
                             </div>
-                            <span style={{ color: '#666', fontSize: '14px', borderLeft: '1px solid #333', paddingLeft: '16px' }}>4.9 (128 Reviews)</span>
+                            <span style={{ color: '#8f8b84', fontSize: '14px', borderLeft: '1px solid #333', paddingLeft: '16px' }}>Live catalog item</span>
                         </div>
 
                         <div style={{ backgroundColor: '#111', border: '1px solid #222', borderRadius: '12px', padding: '24px', marginBottom: '32px' }}>
@@ -150,8 +150,7 @@ const ProductPage = () => {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                             <SpecItem label="Purity" value={`${product.purity} Hallmark`} icon={<Award size={18} style={{ color: 'var(--color-gold-primary)' }} />} />
                             <SpecItem label="Weight" value={`${product.weight} grams`} icon={<RotateCcw size={18} style={{ color: 'var(--color-gold-primary)' }} />} />
-                            {/* Mock Data for now */}
-                            <SpecItem label="Collection" value="Wedding" icon={<Star size={18} style={{ color: 'var(--color-gold-primary)' }} />} />
+                            <SpecItem label="Collection" value={product.category_name || 'Jewelry'} icon={<Star size={18} style={{ color: 'var(--color-gold-primary)' }} />} />
                             <SpecItem label="SKU" value={`SG-${product.id.toString().padStart(4, '0')}`} icon={<ShieldCheck size={18} style={{ color: 'var(--color-gold-primary)' }} />} />
                         </div>
 

@@ -1,11 +1,17 @@
 import uuid
+import time
+from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
 from .models import AIChatSession, AIChatMessage
 from .services import generate_ai_response, get_latest_rates_dict
+import logging
+
+logger = logging.getLogger(__name__)
 from products.models import Product
 from products.serializers import ProductSerializer
+from core.models import BotAnalytics, Client, Tenant, Conversation
 
 class AIChatView(APIView):
     """
@@ -16,6 +22,7 @@ class AIChatView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
+        started_at = time.perf_counter()
         message = request.data.get('message', '').strip()
         session_id = request.data.get('session_id')
         
@@ -37,8 +44,50 @@ class AIChatView(APIView):
         # Get history
         history = list(session.messages.order_by('timestamp')[:10])
         
-        # Generate reply
-        reply = generate_ai_response(history, message)
+        # Generate reply and product recommendations
+        reply, products = generate_ai_response(history, message)
+
+        tenant = Tenant.objects.filter(
+            slug=getattr(settings, 'DEFAULT_TENANT_SLUG', ''), is_active=True
+        ).first()
+        analytics_client = None
+        if tenant:
+            analytics_client, _ = Client.objects.get_or_create(
+                tenant=tenant,
+                phone=f'web:{session_id}'[:20],
+                defaults={'name': 'Web Chat Visitor', 'service_selected': ''},
+            )
+            elapsed_ms = round((time.perf_counter() - started_at) * 1000)
+            BotAnalytics.objects.create(
+                tenant=tenant,
+                client=analytics_client,
+                channel='web',
+                user_message=message,
+                bot_reply=reply,
+                intent='general',
+                response_time_ms=elapsed_ms,
+                was_fallback=False,
+                was_escalated=False,
+            )
+            Conversation.objects.create(
+                tenant=tenant,
+                client=analytics_client,
+                direction='inbound',
+                channel='web',
+                message_text=message,
+                session_id=session_id,
+            )
+            Conversation.objects.create(
+                tenant=tenant,
+                client=analytics_client,
+                direction='outbound',
+                channel='web',
+                message_text=reply,
+                session_id=session_id,
+            )
+
+        if not getattr(settings, 'HUGGINGFACE_API_KEY', ''):
+            logger.warning('HUGGINGFACE_API_KEY is not configured; storefront chat used catalog fallback.')
         
         # Save bot message
         AIChatMessage.objects.create(
@@ -49,7 +98,8 @@ class AIChatView(APIView):
         
         return Response({
             'reply': reply,
-            'session_id': session_id
+            'session_id': session_id,
+            'products': products
         })
 
 class AIRecommendView(APIView):

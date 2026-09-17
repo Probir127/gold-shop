@@ -1,14 +1,36 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { CheckCircle, ArrowRight } from 'lucide-react';
 import { formatPrice } from '../utils/formatters';
+import { api } from '../services/api';
 
 const OrderSuccessPage = () => {
     const location = useLocation();
-    const { orderId, total } = location.state || { orderId: 'UNKNOWN', total: 0 };
+    const query = new URLSearchParams(location.search);
+    const queryOrderId = query.get('id');
+    const [order, setOrder] = useState(location.state || null);
+    const orderId = order?.orderId || order?.order_id || queryOrderId || 'UNKNOWN';
+    const total = order?.total || 0;
+
+    useEffect(() => {
+        if (!queryOrderId || order?.total) return;
+
+        let active = true;
+        api.getOrder(queryOrderId)
+            .then((data) => {
+                if (active) setOrder(data);
+            })
+            .catch(() => {
+                if (active) setOrder({ orderId: queryOrderId, total: 0 });
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [queryOrderId, order]);
 
     return (
-        <div className="section" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="section result-page" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div className="container" style={{ textAlign: 'center', maxWidth: '600px' }}>
                 <div style={{ marginBottom: '30px' }}>
                     <CheckCircle size={80} style={{ color: '#22c55e', margin: '0 auto' }} />
@@ -37,7 +59,7 @@ const OrderSuccessPage = () => {
                     {orderId && orderId !== 'UNKNOWN' && (
                         <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px dashed #333' }}>
                             <a 
-                                href={`/api/orders/${orderId}/invoice/?copy=customer`}
+                                href={order?.customer_invoice_url || '#'}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="btn btn-primary"
@@ -58,7 +80,7 @@ const OrderSuccessPage = () => {
                                 📄 View / Download Official Invoice (Customer Copy)
                             </a>
                             <p style={{ color: '#777', fontSize: '12px', marginTop: '8px' }}>
-                                Includes 100% BSTI Hallmark Gold Authenticity Certificate &amp; Tax Receipt
+                                Includes 100% BSTI Hallmark Gold Authenticity Certificate &amp; Purchase Receipt
                             </p>
                         </div>
                     )}

@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 import logging
 from ..models import BotConfig, Tenant
+from ..permissions import IsTenantManagerOrStaff
 from ..serializers import TenantSerializer, BotConfigSerializer
 
 logger = logging.getLogger(__name__)
@@ -15,7 +16,7 @@ class BotConfigView(APIView):
     View to manage the tenant's profile and AI configuration.
     Merged with Tenant management for simplicity in the UI.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsTenantManagerOrStaff]
 
     def get(self, request):
         tenant = request.tenant

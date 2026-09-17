@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, ShoppingBag, Search, Phone, Shield } from 'lucide-react';
+import { Menu, X, ShoppingBag, Search, Phone, User } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import SearchModal from '../search/SearchModal';
 import { useGoldRates } from '../../hooks/useShopData'; // Prepare for live rate
+import BrandMark from '../BrandMark';
+import { STORE_INFO } from '../../utils/constants';
 
 const Header = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -27,28 +29,14 @@ const Header = () => {
             <div className="header-top-bar">
                 <div className="container header-top-inner">
                     <span className="gold-ticker">
-                        TODAY'S GOLD RATE (22K): ৳{rates?.rate_22k?.toLocaleString() || '9,850'}/gm
+                        TODAY'S GOLD RATE (22K): {rates?.rate_22k ? `৳${rates.rate_22k.toLocaleString()}/gm` : 'Loading...'}
                         {rates?.rate_22k && <span className="live-dot" style={{ display: 'inline-block', width: '6px', height: '6px', backgroundColor: '#4ade80', borderRadius: '50%', marginLeft: '6px', verticalAlign: 'middle' }}></span>}
                     </span>
                     <div className="contact-info">
-                        <Link 
-                            to="/admin" 
-                            style={{ 
-                                display: 'inline-flex', 
-                                alignItems: 'center', 
-                                gap: '4px', 
-                                color: '#d4af37', 
-                                fontWeight: '600',
-                                textDecoration: 'none',
-                                marginRight: '12px'
-                            }}
-                        >
-                            <Shield size={12} /> Command Center
-                        </Link>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <Phone size={12} /> 01799-281878
+                            <Phone size={12} /> {STORE_INFO.phone}
                         </span>
-                        <span>Bashundhara City, Level-7</span>
+                        <span>{STORE_INFO.address}</span>
                     </div>
                 </div>
             </div>
@@ -58,14 +46,7 @@ const Header = () => {
                 <div className="container header-inner">
                     {/* Logo */}
                     <Link to="/" className="logo-area">
-                        <img
-                            src="/assets/images/logo.png"
-                            alt="Sahara Gold"
-                            style={{
-                                height: '60px',
-                                filter: 'drop-shadow(0 0 8px rgba(212, 175, 55, 0.6))'
-                            }}
-                        />
+                        <BrandMark />
                     </Link>
 
                     {/* Desktop Nav */}
@@ -76,22 +57,6 @@ const Header = () => {
                         <Link to="/track-order" className="nav-item">Track Order</Link>
                         <Link to="/about" className="nav-item">About</Link>
                         <Link to="/contact" className="nav-item">Contact</Link>
-                        <Link 
-                            to="/admin" 
-                            className="nav-item"
-                            style={{
-                                color: '#d4af37',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '4px 10px',
-                                borderRadius: '8px',
-                                background: 'rgba(212, 175, 55, 0.1)',
-                                border: '1px solid rgba(212, 175, 55, 0.25)'
-                            }}
-                        >
-                            <Shield size={14} /> Admin
-                        </Link>
                     </nav>
 
                     {/* Actions */}
@@ -99,6 +64,9 @@ const Header = () => {
                         <button className="icon-btn" onClick={() => setIsSearchOpen(true)} title="Search Products">
                             <Search size={22} />
                         </button>
+                        <Link to="/login" className="icon-btn" title="Customer Account / Sign In">
+                            <User size={22} />
+                        </Link>
                         <button className="icon-btn" onClick={toggleCart} title="View Cart">
                             <ShoppingBag size={22} />
                             {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
@@ -122,12 +90,12 @@ const Header = () => {
                         <Link to="/about" onClick={() => setIsMenuOpen(false)} className="mobile-link">About</Link>
                         <Link to="/contact" onClick={() => setIsMenuOpen(false)} className="mobile-link">Contact</Link>
                         <Link 
-                            to="/admin" 
+                            to="/login" 
                             onClick={() => setIsMenuOpen(false)} 
                             className="mobile-link"
                             style={{ color: '#d4af37', display: 'flex', alignItems: 'center', gap: '8px' }}
                         >
-                            <Shield size={16} /> Admin Command Center ↗
+                            <User size={16} /> My Account / Sign In
                         </Link>
                     </div>
                 )}

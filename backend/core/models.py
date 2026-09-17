@@ -1,5 +1,6 @@
 from __future__ import annotations
 from django.db import models, transaction
+from django.contrib.postgres.indexes import GinIndex
 from django.db.models import Q, CheckConstraint
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -176,6 +177,7 @@ class Client(models.Model):
     tenant           = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='clients', null=True, blank=True)
     name             = models.CharField(max_length=255, blank=True)
     phone            = models.CharField(max_length=30)
+    email            = models.EmailField(blank=True)
     service_selected = models.CharField(max_length=255, blank=True)
     status           = models.CharField(max_length=20, choices=STATUS_CHOICES, default='lead')
     bot_enabled      = models.BooleanField(default=True)
@@ -294,6 +296,7 @@ class Invoice(models.Model):
     subtotal       = models.DecimalField(max_digits=12, decimal_places=2)
     tax_percent    = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     total_amount   = models.DecimalField(max_digits=12, decimal_places=2)
+    due_date       = models.DateField(null=True, blank=True)
     currency       = models.CharField(max_length=5, default='BDT')
     status         = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft')
     pdf_path       = models.CharField(max_length=500, blank=True)
@@ -449,6 +452,13 @@ class KnowledgeChunk(models.Model):
 
     class Meta:
         ordering = ['created_at']
+        indexes = [
+            GinIndex(
+                fields=['content'],
+                name='knowledge_content_trgm_idx',
+                opclasses=['gin_trgm_ops'],
+            ),
+        ]
 
     def save(self, *args, **kwargs):
         self.char_count = len(self.content)

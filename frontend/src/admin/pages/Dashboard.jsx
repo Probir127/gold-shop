@@ -277,7 +277,7 @@ const Dashboard = () => {
 
   return (
     <>
-    <div className="flex bg-transparent h-screen text-slate-300 font-sans selection:bg-indigo-500/30 overflow-hidden relative">
+    <div className="admin-dashboard flex bg-transparent h-screen text-slate-300 font-sans selection:bg-indigo-500/30 overflow-hidden relative">
       <Sidebar />
       
       <main className="flex-1 p-8 lg:p-12 overflow-y-auto custom-scrollbar max-w-[1600px] mx-auto w-full relative z-10">

@@ -4,7 +4,12 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import TemplateView
 from django.views.static import serve
+from django.http import Http404
 import os
+
+
+def reject_sensitive_path(request, path=''):
+    raise Http404
 
 # Admin Config
 admin.site.site_header = "Sahara Gold Admin"
@@ -29,7 +34,18 @@ urlpatterns = [
         'document_root': os.path.join(settings.FRONTEND_DIR, 'assets'),
     }),
 
+    # Never let SPA fallback mask probes for secrets, repositories, or backups.
+    re_path(r'^(?:.*\/)?\.env(?:\..*)?$', reject_sensitive_path),
+    re_path(r'^(?:.*\/)?\.git(?:\/.*)?$', reject_sensitive_path),
+    re_path(r'^.*\.(?:sqlite3|zip|bak|dump|sql)$', reject_sensitive_path),
+    re_path(r'^media/invoices/.*$', reject_sensitive_path),
+
+    # Media files serving for production (invoices blocked above)
+    re_path(r'^media/(?P<path>.*)$', serve, {
+        'document_root': settings.MEDIA_ROOT,
+    }),
+
     # Single Page App fallback (Storefront, Admin Login, Command Center Dashboard)
     re_path(r'^(?!api/|django-admin/|media/|static/).*$', TemplateView.as_view(template_name='index.html')),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+]
 

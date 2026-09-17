@@ -3,18 +3,17 @@ import { useCart } from '../context/CartContext';
 import CartItem from '../components/cart/CartItem';
 import { formatPrice } from '../utils/formatters';
 import { Link } from 'react-router-dom';
-import { ShoppingBag, ArrowRight, Lock } from 'lucide-react';
+import { ShoppingBag, ArrowRight, Lock, LogIn } from 'lucide-react';
 
 const CartPage = () => {
     const { cart, cartTotal, clearCart } = useCart();
-    const makingCharges = cart.reduce((total, item) => total + (500 * item.weight * item.quantity), 0); // Approx
+    const customer = (() => { try { return JSON.parse(localStorage.getItem('sahara_customer') || 'null'); } catch { return null; } })();
     const subTotal = cartTotal;
-    const vat = subTotal * 0.05;
-    const total = subTotal + vat;
+    const total = subTotal;
 
     if (cart.length === 0) {
         return (
-            <div className="section" style={{ textAlign: 'center', padding: '100px 0' }}>
+            <div className="section cart-page" style={{ textAlign: 'center', padding: '100px 0' }}>
                 <div className="container">
                     <div style={{ marginBottom: '20px', color: '#333' }}>
                         <ShoppingBag size={60} />
@@ -30,7 +29,7 @@ const CartPage = () => {
     }
 
     return (
-        <div className="section">
+        <div className="section cart-page">
             <div className="container">
                 <h1 className="section-title">Shopping Cart</h1>
 
@@ -76,10 +75,6 @@ const CartPage = () => {
                                     <span>Subtotal ({cart.length} items)</span>
                                     <span>{formatPrice(subTotal)}</span>
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#ccc' }}>
-                                    <span>VAT (5%)</span>
-                                    <span>{formatPrice(vat)}</span>
-                                </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#22c55e' }}>
                                     <span>Shipping</span>
                                     <span>Free</span>
@@ -96,9 +91,21 @@ const CartPage = () => {
                                 </div>
                             </div>
 
-                            <Link to="/checkout" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', height: '50px' }}>
-                                Proceed to Checkout <ArrowRight size={18} style={{ marginLeft: '10px' }} />
-                            </Link>
+                            {customer ? (
+                                <Link to="/checkout" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', height: '50px' }}>
+                                    Proceed to Checkout <ArrowRight size={18} style={{ marginLeft: '10px' }} />
+                                </Link>
+                            ) : (
+                                <>
+                                    <Link to="/login?next=/checkout" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', height: '50px' }}>
+                                        <LogIn size={18} style={{ marginRight: '8px' }} /> Sign In to Checkout
+                                    </Link>
+                                    <p style={{ textAlign: 'center', fontSize: '12px', color: '#666', marginTop: '10px' }}>
+                                        New customer?{' '}
+                                        <Link to="/login?next=/checkout" style={{ color: '#d4af37', textDecoration: 'none' }}>Create an account</Link>{' '}to continue.
+                                    </p>
+                                </>
+                            )}
 
                             <div style={{ marginTop: '20px', textAlign: 'center' }}>
                                 <p style={{ fontSize: '12px', color: '#555', lineHeight: '1.6' }}>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { getInvoices, sendInvoice, getClients, getServices, createInvoice, markInvoicePaid } from '../api';
+import { getInvoices, sendInvoice, getClients, getServices, createInvoice, markInvoicePaid, openInvoiceHTML } from '../api';
 import Sidebar from '../components/Sidebar';
 import toast from '../components/Toast';
 import { FileText, Search, Filter, Plus, ChevronRight, X, ExternalLink, RefreshCw, Send, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
@@ -61,7 +61,11 @@ const Invoices = () => {
     }
     setGenerating(true);
     try {
-      await createInvoice(formData);
+      await createInvoice({
+        ...formData,
+        client: formData.client_id,
+        total_amount: formData.amount,
+      });
       setIsModalOpen(false);
       fetchData();
       toast.success('Invoice Generated successfully.');
@@ -75,8 +79,15 @@ const Invoices = () => {
 
   const handleSend = async (id) => {
     try {
-      await sendInvoice(id);
-      toast.success('Invoice sent via WhatsApp!');
+      const res = await sendInvoice(id);
+      const data = res.data || {};
+      if (data.email_sent) {
+        toast.success('Invoice PDF generated & sent via Email!');
+      } else if (data.whatsapp_response?.messages) {
+        toast.success('Invoice sent via WhatsApp!');
+      } else {
+        toast.success('Invoice PDF generated and marked as Sent!');
+      }
       fetchData();
     } catch (err) {
       toast.error('Failed to send invoice.');
@@ -102,7 +113,7 @@ const Invoices = () => {
   });
 
   return (
-    <div className="flex bg-transparent h-screen text-slate-300 font-sans selection:bg-indigo-500/30 overflow-hidden relative">
+    <div className="admin-invoices flex bg-transparent h-screen text-slate-300 font-sans selection:bg-indigo-500/30 overflow-hidden relative">
       <Sidebar />
       <main className="flex-1 p-8 lg:p-12 overflow-y-auto custom-scrollbar max-w-[1600px] mx-auto w-full relative z-10">
         
@@ -243,26 +254,22 @@ const Invoices = () => {
                       </button>
                     </>
                   )}
-                  <a 
-                    href={inv.admin_invoice_url || `/api/invoices/${inv.id}/html/?copy=admin`} 
-                    target="_blank" 
-                    rel="noreferrer"
+                  <button
+                    onClick={() => openInvoiceHTML(inv.id, 'admin').catch(() => toast.error('Failed to open invoice.'))}
                     className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 text-[#d4af37] border border-[#d4af37]/30 hover:bg-[#d4af37] hover:text-black text-xs font-bold transition-all duration-300 flex items-center gap-1"
                     title="View Store / Admin Copy (Dispatch Slip)"
                   >
                     <span>Store</span>
                     <ExternalLink size={12} />
-                  </a>
-                  <a 
-                    href={inv.hosted_url || `/api/invoices/${inv.id}/html/?copy=customer`} 
-                    target="_blank" 
-                    rel="noreferrer"
+                  </button>
+                  <button
+                    onClick={() => openInvoiceHTML(inv.id, 'customer', inv.hosted_url).catch(() => toast.error('Failed to open invoice.'))}
                     className="px-2.5 py-1.5 rounded-xl bg-white/5 text-slate-300 border border-white/10 hover:bg-white/20 hover:text-white text-xs font-medium transition-all duration-300 flex items-center gap-1"
                     title="View Customer Copy (Hallmark Certificate)"
                   >
                     <span>Customer</span>
                     <ExternalLink size={12} />
-                  </a>
+                  </button>
                 </div>
               </div>
             ))

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
-import { getOrders, updateOrderStatus } from '../api';
+import { getOrders, updateOrderStatus, openOrderInvoiceHTML } from '../api';
 import toast from '../components/Toast';
 import { 
   ShoppingBag, Search, Filter, CheckCircle2, Truck, Clock, 
@@ -78,7 +78,7 @@ const Orders = () => {
   };
 
   return (
-    <div className="flex bg-[#09090b] text-slate-100 min-h-screen">
+    <div className="admin-orders flex bg-[#09090b] text-slate-100 min-h-screen">
       <Sidebar />
 
       <main className="flex-1 p-8 overflow-y-auto max-h-screen">
@@ -201,16 +201,14 @@ const Orders = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <a
-                          href={`/api/orders/${order.order_id}/invoice/?copy=admin`}
-                          target="_blank"
-                          rel="noreferrer"
+                        <button
+                          onClick={() => openOrderInvoiceHTML(order.order_id, 'admin').catch(() => toast.error('Failed to open invoice.'))}
                           className="px-2 py-1 rounded-lg bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/20 hover:bg-[#d4af37] hover:text-black transition flex items-center gap-1 text-xs font-semibold"
                           title="View Store / Admin Copy (Dispatch Slip)"
                         >
                           <FileText size={13} />
                           <span>Invoice</span>
-                        </a>
+                        </button>
 
                         <button
                           onClick={() => setSelectedOrder(order)}
@@ -305,10 +303,6 @@ const Orders = () => {
                     <span>Subtotal:</span>
                     <span>৳{Number(selectedOrder.subtotal || 0).toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-xs text-slate-400">
-                    <span>VAT (5%):</span>
-                    <span>৳{Number(selectedOrder.vat || 0).toLocaleString()}</span>
-                  </div>
                   <div className="flex justify-between text-sm font-bold text-white border-t border-white/10 pt-2">
                     <span>Total Amount:</span>
                     <span className="text-[#d4af37]">৳{Number(selectedOrder.total || 0).toLocaleString()}</span>
@@ -317,22 +311,18 @@ const Orders = () => {
 
                 {/* Invoice Links */}
                 <div className="flex gap-2">
-                  <a
-                    href={`/api/orders/${selectedOrder.order_id}/invoice/?copy=admin`}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    onClick={() => openOrderInvoiceHTML(selectedOrder.order_id, 'admin').catch(() => toast.error('Failed to open invoice.'))}
                     className="flex-1 py-2 rounded-xl bg-[#d4af37]/15 hover:bg-[#d4af37] text-[#d4af37] hover:text-black border border-[#d4af37]/30 text-xs font-bold transition flex items-center justify-center gap-1.5"
                   >
                     <FileText size={14} /> Store Copy (Dispatch Slip)
-                  </a>
-                  <a
-                    href={`/api/orders/${selectedOrder.order_id}/invoice/?copy=customer`}
-                    target="_blank"
-                    rel="noreferrer"
+                  </button>
+                  <button
+                    onClick={() => openOrderInvoiceHTML(selectedOrder.order_id, 'customer').catch(() => toast.error('Failed to open invoice.'))}
                     className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition flex items-center justify-center gap-1.5"
                   >
                     <FileText size={14} /> Customer Copy (Hallmark)
-                  </a>
+                  </button>
                 </div>
 
                 {/* Action Buttons */}

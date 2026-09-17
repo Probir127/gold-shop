@@ -3,11 +3,6 @@ import { motion } from 'framer-motion';
 import { formatPrice } from '../../utils/formatters';
 
 const PriceBreakdown = ({ price, weight, purity }) => {
-    // Mock breakdown logic (in a real app, backend sends this)
-    const goldPrice = price * 0.85;
-    const makingCharges = price * 0.10;
-    const vat = price * 0.05;
-
     return (
         <div className="price-breakdown-card">
             <h4 style={{ color: '#fff', fontWeight: 'bold', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -16,31 +11,12 @@ const PriceBreakdown = ({ price, weight, purity }) => {
             </h4>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {/* Gold Rate */}
                 <BreakdownItem
-                    label="Gold Value"
-                    value={goldPrice}
+                    label="Gold and craftsmanship"
+                    value={price}
                     color="var(--color-gold-primary)"
                     delay={0.1}
-                    subtext={`${purity} Purity (${weight}g)`}
-                />
-
-                {/* Making Charges */}
-                <BreakdownItem
-                    label="Making Charges"
-                    value={makingCharges}
-                    color="#3b82f6"
-                    delay={0.2}
-                    subtext="Handcrafted Detailing"
-                />
-
-                {/* VAT */}
-                <BreakdownItem
-                    label="VAT (5%)"
-                    value={vat}
-                    color="#ef4444"
-                    delay={0.3}
-                    subtext="Government Tax"
+                    subtext={`${purity} purity · ${weight}g · final listed price`}
                 />
             </div>
 

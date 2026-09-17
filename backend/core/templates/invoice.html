@@ -63,10 +63,6 @@
             <span class="total-label">Subtotal:</span>
             <span>{{ invoice.currency }} {{ invoice.subtotal }}</span>
         </div>
-        <div class="total-row">
-            <span class="total-label">Tax ({{ invoice.tax_percent }}%):</span>
-            <span>{{ invoice.currency }} {{ invoice.total_amount|subtract:invoice.subtotal }}</span>
-        </div>
         <div class="total-row grand-total">
             <span class="total-label">Grand Total:</span>
             <span>{{ invoice.currency }} {{ invoice.total_amount }}</span>

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from decimal import Decimal
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import (
@@ -51,9 +52,12 @@ class TenantSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
-        # Mask sensitive WhatsApp token so it is never exposed in full
         if instance.wa_access_token:
             ret['wa_access_token'] = '••••••••' + (instance.wa_access_token[-4:] if len(instance.wa_access_token) > 4 else '')
+        if instance.wa_webhook_token:
+            ret['wa_webhook_token'] = '••••••••'
+        if instance.external_ids:
+            ret['external_ids'] = {key: '••••••••' for key in instance.external_ids}
         return ret
 
     def update(self, instance, validated_data):
@@ -114,29 +118,67 @@ class ServiceSerializer(serializers.ModelSerializer):
 # ── Invoice ───────────────────────────────────────────────────────────────────
 
 class InvoiceSerializer(serializers.ModelSerializer):
+    service_id         = serializers.PrimaryKeyRelatedField(queryset=Service.objects.all(), write_only=True, required=False, allow_null=True)
+    amount             = serializers.ReadOnlyField(source='total_amount')
     client_name        = serializers.ReadOnlyField(source='client.name')
     client_phone       = serializers.ReadOnlyField(source='client.phone')
     invoice_number     = serializers.CharField(read_only=True)
-    amount             = serializers.ReadOnlyField(source='total_amount')
     hosted_url         = serializers.SerializerMethodField()
     admin_invoice_url  = serializers.SerializerMethodField()
-    due_date           = serializers.SerializerMethodField()
 
     class Meta:
         model  = Invoice
         fields = '__all__'
-        read_only_fields = ['tenant']
+        read_only_fields = ['tenant', 'subtotal', 'tax_percent', 'items']
+
+    def validate(self, attrs):
+        tenant = getattr(self.context['request'], 'tenant', None)
+        if not tenant:
+            raise serializers.ValidationError('No active workspace selected.')
+        client = attrs.get('client')
+        if client and client.tenant_id != tenant.id:
+            raise serializers.ValidationError({'client_id': 'Client does not belong to the active workspace.'})
+        service = attrs.get('service_id')
+        if service and service.tenant_id not in (None, tenant.id):
+            raise serializers.ValidationError({'service_id': 'Service does not belong to the active workspace.'})
+        if self.instance and 'total_amount' in attrs:
+            raise serializers.ValidationError({'total_amount': 'Invoice totals cannot be edited after creation.'})
+        return attrs
+
+    def create(self, validated_data):
+        service = validated_data.pop('service_id', None)
+        amount = validated_data.pop('total_amount', None)
+        if amount is None:
+            raise serializers.ValidationError({'amount': 'Amount is required.'})
+        amount = Decimal(amount)
+        if amount <= 0:
+            raise serializers.ValidationError({'amount': 'Amount must be greater than zero.'})
+        notes = validated_data.get('notes', '')
+        if service and not notes:
+            validated_data['notes'] = service.description
+        validated_data.update({
+            'items': [{
+                'name': service.name if service else 'Custom invoice item',
+                'description': notes,
+                'quantity': 1,
+                'price': float(amount),
+                'item_total': float(amount),
+            }],
+            'subtotal': amount,
+            'tax_percent': 0,
+            'total_amount': amount,
+            'status': 'draft',
+            'currency': 'BDT',
+        })
+        return super().create(validated_data)
 
     def get_hosted_url(self, obj):
-        return f"/api/invoices/{obj.id}/html/?copy=customer"
+        from .utils.invoice_access import make_invoice_access_token
+        token = make_invoice_access_token('invoice', obj.id)
+        return f"/api/invoices/{obj.id}/html/?copy=customer&token={token}"
 
     def get_admin_invoice_url(self, obj):
         return f"/api/invoices/{obj.id}/html/?copy=admin"
-
-    def get_due_date(self, obj):
-        return obj.created_at.strftime('%Y-%m-%d')
-
-
 
 # ── Bot Analytics ─────────────────────────────────────────────────────────────
 

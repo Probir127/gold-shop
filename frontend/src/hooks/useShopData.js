@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '../services/api';
 
 export const useProducts = (category) => {
@@ -20,5 +20,14 @@ export const useGoldRates = () => {
     return useQuery({
         queryKey: ['goldRates'],
         queryFn: api.getLatestRates,
+        refetchInterval: 5 * 60 * 1000,
+        refetchOnWindowFocus: true,
+    });
+};
+
+export const useGoldRateHistory = () => {
+    return useQuery({
+        queryKey: ['goldRateHistory'],
+        queryFn: api.getGoldRatesHistory,
     });
 };

@@ -7,12 +7,14 @@ const FeaturedCarousel = ({ products }) => {
     const scrollRef = useRef(null);
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(true);
+    const [scrollProgress, setScrollProgress] = useState(0);
 
     const checkScroll = () => {
         if (scrollRef.current) {
             const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
             setCanScrollLeft(scrollLeft > 0);
             setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+            setScrollProgress(scrollWidth > clientWidth ? scrollLeft / (scrollWidth - clientWidth) : 0);
         }
     };
 
@@ -121,7 +123,7 @@ const FeaturedCarousel = ({ products }) => {
                         left: 0,
                         height: '2px',
                         backgroundColor: 'var(--color-gold-primary)',
-                        width: '10%' // Mock for now, would need range logic
+                        width: `${Math.max(10, scrollProgress * 90)}%`
                     }}
                 />
             </div>

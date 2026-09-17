@@ -4,7 +4,7 @@ import { Shield, Award, Heart } from 'lucide-react';
 
 const AboutPage = () => {
     return (
-        <div style={{ backgroundColor: '#000', color: '#fff', paddingTop: '100px', minHeight: '100vh' }}>
+        <div className="editorial-page about-page" style={{ backgroundColor: '#000', color: '#fff', paddingTop: '100px', minHeight: '100vh' }}>
             <div className="container">
                 <motion.div
                     initial={{ opacity: 0, y: 30 }}

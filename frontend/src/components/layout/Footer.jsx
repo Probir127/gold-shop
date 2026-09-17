@@ -1,6 +1,8 @@
 import React from 'react';
 import { Facebook, Instagram, Phone, Mail, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { STORE_INFO } from '../../utils/constants';
+import BrandMark from '../BrandMark';
 
 const Footer = () => {
     return (
@@ -9,23 +11,18 @@ const Footer = () => {
                 <div className="footer-grid">
                     {/* Brand Column */}
                     <div className="footer-brand">
-                        {/* Using the white logo for footer as well */}
-                        <img
-                            src="/assets/images/logo.png"
-                            alt="Sahara Gold"
-                            style={{
-                                height: '60px',
-                                marginBottom: '15px',
-                                filter: 'drop-shadow(0 0 8px rgba(212, 175, 55, 0.6))'
-                            }}
-                        />
+                        <BrandMark />
                         <p>
                             আস্থার প্রতীক - সবার জন্য.<br />
                             Premium handcrafted gold and diamond jewelry. Hallmark certified & Lifetime warranty.
                         </p>
                         <div className="social-links">
-                            <a href="#" className="icon-btn"><Facebook size={20} /></a>
-                            <a href="#" className="icon-btn"><Instagram size={20} /></a>
+                            <a href={STORE_INFO.social.facebook} target="_blank" rel="noopener noreferrer" className="icon-btn" aria-label="Sahara Gold Facebook Page">
+                                <Facebook size={20} />
+                            </a>
+                            <a href={STORE_INFO.social.instagram} target="_blank" rel="noopener noreferrer" className="icon-btn" aria-label="Sahara Gold Instagram Page">
+                                <Instagram size={20} />
+                            </a>
                         </div>
                     </div>
 
@@ -57,15 +54,17 @@ const Footer = () => {
                         <ul className="footer-contact">
                             <li style={{ display: 'flex', gap: '10px' }}>
                                 <MapPin size={18} className="contact-icon" />
-                                <span>Level-7, Block-A, Shop-19,<br />Bashundhara City, Dhaka</span>
+                                <span>{STORE_INFO.address}</span>
                             </li>
                             <li style={{ display: 'flex', gap: '10px' }}>
                                 <Phone size={18} className="contact-icon" />
-                                <span>01799-281878</span>
+                                <span>{STORE_INFO.phone}</span>
                             </li>
                             <li style={{ display: 'flex', gap: '10px' }}>
                                 <Mail size={18} className="contact-icon" />
-                                <span>info@saharagold.com</span>
+                                <a href={`mailto:${STORE_INFO.email}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                                    <span>{STORE_INFO.email}</span>
+                                </a>
                             </li>
                         </ul>
                     </div>
@@ -77,7 +76,7 @@ const Footer = () => {
                         <Link to="/privacy">Privacy Policy</Link>
                         <Link to="/refund-policy">Refund Policy</Link>
                         <Link to="/terms">Terms of Service</Link>
-                        <Link to="/admin" style={{ color: '#d4af37', fontWeight: 600 }}>Command Center ↗</Link>
+                        <Link to="/login" style={{ color: '#d4af37', fontWeight: 500 }}>My Account</Link>
                     </div>
                 </div>
             </div>

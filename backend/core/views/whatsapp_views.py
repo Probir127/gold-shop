@@ -21,7 +21,7 @@ class WebhookView(View):
     """
     WhatsApp Cloud API Webhook — now tenant-aware.
 
-    Route: /webhook/whatsapp/<tenant_slug>/
+    Route: /api/whatsapp/<tenant_slug>/
     Meta calls GET once to verify, then POST for every message event.
     """
 

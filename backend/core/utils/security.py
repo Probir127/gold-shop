@@ -20,16 +20,15 @@ def verify_webhook_signature(request) -> bool:
     Uses hmac.compare_digest for constant-time comparison (prevents timing attacks).
 
     Returns True if valid, False otherwise.
-    If META_APP_SECRET is not configured, logs a warning and allows through
-    (so local dev still works without the setting).
+    If META_APP_SECRET is not configured, reject the request. This prevents an
+    accidentally unprotected webhook in production.
     """
     app_secret = getattr(settings, 'META_APP_SECRET', None)
     if not app_secret:
         logger.warning(
-            "META_APP_SECRET not configured — skipping webhook signature verification. "
-            "Set META_APP_SECRET in .env for production."
+            "META_APP_SECRET not configured — rejecting webhook signature verification."
         )
-        return True  # Allow through in dev if not configured
+        return False
 
     signature_header = request.headers.get('X-Hub-Signature-256', '')
     if not signature_header:

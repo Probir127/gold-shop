@@ -25,18 +25,36 @@ load_dotenv(BASE_DIR / '.env')
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-b19u(c7h)^l&u7wezgx!()gg5#ozloh&oams&g4*ad-cd1wvq('
+SECRET_KEY = os.getenv('SECRET_KEY', 'dev-only-change-me-before-deployment')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()]
+
+# Auto-detect Render external hostname
+render_external_hostname = os.getenv('RENDER_EXTERNAL_HOSTNAME')
+if render_external_hostname and render_external_hostname not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(render_external_hostname)
+
+# Support wildcard onrender.com in allowed hosts if on Render
+if os.getenv('RENDER') and '.onrender.com' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('.onrender.com')
 
 CSRF_TRUSTED_ORIGINS = [
     'https://*.ngrok-free.app',
     'https://*.ngrok.io',
     'https://pei-baddish-bruce.ngrok-free.dev',
+    'https://*.onrender.com',
 ]
+
+extra_csrf = [origin.strip() for origin in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if origin.strip()]
+CSRF_TRUSTED_ORIGINS.extend(extra_csrf)
+
+if render_external_hostname:
+    render_origin = f'https://{render_external_hostname}'
+    if render_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(render_origin)
 
 # Ngrok/Proxy Settings
 USE_X_FORWARDED_HOST = True
@@ -90,7 +108,7 @@ FRONTEND_DIR = BASE_DIR.parent / 'frontend' / 'dist'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [FRONTEND_DIR],
+        'DIRS': [FRONTEND_DIR] if FRONTEND_DIR.exists() else [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -105,15 +123,33 @@ TEMPLATES = [
 WSGI_APPLICATION = 'sahara_gold.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# PostgreSQL database configuration (supports Render DATABASE_URL & local settings)
+database_url = os.getenv('DATABASE_URL')
+if database_url:
+    import dj_database_url
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=database_url,
+            conn_max_age=int(os.getenv('DB_CONN_MAX_AGE', '600')),
+            conn_health_checks=True,
+            ssl_require=not DEBUG,
+        )
     }
-}
+else:
+    if os.getenv('DATABASE_ENGINE', 'postgresql').lower() != 'postgresql':
+        raise RuntimeError('Sahara Gold requires PostgreSQL; SQLite is not supported.')
+
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME', 'sahara_gold'),
+            'USER': os.getenv('DB_USER', 'postgres'),
+            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+            'HOST': os.getenv('DB_HOST', 'localhost'),
+            'PORT': os.getenv('DB_PORT', '5432'),
+            'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '60')),
+        }
+    }
 
 
 # Password validation
@@ -152,10 +188,9 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [
-    FRONTEND_DIR,
-]
+STATICFILES_DIRS = [FRONTEND_DIR] if FRONTEND_DIR.exists() else []
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+WHITENOISE_MANIFEST_STRICT = False
 
 
 # Media Files
@@ -163,26 +198,25 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # CORS Settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
-    "https://localhost:5173",
-    "https://127.0.0.1:5173",
-    "https://localhost:5174",
-    "https://127.0.0.1:5174",
-]
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv(
+    'CORS_ALLOWED_ORIGINS',
+    'http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174',
+).split(',') if origin.strip()]
 
-# Allow Ngrok origins for CORS
+# Allow Render & Ngrok origins for CORS
 CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.onrender\.com$",
+] if not DEBUG else [
     r"^https://.*\.ngrok-free\.app$",
     r"^https://.*\.ngrok\.io$",
+    r"^https://.*\.onrender\.com$",
 ]
 
-CORS_ALLOWED_ORIGINS += [
-    'https://pei-baddish-bruce.ngrok-free.dev',
-]
+frontend_url = os.getenv('FRONTEND_URL', '').strip()
+if frontend_url and frontend_url not in CORS_ALLOWED_ORIGINS:
+    CORS_ALLOWED_ORIGINS.append(frontend_url)
+if frontend_url and frontend_url.startswith('https://') and frontend_url not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(frontend_url)
 
 from datetime import timedelta
 
@@ -204,11 +238,12 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=7),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30 if not DEBUG else 60 * 24 * 7),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7 if not DEBUG else 30),
+    'ROTATE_REFRESH_TOKENS': not DEBUG,
+    'BLACKLIST_AFTER_ROTATION': not DEBUG,
 }
 
-CORS_ALLOW_ALL_ORIGINS = True
 from corsheaders.defaults import default_headers
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'X-Tenant-Slug',
@@ -223,6 +258,8 @@ META_APP_SECRET = os.getenv('META_APP_SECRET', '')
 
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
 BACKEND_URL = os.getenv('BACKEND_URL', 'http://localhost:8000')
+DEFAULT_TENANT_SLUG = os.getenv('DEFAULT_TENANT_SLUG', 'sahara-gold')
+INVOICE_LINK_MAX_AGE = int(os.getenv('INVOICE_LINK_MAX_AGE', str(7 * 24 * 60 * 60)))
 
 # Payment Gateway Configuration (SSLCommerz)
 SSLCOMMERZ_STORE_ID = os.getenv('SSLCOMMERZ_STORE_ID', 'testbox')
@@ -244,15 +281,59 @@ JAZZMIN_SETTINGS = {
 }
 
 # Email Backend
-EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
+# Email Backend - Safe fallback to console backend if SMTP password is not set
+EMAIL_BACKEND = os.getenv(
+    'EMAIL_BACKEND',
+    'django.core.mail.backends.smtp.EmailBackend' if os.getenv('EMAIL_HOST_PASSWORD') else 'django.core.mail.backends.console.EmailBackend'
+)
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'False').lower() == 'true'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'saharagold19@gmail.com')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'saharagold19@gmail.com')
 STORE_EMAIL = os.getenv('STORE_EMAIL', 'saharagold19@gmail.com')
+EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '20'))
 
-# AI / LLM Configuration (Qwen 72B via Hugging Face)
+if EMAIL_USE_TLS and EMAIL_USE_SSL:
+    raise RuntimeError('EMAIL_USE_TLS and EMAIL_USE_SSL cannot both be enabled.')
+
+if EMAIL_BACKEND.endswith('smtp.EmailBackend'):
+    if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
+        raise RuntimeError('SMTP email backend requires EMAIL_HOST_USER and EMAIL_HOST_PASSWORD.')
+    if not DEFAULT_FROM_EMAIL or not STORE_EMAIL:
+        raise RuntimeError('SMTP email backend requires DEFAULT_FROM_EMAIL and STORE_EMAIL.')
+
+# AI / LLM Configuration
 HUGGINGFACE_API_KEY = os.getenv('HUGGINGFACE_API_KEY', '')
+AI_MODEL = os.getenv('AI_MODEL', '')
+STORE_NAME = os.getenv('STORE_NAME', '')
+STORE_PHONE = os.getenv('STORE_PHONE', '')
+STORE_WHATSAPP = os.getenv('STORE_WHATSAPP', '')
+STORE_ADDRESS = os.getenv('STORE_ADDRESS', '')
+WEBHOOK_VERIFY_TOKEN = os.getenv('WEBHOOK_VERIFY_TOKEN', '')
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+if not DEBUG:
+    if len(SECRET_KEY) < 50 or SECRET_KEY == 'dev-only-change-me-before-deployment':
+        raise RuntimeError('Production SECRET_KEY must be a long, random value.')
+    if not ALLOWED_HOSTS or '*' in ALLOWED_HOSTS:
+        raise RuntimeError('Production ALLOWED_HOSTS must contain explicit hostnames.')
+    if not CORS_ALLOWED_ORIGINS and not CORS_ALLOWED_ORIGIN_REGEXES:
+        raise RuntimeError('Production CORS_ALLOWED_ORIGINS must contain the frontend origin.')
+    if not FRONTEND_URL.startswith('https://') or not BACKEND_URL.startswith('https://'):
+        raise RuntimeError('Production FRONTEND_URL and BACKEND_URL must use HTTPS.')
+    if SSLCOMMERZ_IS_SANDBOX and os.getenv('ALLOW_SANDBOX_PAYMENTS', 'False').lower() != 'true':
+        raise RuntimeError('Production SSLCommerz must not use sandbox mode (set ALLOW_SANDBOX_PAYMENTS=True to override for testing).')
+
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '31536000'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 

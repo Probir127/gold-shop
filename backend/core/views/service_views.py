@@ -2,8 +2,10 @@ from __future__ import annotations
 from rest_framework import generics
 from ..models import Service
 from ..serializers import ServiceSerializer
+from core.permissions import IsTenantMember
 
 class ServiceListView(generics.ListAPIView):
+    permission_classes = [IsTenantMember]
     serializer_class = ServiceSerializer
 
     def get_queryset(self):

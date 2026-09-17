@@ -4,10 +4,12 @@ from django.db.models import Q
 from django.contrib.postgres.search import TrigramSimilarity
 from ..models import Client
 from ..serializers import ClientSerializer
+from core.permissions import IsTenantManagerOrStaff, IsTenantMember
 
 
 class ClientListCreateView(ListCreateAPIView):
     serializer_class = ClientSerializer
+    permission_classes = [IsTenantMember]
     search_fields    = ['name', 'phone', 'service_selected']
     ordering_fields  = ['created_at', 'status']
 
@@ -30,7 +32,6 @@ class ClientListCreateView(ListCreateAPIView):
                 Q(name_sim__gt=0.2) |
                 Q(phone_sim__gt=0.3)
             )
-
         status = self.request.query_params.get('status')
         if status:
             qs = qs.filter(status=status)
@@ -45,6 +46,7 @@ class ClientListCreateView(ListCreateAPIView):
 
 class ClientDetailView(RetrieveUpdateAPIView):
     serializer_class = ClientSerializer
+    permission_classes = [IsTenantManagerOrStaff]
     lookup_field     = 'pk'
 
     def get_queryset(self):

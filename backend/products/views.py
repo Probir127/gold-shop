@@ -1,5 +1,5 @@
 from rest_framework import viewsets, filters
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from core.permissions import IsStaffForWrite
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q
@@ -10,21 +10,21 @@ class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     lookup_field = 'slug'
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsStaffForWrite]
 
 class ProductViewSet(viewsets.ModelViewSet):
     # Default queryset for standard router usage
-    queryset = Product.objects.filter(in_stock=True)
+    queryset = Product.objects.filter(in_stock=True).order_by('-created_at', 'id')
     serializer_class = ProductSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'category__name']
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsStaffForWrite]
 
     def get_queryset(self):
         if self.request.user.is_staff:
-             qs = Product.objects.all()
+               qs = Product.objects.all().order_by('-created_at', 'id')
         else:
-             qs = Product.objects.filter(in_stock=True)
+               qs = Product.objects.filter(in_stock=True).order_by('-created_at', 'id')
 
         category = self.request.query_params.get('category')
         if category:

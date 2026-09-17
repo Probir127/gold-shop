@@ -5,11 +5,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from ..models import KnowledgeSource, KnowledgeChunk
 from ..serializers import KnowledgeSourceSerializer
+from ..permissions import IsTenantManagerOrStaff
 from ..utils.knowledge_engine import ingest_source
 
 class KnowledgeSourceListCreateView(generics.ListCreateAPIView):
     serializer_class = KnowledgeSourceSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsTenantManagerOrStaff]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
@@ -21,7 +22,7 @@ class KnowledgeSourceListCreateView(generics.ListCreateAPIView):
 
 class KnowledgeSourceDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = KnowledgeSourceSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsTenantManagerOrStaff]
 
     def get_queryset(self):
         return KnowledgeSource.objects.filter(tenant=self.request.tenant)
@@ -48,7 +49,7 @@ class KnowledgeSourceSyncView(views.APIView):
     """
     Manually trigger a sync for a specific source asynchronously to avoid HTTP timeouts.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsTenantManagerOrStaff]
 
     def post(self, request, pk):
         try:

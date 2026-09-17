@@ -2,7 +2,7 @@ import React from 'react';
 
 const PrivacyPolicyPage = () => {
     return (
-        <div className="section">
+        <div className="section policy-page">
             <div className="container" style={{ maxWidth: '800px' }}>
                 <h1 className="section-title">Privacy Policy</h1>
                 <div className="content-block" style={{ color: '#ccc', lineHeight: '1.6' }}>

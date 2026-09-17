@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login as apiLogin } from '../api';
+import { login as apiLogin, getMe } from '../api';
 import { LogIn, Lock, User, Sparkles } from 'lucide-react';
+import BrandMark from '../../components/BrandMark';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -18,20 +19,28 @@ const Login = () => {
       const res = await apiLogin(username, password);
       localStorage.setItem('access_token', res.data.access);
       localStorage.setItem('refresh_token', res.data.refresh);
-      // Default tenant slug — Sidebar will refine this from /me
-      if (!localStorage.getItem('tenant_slug')) {
-        localStorage.setItem('tenant_slug', 'sahara-gold');
+      const me = await getMe();
+      const memberships = me.data.memberships || [];
+      if (memberships.length === 0) {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        throw new Error('No tenant membership');
       }
+      const currentSlug = localStorage.getItem('tenant_slug');
+      const activeMembership = memberships.find(item => item.tenant_slug === currentSlug) || memberships[0];
+      localStorage.setItem('tenant_slug', activeMembership.tenant_slug);
       navigate('/admin');
     } catch (err) {
-      setError('Invalid credentials. Please check and try again.');
+      setError(err.message === 'No tenant membership'
+        ? 'Your account is valid, but it is not assigned to a store workspace.'
+        : 'Invalid credentials. Please check and try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#09090b] relative overflow-hidden">
+    <div className="admin-login-page min-h-screen flex items-center justify-center bg-[#09090b] relative overflow-hidden">
       {/* Ambient glows */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[#d4af37]/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-[300px] h-[200px] bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -40,10 +49,7 @@ const Login = () => {
       <div className="w-full max-w-md mx-4 relative z-10">
         {/* Header brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#d4af37] to-[#f4d03f] text-black font-serif font-black text-2xl shadow-[0_0_30px_rgba(212,175,55,0.5)] border border-[#ffec99] mb-5">
-            SG
-          </div>
-          <h1 className="text-3xl font-black text-white mb-1 font-serif tracking-tight">Sahara Gold</h1>
+          <BrandMark variant="hero" />
           <p className="text-[#d4af37] text-xs uppercase tracking-[0.2em] font-bold">Command Center & AI Hub</p>
           <p className="text-slate-500 text-xs mt-2">Unified operations + concierge management</p>
         </div>
@@ -114,7 +120,7 @@ const Login = () => {
             {/* Admin hint */}
             <div className="mt-6 pt-5 border-t border-white/5 flex items-center justify-center gap-2 text-xs text-slate-500">
               <Sparkles size={12} className="text-[#d4af37]/60" />
-              <span>Unified System on <code className="text-[#d4af37]">http://localhost:8000</code></span>
+              <span>Unified System on <code className="text-[#d4af37]">{import.meta.env.VITE_API_URL || `${window.location.origin}/api`}</code></span>
             </div>
           </div>
         </div>

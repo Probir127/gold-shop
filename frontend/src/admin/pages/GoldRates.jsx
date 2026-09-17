@@ -122,7 +122,7 @@ const GoldRates = () => {
   };
 
   return (
-    <div className="flex bg-[#09090b] text-slate-100 min-h-screen">
+    <div className="admin-gold-rates flex bg-[#09090b] text-slate-100 min-h-screen">
       <Sidebar />
 
       <main className="flex-1 p-8 overflow-y-auto max-h-screen">

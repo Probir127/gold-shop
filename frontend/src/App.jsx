@@ -15,12 +15,14 @@ const GoldRatesPage = React.lazy(() => import('./pages/GoldRatesPage'));
 const CartPage = React.lazy(() => import('./pages/CartPage'));
 const CheckoutPage = React.lazy(() => import('./pages/CheckoutPage'));
 const OrderSuccessPage = React.lazy(() => import('./pages/OrderSuccessPage'));
+const PaymentFailedPage = React.lazy(() => import('./pages/PaymentFailedPage'));
 const OrderTrackingPage = React.lazy(() => import('./pages/OrderTrackingPage'));
 const AboutPage = React.lazy(() => import('./pages/AboutPage'));
 const ContactPage = React.lazy(() => import('./pages/ContactPage'));
 const TermsPage = React.lazy(() => import('./pages/TermsPage'));
 const PrivacyPolicyPage = React.lazy(() => import('./pages/PrivacyPolicyPage'));
 const RefundPolicyPage = React.lazy(() => import('./pages/RefundPolicyPage'));
+const CustomerLoginPage = React.lazy(() => import('./pages/CustomerLoginPage'));
 
 import { Navigate } from 'react-router-dom';
 import { ToastContainer } from './admin/components/Toast';
@@ -41,7 +43,16 @@ const AdminBotTraining = React.lazy(() => import('./admin/pages/BotTraining'));
 // Admin Auth Guard
 const ProtectedAdminRoute = ({ children }) => {
   const token = localStorage.getItem('access_token');
-  return token ? children : <Navigate to="/admin/login" replace />;
+  let isValid = false;
+  if (token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      isValid = typeof payload.exp === 'number' && payload.exp > Math.floor(Date.now() / 1000);
+    } catch {
+      isValid = false;
+    }
+  }
+  return isValid ? children : <Navigate to="/admin/login" replace />;
 };
 
 // Page transition wrapper
@@ -66,12 +77,15 @@ const AnimatedRoutes = () => {
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/order-success" element={<OrderSuccessPage />} />
+            <Route path="/payment-failed" element={<PaymentFailedPage />} />
             <Route path="/track-order" element={<OrderTrackingPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/refund-policy" element={<RefundPolicyPage />} />
+            <Route path="/login" element={<CustomerLoginPage />} />
+            <Route path="/account" element={<CustomerLoginPage />} />
 
             {/* Admin Command Center Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />

@@ -32,7 +32,7 @@ const CartDrawer = () => {
                         style={{
                             position: 'fixed',
                             inset: 0,
-                            zIndex: 999,
+                            zIndex: 99998,
                             backgroundColor: 'rgba(0, 0, 0, 0.6)',
                             backdropFilter: 'blur(4px)'
                         }}
@@ -52,7 +52,7 @@ const CartDrawer = () => {
                             bottom: 0,
                             width: '400px',
                             maxWidth: '90vw',
-                            zIndex: 1000,
+                            zIndex: 99999,
                             backgroundColor: '#111',
                             borderLeft: '1px solid #333',
                             boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.5)',

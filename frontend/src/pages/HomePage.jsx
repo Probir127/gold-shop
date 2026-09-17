@@ -5,8 +5,6 @@ import Hero from '../components/home/Hero';
 import LuxuryFeatures from '../components/home/LuxuryFeatures';
 import LuxuryCounters from '../components/home/LuxuryCounters';
 import FeaturedCarousel from '../components/home/FeaturedCarousel';
-import TestimonialSlider from '../components/home/TestimonialSlider';
-import InstagramFeed from '../components/home/InstagramFeed';
 import { api } from '../services/api';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
@@ -53,8 +51,7 @@ const HomePage = () => {
             {/* Luxury Features Section */}
             <LuxuryFeatures data={featuresData} />
 
-            {/* KEEPING EXISTING LIST FOR NOW - CAN BE DYNAMIC LATER */}
-            <LuxuryCounters />
+            <LuxuryCounters products={productList} goldRates={goldRates} />
 
             {/* Featured Collection */}
             <section className="section" style={{ paddingTop: '100px', backgroundColor: '#050505', overflow: 'hidden' }}>
@@ -86,12 +83,6 @@ const HomePage = () => {
                     </motion.div>
                 </div>
             </section>
-
-            {/* Testimonials */}
-            <TestimonialSlider />
-
-            {/* Instagram Feed */}
-            <InstagramFeed />
 
             {/* CTA Section - Redesigned */}
             <section style={{

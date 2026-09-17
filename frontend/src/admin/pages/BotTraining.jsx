@@ -261,7 +261,7 @@ const BotTraining = () => {
   };
 
   const { tenant, bot_config } = data;
-  const webhookUrl = `${window.location.origin.replace('5173', '8000')}/webhook/whatsapp/${tenant.slug}/`;
+  const webhookUrl = `${window.location.origin.replace('5173', '8000')}/api/whatsapp/${tenant.slug}/`;
 
   const getStatusIcon = (status) => {
     switch(status) {
@@ -1188,7 +1188,7 @@ const BotTraining = () => {
 
                   </div>
 
-                  {/* Reactive Floating Launcher Button Mockup */}
+                              {/* Reactive floating launcher preview */}
                   {tenant.web_widget_enabled && (
                     <div className="mt-6 flex items-center gap-3 bg-slate-900/40 px-5 py-3 rounded-2xl border border-slate-800/80 backdrop-blur-md animate-in fade-in duration-300">
                       <div 

@@ -1,25 +1,6 @@
 import React from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-// Generate mock historical data (last 14 days)
-const generateMockHistory = (currentRate) => {
-    const data = [];
-    const baseRate = currentRate || 9850;
-    for (let i = 13; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        // Add some variance (-2% to +2%)
-        const variance = baseRate * (Math.random() * 0.04 - 0.02);
-        data.push({
-            date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-            rate: Math.round(baseRate + variance),
-        });
-    }
-    // Last entry is actual current rate
-    data[data.length - 1].rate = baseRate;
-    return data;
-};
-
 const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
         return (
@@ -40,14 +21,25 @@ const CustomTooltip = ({ active, payload, label }) => {
     return null;
 };
 
-const GoldRateChart = ({ currentRate, purity = '22K' }) => {
-    const data = generateMockHistory(currentRate);
+const GoldRateChart = ({ history = [], currentRate, purity = '22K' }) => {
+    const rateKey = purity === '22K' ? 'rate_22k' : purity === '21K' ? 'rate_21k' : 'rate_18k';
+    const data = history
+        .map(item => ({
+            date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            rate: Number(item[rateKey] || 0),
+        }))
+        .filter(item => item.rate > 0)
+        .slice(-14);
+
+    if (data.length === 0 && currentRate) {
+        data.push({ date: 'Today', rate: Number(currentRate) });
+    }
 
     return (
         <div className="gold-chart-container">
             <div className="chart-header">
                 <h3>{purity} Gold Rate Trend</h3>
-                <span className="chart-period">Last 14 Days</span>
+                <span className="chart-period">{data.length > 1 ? `Last ${data.length} updates` : 'Current rate'}</span>
             </div>
             <div style={{ width: '100%', height: 280 }}>
                 <ResponsiveContainer>

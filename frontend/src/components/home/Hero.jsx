@@ -2,9 +2,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Sparkles } from 'lucide-react';
+import BrandMark from '../BrandMark';
 
 const Hero = ({ data }) => {
     const defaultHero = {
+        eyebrow: "Sahara Gold · Dhaka",
         title: "Exquisite Gold Jewellery",
         subtitle: "Handcrafted perfection for your special moments",
         cta_text: "Shop Collection",
@@ -17,7 +19,7 @@ const Hero = ({ data }) => {
     const getImageUrl = (path) => {
         if (!path) return '';
         if (path.startsWith('http') || path.startsWith('/assets')) return path;
-        const BACKEND_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://127.0.0.1:8000';
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || window.location.origin;
         return `${BACKEND_URL}${path}`;
     };
 
@@ -51,10 +53,10 @@ const Hero = ({ data }) => {
 
     return (
         <section className="hero-section" style={{
-            minHeight: '100vh',
+            minHeight: 'min(820px, calc(100vh - 116px))',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
+            justifyContent: 'flex-start',
             position: 'relative',
             overflow: 'hidden'
         }}>
@@ -110,39 +112,36 @@ const Hero = ({ data }) => {
 
             {/* Content */}
             <motion.div
-                className="container text-center"
-                style={{ position: 'relative', zIndex: 10, padding: '2rem' }}
+                className="container hero-copy"
+                style={{ position: 'relative', zIndex: 10, padding: '4rem 1.5rem' }}
                 variants={containerVariants}
                 initial="hidden"
                 animate="visible"
             >
-                {/* Logo with Glow */}
-                <motion.img
+                {/* Brand lockup */}
+                <motion.div
                     variants={itemVariants}
-                    src="/assets/images/logo.png"
-                    alt="Sahara Gold Logo"
-                    style={{
-                        height: '100px',
-                        display: 'block',
-                        margin: '0 auto 2rem',
-                        filter: 'drop-shadow(0 0 20px rgba(212, 175, 55, 0.8)) drop-shadow(0 0 40px rgba(212, 175, 55, 0.4))'
-                    }}
-                />
+                    style={{ marginBottom: '1.5rem' }}
+                >
+                    <BrandMark variant="hero" />
+                </motion.div>
 
                 {/* Premium Title with Text Shadow */}
                 <motion.h1
                     variants={itemVariants}
                     style={{
-                        fontSize: 'clamp(2.8rem, 6vw, 5rem)',
-                        color: '#D4AF37',
+                        fontSize: 'clamp(3.1rem, 7vw, 6.7rem)',
+                        color: '#f3d58a',
                         marginBottom: '1.5rem',
                         fontFamily: 'Playfair Display, serif',
                         fontWeight: 600,
                         letterSpacing: '2px',
-                        textShadow: '0 0 30px rgba(212, 175, 55, 0.5), 0 4px 20px rgba(0,0,0,0.8)',
-                        lineHeight: 1.2
+                        textShadow: '0 12px 40px rgba(0,0,0,0.65)',
+                        lineHeight: 0.98,
+                        maxWidth: '760px'
                     }}
                 >
+                    <span className="hero-eyebrow">{heroContent.eyebrow || 'Sahara Gold · Dhaka'}</span>
                     {heroContent.title}
                 </motion.h1>
 
@@ -152,7 +151,7 @@ const Hero = ({ data }) => {
                     style={{
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
+                        justifyContent: 'flex-start',
                         gap: '1rem',
                         marginBottom: '1.5rem'
                     }}
@@ -168,8 +167,8 @@ const Hero = ({ data }) => {
                     style={{
                         fontSize: 'clamp(1.1rem, 2vw, 1.4rem)',
                         color: 'rgba(255,255,255,0.9)',
-                        maxWidth: '600px',
-                        margin: '0 auto 2.5rem',
+                        maxWidth: '560px',
+                        margin: '0 0 2.5rem',
                         fontWeight: 300,
                         letterSpacing: '1px',
                         textShadow: '0 2px 10px rgba(0,0,0,0.5)'
@@ -186,7 +185,7 @@ const Hero = ({ data }) => {
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '12px',
-                            padding: '1.2rem 3rem',
+                            padding: '1.1rem 2rem',
                             fontSize: '1.1rem',
                             fontWeight: 500,
                             letterSpacing: '2px',

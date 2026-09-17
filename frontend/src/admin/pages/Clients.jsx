@@ -78,7 +78,7 @@ const Clients = () => {
   });
 
   return (
-    <div className="flex bg-transparent h-screen text-slate-300 font-sans selection:bg-indigo-500/30 relative overflow-hidden">
+    <div className="admin-clients flex bg-transparent h-screen text-slate-300 font-sans selection:bg-indigo-500/30 relative overflow-hidden">
       <Sidebar />
       <main className="flex-1 p-8 lg:p-12 overflow-y-auto custom-scrollbar max-w-[1600px] mx-auto w-full relative z-10">
         

@@ -22,7 +22,7 @@ const OrderTrackingPage = () => {
         } catch (err) {
             console.error(err);
             if (err.message === 'Failed to fetch') {
-                setError('Network error. If using local SSL, please open http://localhost:8000/admin in a new tab to check connection.');
+                setError('Network error. Unable to reach the server. Please check your connection and try again.');
             } else {
                 setError(err.message);
             }
@@ -46,7 +46,7 @@ const OrderTrackingPage = () => {
     };
 
     return (
-        <div className="section" style={{ minHeight: '60vh' }}>
+        <div className="section tracking-page" style={{ minHeight: '60vh' }}>
             <div className="container" style={{ maxWidth: '800px' }}>
                 <h1 className="section-title">Track Your Order</h1>
 

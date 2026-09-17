@@ -493,7 +493,7 @@
             <!-- Header -->
             <div class="inv-header">
                 <div class="store-brand">
-                    <img src="/media/logo.png" alt="Sahara Gold Logo" class="store-logo" onerror="this.src='/assets/images/logo.png'; this.onerror=null;">
+                    <img src="{{ asset_base_url }}/assets/images/logo.png" alt="Sahara Gold Logo" class="store-logo">
                     <div class="store-info">
                         <div class="tagline">Sahara Gold &amp; Diamond Jewellers</div>
                         <div>Bashundhara City Level 7, Block-A Shop-19, Dhaka</div>
@@ -628,10 +628,6 @@
                         <tr>
                             <td style="color: #6b7280;">Jewelry Subtotal:</td>
                             <td style="text-align: right; font-weight: 600; font-family: monospace;">৳{{ order.subtotal|floatformat:2 }}</td>
-                        </tr>
-                        <tr>
-                            <td style="color: #6b7280;">Government VAT (5%):</td>
-                            <td style="text-align: right; font-weight: 600; font-family: monospace;">৳{{ order.vat|floatformat:2 }}</td>
                         </tr>
                         <tr class="total-row">
                             <td>Grand Total:</td>

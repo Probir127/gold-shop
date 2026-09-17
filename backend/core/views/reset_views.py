@@ -6,7 +6,7 @@ All endpoints require authentication. Destructive actions are strictly isolated.
 import logging
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from core.permissions import IsTenantManagerOrStaff
 from rest_framework import status
 from ..models import BotAnalytics, Conversation, Client, BotConfig
 from ..models import DEFAULT_SYSTEM_PROMPT
@@ -25,7 +25,7 @@ class ResetView(APIView):
       clear_conversations — Delete ALL conversation history
       reset_bot_config  — Revert system prompt to factory default
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsTenantManagerOrStaff]
 
     def post(self, request):
         tenant = request.tenant

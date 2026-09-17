@@ -1,19 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ProductGrid from '../components/product/ProductGrid';
 import { useProducts } from '../hooks/useShopData';
+import { api } from '../services/api';
 import SEO from '../components/SEO';
 import PageTransition from '../components/PageTransition';
 import { ChevronDown } from 'lucide-react';
-
-const categories = [
-    { id: 'all', name: 'All Collection' },
-    { id: 'rings', name: 'Rings' },
-    { id: 'earrings', name: 'Earrings' },
-    { id: 'bangles', name: 'Bangles' },
-    { id: 'wristlets', name: 'Wristlets' },
-    { id: 'necklace', name: 'Necklace Sets' }
-];
 
 const sortOptions = [
     { id: 'default', name: 'Default' },
@@ -28,8 +20,19 @@ const ShopPage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const activeCategory = searchParams.get('cat') || 'all';
     const [sortBy, setSortBy] = useState('default');
+    const [categories, setCategories] = useState([{ id: 'all', name: 'All Collection' }]);
 
-    const { data: products = [], isLoading, isError } = useProducts(activeCategory);
+    useEffect(() => {
+        let active = true;
+        api.getCategories()
+            .then(items => {
+                if (active) setCategories([{ id: 'all', name: 'All Collection' }, ...items]);
+            })
+            .catch(() => {});
+        return () => { active = false; };
+    }, []);
+
+    const { data: products = [], isLoading } = useProducts(activeCategory);
 
     const sortedProducts = useMemo(() => {
         if (!products.length) return products;
@@ -56,7 +59,7 @@ const ShopPage = () => {
 
     return (
         <PageTransition>
-            <div className="section">
+            <div className="section shop-page">
                 <SEO
                     title={activeCategory === 'all' ? 'Shop All Collection' : `Shop ${categories.find(c => c.id === activeCategory)?.name}`}
                     description="Browse our exclusive gold and diamond jewelry collection."
@@ -71,10 +74,11 @@ const ShopPage = () => {
                             <div style={{ fontSize: '14px', color: '#888' }}>
                                 Showing {sortedProducts.length} results
                             </div>
-                            <div style={{ position: 'relative' }}>
+                            <div className="shop-sort-control" style={{ position: 'relative' }}>
                                 <select
                                     value={sortBy}
                                     onChange={(e) => setSortBy(e.target.value)}
+                                    className="shop-sort-select"
                                     style={{
                                         padding: '10px 40px 10px 16px',
                                         backgroundColor: '#1a1a1a',
@@ -99,7 +103,7 @@ const ShopPage = () => {
 
                     <div style={{ display: 'flex', flexDirection: 'column', md: { flexDirection: 'row' }, gap: '30px' }}>
                         {/* Sidebar / Filter Bar */}
-                        <div style={{
+                        <div className="collection-filter-strip" style={{
                             display: 'flex',
                             gap: '10px',
                             overflowX: 'auto',

@@ -6,10 +6,12 @@ from django.shortcuts import get_object_or_404
 from ..models import Client, Conversation
 from ..serializers import ConversationSerializer
 from ..utils.whatsapp import send_text_message
+from core.permissions import IsTenantMember, IsTenantManagerOrStaff
 
 
 class ConversationListView(generics.ListAPIView):
     serializer_class = ConversationSerializer
+    permission_classes = [IsTenantMember]
 
     def get_queryset(self):
         tenant = self.request.tenant
@@ -28,6 +30,8 @@ from ..models import Channel
 logger = logging.getLogger(__name__)
 
 class SendMessageView(APIView):
+    permission_classes = [IsTenantManagerOrStaff]
+
     def post(self, request):
         tenant = request.tenant
         if not tenant:
@@ -121,8 +125,8 @@ class SendMessageView(APIView):
             'api_response': result
         })
 
-
 class ToggleBotView(APIView):
+    permission_classes = [IsTenantManagerOrStaff]
     """Toggle the AI chatbot on/off for a specific client."""
     def post(self, request, client_id):
         tenant = request.tenant

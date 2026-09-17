@@ -22,9 +22,9 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_current_price(self, obj):
         try:
-            rate_obj = GoldRate.objects.first()
+            rate_obj = GoldRate.objects.order_by('-date', '-updated_at').first()
             if not rate_obj:
-                return 0
+                return None
             
             rate = 0
             if obj.purity == '22K': rate = rate_obj.rate_22k
@@ -36,4 +36,4 @@ class ProductSerializer(serializers.ModelSerializer):
             making_cost = float(obj.weight) * obj.making_charge_per_gram
             return round(gold_price + making_cost)
         except Exception:
-            return 0
+            return None

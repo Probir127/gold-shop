@@ -31,9 +31,9 @@ const processQueue = (error, token = null) => {
 api.interceptors.response.use(
     response => response,
     async error => {
-        const originalRequest = error.config
+        const originalRequest = error.config || {}
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/')) {
             const refreshToken = localStorage.getItem('refresh_token')
 
             if (!refreshToken) {
@@ -71,6 +71,7 @@ api.interceptors.response.use(
                 processQueue(refreshError, null)
                 localStorage.removeItem('access_token')
                 localStorage.removeItem('refresh_token')
+                localStorage.removeItem('tenant_slug')
                 // Import lazily to avoid circular deps — show toast before redirect
                 import('./components/Toast').then(({ toast }) => {
                     toast.warning('Your session has expired. Please log in again.')
@@ -120,6 +121,34 @@ export const getInvoice     = (id)     => api.get(`/invoices/${id}/`)
 export const generatePDF    = (id)     => api.get(`/invoices/${id}/pdf/`)
 export const sendInvoice    = (id)     => api.post(`/invoices/${id}/send/`)
 export const markInvoicePaid = (id)    => api.post(`/invoices/${id}/mark-paid/`)
+export const openInvoiceHTML = async (id, copy = 'customer', signedUrl = '') => {
+    const preview = window.open('', '_blank')
+    const requestUrl = signedUrl
+        ? signedUrl.replace(/^\/api(?=\/)/, '')
+        : `/invoices/${id}/html/?copy=${copy}`
+    const response = await api.get(requestUrl, { responseType: 'blob' })
+    const url = URL.createObjectURL(response.data)
+    if (preview) {
+        preview.opener = null
+        preview.location.href = url
+    } else {
+        window.open(url, '_blank', 'noopener,noreferrer')
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
+
+export const openOrderInvoiceHTML = async (orderId, copy = 'admin') => {
+    const preview = window.open('', '_blank')
+    const response = await api.get(`/orders/${encodeURIComponent(orderId)}/invoice/?copy=${copy}`, { responseType: 'blob' })
+    const url = URL.createObjectURL(response.data)
+    if (preview) {
+        preview.opener = null
+        preview.location.href = url
+    } else {
+        window.open(url, '_blank', 'noopener,noreferrer')
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
 
 // ── Phase 2: Handoff & Analytics ─────────────────────────────
 export const claimHandoff    = (clientId) => api.post(`/clients/${clientId}/claim-handoff/`)
@@ -154,6 +183,7 @@ export const getLiveGoldMarket   = () => api.get('/rates/live-market/')
 export const syncLiveGoldRate    = () => api.post('/rates/sync-live/')
 
 export const getProductsAdmin    = () => api.get('/products/')
+export const getCategories       = () => api.get('/categories/')
 export const createProductAdmin  = (data) => api.post('/products/', data, {
     headers: { 'Content-Type': 'multipart/form-data' }
 })

@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from .models import GoldRate
 from .serializers import GoldRateSerializer
 from .services import fetch_live_gold_price, sync_live_rate_to_database
+from core.permissions import IsStaffForWrite
 
 class LatestGoldRateView(generics.RetrieveAPIView):
     # Public: Single latest object
@@ -14,14 +15,15 @@ class LatestGoldRateView(generics.RetrieveAPIView):
     def get_object(self):
         obj = self.get_queryset().first()
         if not obj:
-            return GoldRate(date='2026-01-01', rate_22k=0, rate_21k=0, rate_18k=0, rate_traditional=0)
+            from rest_framework.exceptions import NotFound
+            raise NotFound('Gold rates are not available yet.')
         return obj
 
 class GoldRateCreateView(generics.ListCreateAPIView):
     # Admin: List all or Create/Update for given date
     queryset = GoldRate.objects.all().order_by('-date')
     serializer_class = GoldRateSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [IsStaffForWrite]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
@@ -54,7 +56,7 @@ class SyncLiveGoldRateView(APIView):
     Syncs live market rates directly into today's official GoldRate record
     POST /api/rates/sync-live/
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
 
     def post(self, request):
         obj, info = sync_live_rate_to_database()

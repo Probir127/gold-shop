@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { formatPrice } from '../utils/formatters';
-import { useNavigate } from 'react-router-dom';
-import { Lock, Truck, CreditCard, Banknote, ArrowRight, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { useNavigate, Navigate } from 'react-router-dom';
+import { Lock, Truck, CreditCard, ArrowRight, ArrowLeft, ShieldCheck, UserCheck } from 'lucide-react';
 import { api } from '../services/api';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,21 +13,31 @@ const CheckoutPage = () => {
     const { cart, cartTotal, clearCart } = useCart();
     const navigate = useNavigate();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [currentStep, setCurrentStep] = useState(2); // Start at Shipping (Cart is step 1)
+    const [currentStep, setCurrentStep] = useState(2);
+
+    // Auth guard — get stored customer profile
+    const customer = (() => {
+        try { return JSON.parse(localStorage.getItem('sahara_customer') || 'null'); }
+        catch { return null; }
+    })();
 
     const [formData, setFormData] = useState({
-        customer_name: '',
-        customer_phone: '',
-        customer_email: '',
+        customer_name: customer?.name || '',
+        customer_phone: customer?.phone || '',
+        customer_email: customer?.email || '',
         address: '',
         city: 'Dhaka',
         paymentMethod: 'cod'
     });
 
+    // Redirect if not logged in
+    if (!customer) {
+        return <Navigate to="/login?next=/checkout" replace />;
+    }
+
     // Calculate totals
     const subTotal = cartTotal;
-    const vat = subTotal * 0.05;
-    const total = subTotal + vat;
+    const total = subTotal;
 
     if (cart.length === 0) {
         navigate('/cart');
@@ -65,9 +75,13 @@ const CheckoutPage = () => {
         try {
             // Step 1: Create order
             const items = cart.map(item => ({
-                product_id: item.id,
-                quantity: item.quantity
+                product_id: Number(item.id),
+                quantity: Math.max(1, Number(item.quantity) || 1),
             }));
+
+            if (items.some(item => !Number.isInteger(item.product_id) || item.product_id <= 0)) {
+                throw new Error('Your cart contains an invalid product. Please remove it and add the product again.');
+            }
 
             const orderData = {
                 customer_name: formData.customer_name,
@@ -85,7 +99,7 @@ const CheckoutPage = () => {
             if (formData.paymentMethod === 'bkash') {
                 // Initiate SSL Payment
                 try {
-                    const paymentResult = await api.initiateSslPayment(response.order_id);
+                    const paymentResult = await api.initiateSslPayment(response.order_id, response.customer_access_token);
 
                     if (paymentResult.success && paymentResult.gateway_url) {
                         // Redirect to SSLCommerz
@@ -104,10 +118,14 @@ const CheckoutPage = () => {
 
             // COD flow
             clearCart();
-            navigate('/order-success', { state: { orderId: response.order_id, total: response.total } });
+            navigate('/order-success', { state: {
+                orderId: response.order_id,
+                total: response.total,
+                customerInvoiceUrl: response.customer_invoice_url,
+            } });
         } catch (error) {
             console.error("Order failed", error);
-            toast.error("Failed to place order. Please try again.");
+            toast.error(error.message || "Failed to place order. Please try again.");
         } finally {
             setIsSubmitting(false);
         }
@@ -120,9 +138,19 @@ const CheckoutPage = () => {
     };
 
     return (
-        <div className="section min-h-screen pt-12">
+        <div className="section checkout-page min-h-screen pt-12">
             <div className="container">
                 <h1 className="section-title text-center mb-10">Secure Checkout</h1>
+                {/* Verified account banner */}
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.25)',
+                    borderRadius: '10px', padding: '10px 18px', marginBottom: '24px',
+                    fontSize: '13px', color: '#4ade80',
+                }}>
+                    <UserCheck size={16} />
+                    <span>Checking out as <strong>{customer.name}</strong> ({customer.phone})</span>
+                </div>
                 <CheckoutStepper currentStep={currentStep} />
 
                 <div className="checkout-grid">
@@ -328,10 +356,6 @@ const CheckoutPage = () => {
                                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                     <span>Subtotal</span>
                                     <span>{formatPrice(subTotal)}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>VAT (5%)</span>
-                                    <span>{formatPrice(vat)}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4ade80' }}>
                                     <span>Shipping</span>

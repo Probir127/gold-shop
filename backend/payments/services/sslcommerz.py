@@ -68,9 +68,12 @@ class SslCommerzGateway:
 
     def validate_payment(self, post_data):
         """
-        Validate payment via IPN or success callback data.
+        Validate a successful callback with SSLCommerz server-to-server.
         """
-        return self.sslcz.hash_validate(post_data)
+        validation_id = post_data.get('val_id')
+        if not validation_id:
+            return None
+        return self.sslcz.validationTransactionOrder(validation_id)
 
 # Singleton instance
 sslcommerz_gateway = SslCommerzGateway()

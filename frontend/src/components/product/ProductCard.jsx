@@ -71,20 +71,20 @@ const ProductCard = ({ product }) => {
             }}
         >
             <Link to={`/product/${product.id}`} className="block h-full">
-                <div style={{
+                <div className="product-card-surface" style={{
                     transform: "translateZ(50px)",
                     transformStyle: "preserve-3d",
-                    backgroundColor: '#111',
-                    borderRadius: '12px',
+                    background: 'linear-gradient(145deg, #1b1a20 0%, #101116 72%)',
+                    borderRadius: '8px',
                     overflow: 'hidden',
-                    border: '1px solid #222',
+                    border: '1px solid rgba(243,213,138,0.14)',
                     height: '100%',
                     display: 'flex',
                     flexDirection: 'column',
                     position: 'relative'
                 }}>
                     {/* Image Container */}
-                    <div style={{ position: 'relative', paddingTop: '100%', overflow: 'hidden' }}>
+                    <div className="product-card-image" style={{ position: 'relative', paddingTop: '100%', overflow: 'hidden' }}>
                         <img
                             src={product.image}
                             alt={product.name}
@@ -135,7 +135,7 @@ const ProductCard = ({ product }) => {
                     </div>
 
                     {/* Content */}
-                    <div style={{ padding: '15px', flex: 1, display: 'flex', flexDirection: 'column', transform: "translateZ(20px)" }}>
+                    <div className="product-card-content" style={{ padding: '15px', flex: 1, display: 'flex', flexDirection: 'column', transform: "translateZ(20px)" }}>
                         <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '1px' }}>
                             {product.category_name || product.category}
                         </p>
@@ -149,7 +149,7 @@ const ProductCard = ({ product }) => {
                                     {product.weight}g
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
-                                    <span style={{ fontSize: '11px', color: '#666', display: 'block' }}>Current Price</span>
+                                    <span style={{ fontSize: '11px', color: '#9f9aa0', display: 'block' }}>Current price</span>
                                     <span style={{ color: 'var(--color-gold-primary)', fontSize: '16px', fontWeight: 'bold' }}>
                                         {formatPrice(product.current_price || product.price)}
                                     </span>

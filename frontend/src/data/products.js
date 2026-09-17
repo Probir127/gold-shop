@@ -1,10 +1,6 @@
-import { GOLD_RATES } from '../utils/constants';
-
 // Helper to generate price
-const getPrice = (weight, purity) => {
-    const rate = purity === '22K' ? GOLD_RATES.K22 : GOLD_RATES.K21;
-    const making = weight * 500; // 500 per gram making charge approx
-    return Math.round((weight * rate) + making);
+const getPrice = () => {
+    return null;
 };
 
 export const products = [

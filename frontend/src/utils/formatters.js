@@ -4,8 +4,8 @@ export const formatPrice = (amount) => {
     return new Intl.NumberFormat('en-BD', APP_CONFIG.currencyParams).format(amount);
 };
 
-export const calculateProductPrice = (weight, purity, makingCharge = 0) => {
-    // Circular dependency avoidance: pass rates or import
-    // Simple version
-    return 0; // Placeholder
+export const calculateProductPrice = (weight, purity, rates, makingCharge = 0) => {
+    const goldRate = rates?.[purity] ?? rates?.traditional;
+    if (!goldRate || Number(weight) <= 0) return null;
+    return Math.round((Number(weight) * goldRate) + (Number(weight) * Number(makingCharge)));
 };

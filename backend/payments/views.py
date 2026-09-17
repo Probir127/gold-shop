@@ -8,12 +8,16 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from orders.models import Order
 from .services.sslcommerz import sslcommerz_gateway
+from decimal import Decimal, InvalidOperation
+from core.utils.invoice_access import validate_invoice_access_token
 
 class SslCommerzInitView(APIView):
     """Initialize SSLCommerz payment for an order."""
+    permission_classes = [AllowAny]
     
     def post(self, request):
         order_id = request.data.get('order_id')
+        access_token = request.data.get('access_token', '')
         
         if not order_id:
              return Response({'error': 'Order ID is required'}, status=400)
@@ -22,6 +26,19 @@ class SslCommerzInitView(APIView):
             order = Order.objects.get(order_id=order_id)
         except Order.DoesNotExist:
             return Response({'error': 'Order not found'}, status=404)
+
+        token_valid = validate_invoice_access_token(access_token, 'order', order.order_id)
+        user = request.user
+        owner_valid = bool(
+            user and user.is_authenticated and (
+                user.is_staff
+                or user.email.lower() == order.customer_email.lower()
+                or ''.join(char for char in user.username if char.isdigit()).removeprefix('88')
+                == ''.join(char for char in order.customer_phone if char.isdigit()).removeprefix('88')
+            )
+        )
+        if not token_valid and not owner_valid:
+            return Response({'error': 'Order verification failed'}, status=403)
         
         if order.payment_status == 'paid':
             return Response({'error': 'Order already paid'}, status=400)
@@ -68,12 +85,28 @@ class SslCommerzSuccessView(APIView):
         
         frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
         
-        # In production, verify hash/validation via API again
-        # For simple integration:
         try:
             order = Order.objects.get(order_id=tran_id)
+            validation = sslcommerz_gateway.validate_payment(data)
+            if not validation or validation.get('status') != 'VALID':
+                return redirect(f"{frontend_url}/payment-failed?reason=unverified")
+
+            if validation.get('tran_id') != order.order_id:
+                return redirect(f"{frontend_url}/payment-failed?reason=order_mismatch")
+
+            try:
+                validated_amount = Decimal(str(validation.get('amount')))
+            except (InvalidOperation, TypeError):
+                return redirect(f"{frontend_url}/payment-failed?reason=amount_mismatch")
+
+            if validated_amount != order.total or validation.get('currency') != 'BDT':
+                return redirect(f"{frontend_url}/payment-failed?reason=amount_mismatch")
+
+            if order.payment_status == 'paid':
+                return redirect(f"{frontend_url}/order-success?id={tran_id}&payment=success")
+
             order.payment_status = 'paid'
-            order.bkash_transaction_id = val_id  # Using this field for generic trans id
+            order.bkash_transaction_id = val_id
             order.save()
             
             # Trigger Email Notification

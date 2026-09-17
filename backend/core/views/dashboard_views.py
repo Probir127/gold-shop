@@ -9,8 +9,10 @@ from ..models import Client, Conversation, Invoice, BotAnalytics
 
 logger = logging.getLogger(__name__)
 
+from core.permissions import IsTenantMember
 
 class StatsView(APIView):
+    permission_classes = [IsTenantMember]
     def get(self, request):
         try:
             tenant = request.tenant

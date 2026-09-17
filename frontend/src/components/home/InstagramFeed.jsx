@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Instagram, Heart, MessageCircle } from 'lucide-react';
+import { STORE_INFO } from '../../utils/constants';
 
 const instagramPosts = [
     { id: 1, image: '/assets/images/2.jpg.jpeg', likes: '1.2k', comments: '45' },
@@ -16,10 +17,15 @@ const InstagramFeed = () => {
         <section style={{ backgroundColor: '#000', padding: '100px 0' }}>
             <div className="container">
                 <div style={{ textAlign: 'center', marginBottom: '60px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', color: 'var(--color-gold-primary)', marginBottom: '15px' }}>
+                    <a
+                        href={STORE_INFO.social.instagram}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', color: 'var(--color-gold-primary)', marginBottom: '15px', textDecoration: 'none' }}
+                    >
                         <Instagram size={24} />
-                        <span style={{ letterSpacing: '2px', fontWeight: 'bold', textTransform: 'uppercase' }}>@SaharaGoldBD</span>
-                    </div>
+                        <span style={{ letterSpacing: '2px', fontWeight: 'bold', textTransform: 'uppercase' }}>@saharagoldanddiamond</span>
+                    </a>
                     <h2 className="section-title">Follow Our Journey</h2>
                     <p style={{ color: '#888', marginTop: '20px' }}>Join our community of 50k+ seekers of timeless elegance.</p>
                 </div>
@@ -36,6 +42,7 @@ const InstagramFeed = () => {
                             whileInView={{ opacity: 1, scale: 1 }}
                             viewport={{ once: true }}
                             transition={{ duration: 0.5, delay: post.id * 0.1 }}
+                            onClick={() => window.open(STORE_INFO.social.instagram, '_blank')}
                             style={{ position: 'relative', paddingTop: '100%', overflow: 'hidden', cursor: 'pointer' }}
                         >
                             <img

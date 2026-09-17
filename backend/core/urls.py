@@ -2,12 +2,13 @@ from __future__ import annotations
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import auth_views, client_views, conversation_views
-from .views import invoice_views, dashboard_views, whatsapp_views, service_views, bot_test_views, analytics_views, bot_config_views, reset_views, knowledge_views, team_views, public_views, telegram_views, instagram_views, messenger_views, ai_analytics_views
+from .views import invoice_views, dashboard_views, whatsapp_views, service_views, bot_test_views, analytics_views, bot_config_views, reset_views, knowledge_views, team_views, public_views, telegram_views, instagram_views, messenger_views, ai_analytics_views, contact_views
 
 urlpatterns = [
     # Public (Widget)
     path('public/config/<slug:tenant_slug>/', public_views.PublicBotConfigView.as_view()),
     path('public/chat/<slug:tenant_slug>/',   public_views.PublicChatView.as_view()),
+    path('contact/enquiry/', contact_views.ContactEnquiryView.as_view()),
     # Auth
     path('auth/login/',         auth_views.LoginView.as_view()),
     path('auth/refresh/',       auth_views.RefreshView.as_view()),
@@ -34,6 +35,7 @@ urlpatterns = [
     path('invoices/',                     invoice_views.InvoiceListCreateView.as_view()),
     path('invoices/<uuid:pk>/',           invoice_views.InvoiceDetailView.as_view()),
     path('invoices/<uuid:pk>/html/',      invoice_views.InvoiceHTMLView.as_view(), name='invoice-html'),
+    path('invoices/pdf/<str:token>/',     invoice_views.InvoicePDFDownloadView.as_view(), name='invoice-pdf'),
     path('invoices/<uuid:pk>/pdf/',       invoice_views.GeneratePDFView.as_view()),
     path('invoices/<uuid:pk>/send/',      invoice_views.SendInvoiceView.as_view()),
     path('invoices/<uuid:pk>/mark-paid/', invoice_views.MarkInvoicePaidView.as_view()),
