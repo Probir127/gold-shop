@@ -216,6 +216,16 @@ export const api = {
         }
         return res.json();
     },
+    sendOrderInvoiceEmail: async (orderId) => {
+        const res = await nf(`${API_BASE}/orders/${encodeURIComponent(orderId)}/send_invoice/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || data.detail || 'Failed to email invoice');
+        return data;
+    },
     // Payments
     initiateSslPayment: async (orderId, accessToken) => {
         const res = await nf(`${API_BASE}/payments/ssl/init/`, {

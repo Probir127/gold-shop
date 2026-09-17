@@ -277,7 +277,7 @@ META_APP_SECRET = os.getenv('META_APP_SECRET', '')
 # --- App Settings ---
 
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
-BACKEND_URL = os.getenv('BACKEND_URL', 'http://localhost:8000')
+BACKEND_URL = os.getenv('BACKEND_URL') or os.getenv('RENDER_EXTERNAL_URL', 'http://localhost:8000')
 DEFAULT_TENANT_SLUG = os.getenv('DEFAULT_TENANT_SLUG', 'sahara-gold')
 INVOICE_LINK_MAX_AGE = int(os.getenv('INVOICE_LINK_MAX_AGE', str(7 * 24 * 60 * 60)))
 

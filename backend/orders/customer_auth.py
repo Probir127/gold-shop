@@ -30,27 +30,19 @@ def send_verification_code(user, code):
     body = (
         f'Dear {user.first_name or "Customer"},\n\n'
         f'Your Sahara Gold verification code is: {code}\n\n'
-        'This code expires in 10 minutes. If you did not request this, you can ignore this email.'
+        'This code expires in 10 minutes. If you did not request this, you can ignore this email.\n\n'
+        'Showroom: Bashundhara City Shopping Mall, Level 7, Block-A Shop-19, Dhaka.\n'
+        'Hotline / WhatsApp: 01799-281878\n\n'
+        'Regards,\nSahara Gold'
     )
-    if settings.RESEND_API_KEY:
-        response = requests.post(
-            'https://api.resend.com/emails',
-            headers={
-                'Authorization': f'Bearer {settings.RESEND_API_KEY}',
-                'Content-Type': 'application/json',
-            },
-            json={
-                'from': settings.RESEND_FROM_EMAIL,
-                'to': [user.email],
-                'subject': subject,
-                'text': body,
-            },
-            timeout=15,
-        )
-        if not response.ok:
-            raise RuntimeError(f'Resend email failed ({response.status_code}): {response.text[:300]}')
-        return
-    send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+    send_mail(
+        subject,
+        body,
+        settings.DEFAULT_FROM_EMAIL,
+        [user.email],
+        fail_silently=False,
+    )
+    logger.info("Verification code sent via SMTP to %s", user.email)
 
 
 class CustomerRegisterView(APIView):

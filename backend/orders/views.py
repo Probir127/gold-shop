@@ -71,6 +71,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             return [OrderAccessPermission()]
         if self.action == 'invoice':
             return [OrderInvoiceAccessPermission()]
+        if self.action in ['send_invoice', 'pdf']:
+            return [OrderAccessPermission()]
         if self.action == 'my_orders':
             return [permissions.IsAuthenticated()]
         return [permissions.IsAdminUser()]
@@ -212,16 +214,21 @@ class OrderViewSet(viewsets.ModelViewSet):
         }
         return render(request, 'invoice_luxury.html', context)
 
-    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAdminUser])
+    @action(detail=True, methods=['post'], permission_classes=[OrderAccessPermission])
     def send_invoice(self, request, order_id=None):
         """
-        Admin action to send or resend the official invoice PDF email to the customer.
+        Send or resend the official invoice PDF email to the customer.
+        Staff can optionally override the recipient email; customers send to their own email.
         POST /api/orders/<order_id>/send_invoice/
-        Optional body: { "email": "override@example.com" }
         """
         order = self.get_object()
         override_email = str(request.data.get('email', '')).strip()
-        recipient_email = override_email or order.customer_email
+        is_staff = bool(request.user and (request.user.is_staff or request.user.is_superuser))
+
+        if is_staff and override_email:
+            recipient_email = override_email
+        else:
+            recipient_email = order.customer_email or (request.user.email if request.user and request.user.is_authenticated else '')
 
         if not recipient_email:
             return Response(
@@ -238,3 +245,31 @@ class OrderViewSet(viewsets.ModelViewSet):
                 {"error": f"SMTP email delivery failed: {msg}", "success": False},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=True, methods=['get'], permission_classes=[OrderAccessPermission])
+    def pdf(self, request, order_id=None):
+        """
+        Download certified PDF invoice directly.
+        GET /api/orders/<order_id>/pdf/
+        """
+        order = self.get_object()
+        from django.http import FileResponse, Http404
+        from django.conf import settings
+        import os
+        from core.models import Invoice
+        from core.utils.pdf import generate_invoice_pdf
+
+        invoice = Invoice.objects.filter(invoice_number=f"INV-{order.order_id}").first()
+        if not invoice:
+            raise Http404("Invoice not found")
+
+        pdf_full_path = os.path.join(settings.MEDIA_ROOT, invoice.pdf_path) if invoice.pdf_path else None
+        if not pdf_full_path or not os.path.exists(pdf_full_path):
+            invoice.pdf_path = generate_invoice_pdf(invoice)
+            invoice.save(update_fields=['pdf_path'])
+            pdf_full_path = os.path.join(settings.MEDIA_ROOT, invoice.pdf_path)
+
+        if not os.path.exists(pdf_full_path):
+            raise Http404("PDF generation failed")
+
+        return FileResponse(open(pdf_full_path, 'rb'), content_type='application/pdf', filename=f"Sahara_Gold_Invoice_{order.order_id}.pdf")

@@ -56,34 +56,63 @@ const OrderSuccessPage = () => {
                         </p>
                     </div>
 
-                    {orderId && orderId !== 'UNKNOWN' && (
-                        <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px dashed #333' }}>
-                            <a 
-                                href={order?.customer_invoice_url || '#'}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="btn btn-primary"
-                                style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    padding: '12px 24px',
-                                    fontSize: '14px',
-                                    fontWeight: '700',
-                                    textDecoration: 'none',
-                                    background: 'linear-gradient(135deg, #d4af37, #b8860b)',
-                                    color: '#000',
-                                    borderRadius: '8px',
-                                    boxShadow: '0 4px 15px rgba(212, 175, 55, 0.35)'
-                                }}
-                            >
-                                📄 View / Download Official Invoice (Customer Copy)
-                            </a>
-                            <p style={{ color: '#777', fontSize: '12px', marginTop: '8px' }}>
-                                Includes 100% BSTI Hallmark Gold Authenticity Certificate &amp; Purchase Receipt
-                            </p>
-                        </div>
-                    )}
+                    {orderId && orderId !== 'UNKNOWN' && (() => {
+                        const rawUrl = order?.customer_invoice_url || order?.customerInvoiceUrl || '';
+                        const backend = import.meta.env.VITE_BACKEND_URL || '';
+                        const invUrl = rawUrl && !rawUrl.startsWith('http') && backend && !backend.startsWith('http://localhost')
+                            ? `${backend.replace(/\/+$/, '')}${rawUrl}`
+                            : (rawUrl || `/api/orders/${orderId}/invoice/?copy=customer`);
+                        const pdfUrl = backend && !backend.startsWith('http://localhost')
+                            ? `${backend.replace(/\/+$/, '')}/api/orders/${orderId}/pdf/`
+                            : `/api/orders/${orderId}/pdf/`;
+
+                        return (
+                            <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px dashed #333' }}>
+                                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                    <a 
+                                        href={invUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="btn btn-primary"
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            padding: '12px 20px',
+                                            fontSize: '13px',
+                                            fontWeight: '700',
+                                            textDecoration: 'none',
+                                            background: 'linear-gradient(135deg, #d4af37, #b8860b)',
+                                            color: '#000',
+                                            borderRadius: '8px',
+                                            boxShadow: '0 4px 15px rgba(212, 175, 55, 0.35)'
+                                        }}
+                                    >
+                                        📄 View Official Hallmark Invoice
+                                    </a>
+                                    <a
+                                        href={pdfUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="btn btn-outline"
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            padding: '12px 18px',
+                                            fontSize: '13px',
+                                            borderRadius: '8px',
+                                        }}
+                                    >
+                                        📥 Download PDF
+                                    </a>
+                                </div>
+                                <p style={{ color: '#777', fontSize: '12px', marginTop: '12px' }}>
+                                    An official certified PDF invoice with 100% BSTI Hallmark Gold Authenticity Certificate has also been dispatched to your email via secure SMTP.
+                                </p>
+                            </div>
+                        );
+                    })()}
                 </div>
 
                 <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>

@@ -20,11 +20,29 @@ def send_order_invoice_now(order, recipient_email=None):
     customer_inv_url = f"{backend_url}/api/orders/{order.order_id}/invoice/?copy=customer&token={customer_token}"
 
     target_email = recipient_email or order.customer_email
+    if not target_email and order.customer_phone:
+        try:
+            from django.contrib.auth.models import User
+            from core.models import Client
+            usr = User.objects.filter(username=order.customer_phone).first()
+            if usr and usr.email:
+                target_email = usr.email
+            if not target_email:
+                cl = Client.objects.filter(phone=order.customer_phone).exclude(email='').first()
+                if cl and cl.email:
+                    target_email = cl.email
+            if target_email:
+                order.customer_email = target_email
+                order.save(update_fields=['customer_email'])
+        except Exception as e:
+            logger.debug("Could not resolve email from phone: %s", e)
+
     if not target_email:
         return False, "No recipient email address provided."
 
     # Locate or generate PDF
     pdf_full_path = None
+    invoice = None
     try:
         from core.models import Invoice, Tenant, Client
         from core.utils.pdf import generate_invoice_pdf
@@ -101,6 +119,14 @@ def send_order_invoice_now(order, recipient_email=None):
             email.attach_file(pdf_full_path)
         email.send(fail_silently=False)
         logger.info("Order confirmation email sent to %s with invoice PDF (order %s)", target_email, order.order_id)
+        
+        # Mark invoice as sent if still draft
+        if invoice and invoice.status == 'draft':
+            from django.utils import timezone
+            invoice.status = 'sent'
+            invoice.sent_at = timezone.now()
+            invoice.save(update_fields=['status', 'sent_at'])
+
         return True, f"Invoice successfully emailed to {target_email}"
     except Exception as e:
         logger.error("Customer email delivery error for order %s: %s", order.order_id, e)
@@ -109,19 +135,24 @@ def send_order_invoice_now(order, recipient_email=None):
 
 def send_order_confirmation_email(order_or_id):
     """
-    Sends order confirmation & invoice emails in background thread.
+    Sends order confirmation & invoice emails in background thread via SMTP.
     - Customer receives Customer Copy Invoice PDF attachment & download link
     - Store Admin receives Store/Admin Copy Invoice notification
     """
     def _send():
         try:
             connection.close()  # Refresh connection in new thread
-            time.sleep(0.5)     # Allow caller's DB transaction to commit
             if isinstance(order_or_id, str):
                 from .models import Order
-                order = Order.objects.get(order_id=order_or_id)
+                order = Order.objects.filter(order_id=order_or_id).first()
             else:
-                order = order_or_id
+                from .models import Order
+                order = Order.objects.filter(pk=order_or_id.pk).first()
+
+            if not order:
+                logger.warning("Order %s not found for email dispatch", order_or_id)
+                return
+
             send_order_invoice_now(order)
 
             # Store Admin Notification

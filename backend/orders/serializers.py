@@ -32,7 +32,11 @@ class OrderSerializer(serializers.ModelSerializer):
 
     def get_customer_invoice_url(self, obj):
         token = self.get_customer_access_token(obj)
-        return f"/api/orders/{obj.order_id}/invoice/?copy=customer&token={token}"
+        backend = getattr(settings, 'BACKEND_URL', '').rstrip('/')
+        path = f"/api/orders/{obj.order_id}/invoice/?copy=customer&token={token}"
+        if backend and not backend.startswith('http://localhost') and not backend.startswith('http://127.0.0.1'):
+            return f"{backend}{path}"
+        return path
 
     def get_customer_access_token(self, obj):
         from core.utils.invoice_access import make_invoice_access_token

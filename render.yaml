@@ -32,12 +32,22 @@ services:
         value: "testbox"
       - key: SSLCOMMERZ_STORE_PASS
         value: "qwerty"
-      - key: RESEND_API_KEY
-        sync: false
-      - key: RESEND_FROM_EMAIL
-        value: "onboarding@resend.dev"
+      - key: EMAIL_BACKEND
+        value: "django.core.mail.backends.smtp.EmailBackend"
+      - key: EMAIL_HOST
+        value: "smtp.gmail.com"
+      - key: EMAIL_PORT
+        value: "465"
+      - key: EMAIL_USE_SSL
+        value: "True"
+      - key: EMAIL_USE_TLS
+        value: "False"
+      - key: EMAIL_HOST_USER
+        value: "saharagold19@gmail.com"
+      - key: EMAIL_HOST_PASSWORD
+        value: "bbashnfejleenppq"
       - key: DEFAULT_FROM_EMAIL
-        value: "Sahara Gold <onboarding@resend.dev>"
+        value: "Sahara Gold <saharagold19@gmail.com>"
       - key: STORE_EMAIL
         value: "saharagold19@gmail.com"
       - key: USD_TO_BDT_RATE

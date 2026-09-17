@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Package, Lock, LogOut, CheckCircle2, Clock, Truck, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { User, Package, Lock, LogOut, CheckCircle2, Clock, Truck, Eye, EyeOff, ShieldCheck, Mail, Download } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { formatPrice } from '../utils/formatters';
@@ -78,6 +78,16 @@ const StatusIcon = ({ status }) => {
     return <Clock size={14} style={{ color: '#fbbf24' }} />;
 };
 
+const resolveInvoiceUrl = (url) => {
+    if (!url) return '#';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    const backend = import.meta.env.VITE_BACKEND_URL || '';
+    if (backend && !backend.startsWith('http://localhost') && !backend.startsWith('http://127.0.0.1')) {
+        return `${backend.replace(/\/+$/, '')}${url}`;
+    }
+    return url;
+};
+
 // ─── Main component ───────────────────────────────────────────────────────────
 const CustomerLoginPage = () => {
     const navigate = useNavigate();
@@ -102,6 +112,21 @@ const CustomerLoginPage = () => {
     const [submitting, setSubmitting] = useState(false);
     const [verificationEmail, setVerificationEmail] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
+    const [sendingInvoiceId, setSendingInvoiceId] = useState(null);
+
+    const handleSendInvoiceEmail = async (orderId) => {
+        setSendingInvoiceId(orderId);
+        setError('');
+        try {
+            const res = await api.sendOrderInvoiceEmail(orderId);
+            setSuccessMsg(res.message || 'Certified Hallmark Invoice PDF sent to your email successfully via SMTP!');
+            setTimeout(() => setSuccessMsg(''), 6000);
+        } catch (err) {
+            setError(err.message || 'Failed to email invoice. Please try again.');
+        } finally {
+            setSendingInvoiceId(null);
+        }
+    };
 
     const fetchOrders = async () => {
         setLoadingOrders(true);
@@ -276,6 +301,27 @@ const CustomerLoginPage = () => {
                         </div>
                     </div>
 
+                    {successMsg && (
+                        <div style={{
+                            padding: '14px 18px', backgroundColor: 'rgba(74,222,128,0.12)',
+                            border: '1px solid rgba(74,222,128,0.35)', borderRadius: '10px',
+                            color: '#4ade80', fontSize: '13px', marginBottom: '20px',
+                            display: 'flex', alignItems: 'center', gap: '10px'
+                        }}>
+                            <CheckCircle2 size={18} /> {successMsg}
+                        </div>
+                    )}
+
+                    {error && (
+                        <div style={{
+                            padding: '14px 18px', backgroundColor: 'rgba(239,68,68,0.12)',
+                            border: '1px solid rgba(239,68,68,0.35)', borderRadius: '10px',
+                            color: '#f87171', fontSize: '13px', marginBottom: '20px',
+                        }}>
+                            {error}
+                        </div>
+                    )}
+
                     {/* Order History */}
                     <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
@@ -331,9 +377,9 @@ const CustomerLoginPage = () => {
                                             </p>
                                         </div>
 
-                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                                             <a
-                                                href={ord.customer_invoice_url || '#'}
+                                                href={resolveInvoiceUrl(ord.customer_invoice_url)}
                                                 target="_blank"
                                                 rel="noreferrer"
                                                 style={{
@@ -345,6 +391,23 @@ const CustomerLoginPage = () => {
                                             >
                                                 📄 Hallmark Invoice
                                             </a>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleSendInvoiceEmail(ord.order_id)}
+                                                disabled={sendingInvoiceId === ord.order_id}
+                                                style={{
+                                                    padding: '8px 14px', backgroundColor: '#122316',
+                                                    border: '1px solid rgba(74,222,128,0.3)', borderRadius: '8px',
+                                                    color: '#4ade80', fontSize: '12px',
+                                                    fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px',
+                                                    cursor: sendingInvoiceId === ord.order_id ? 'not-allowed' : 'pointer',
+                                                    opacity: sendingInvoiceId === ord.order_id ? 0.6 : 1,
+                                                }}
+                                                title="Send official certified invoice PDF to your email"
+                                            >
+                                                <Mail size={13} />
+                                                {sendingInvoiceId === ord.order_id ? 'Sending…' : 'Email Invoice'}
+                                            </button>
                                             <Link
                                                 to="/track-order"
                                                 style={{
