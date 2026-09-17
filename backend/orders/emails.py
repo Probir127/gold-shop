@@ -107,7 +107,7 @@ def send_order_invoice_now(order, recipient_email=None):
         return False, str(e)
 
 
-def send_order_confirmation_email(order):
+def send_order_confirmation_email(order_or_id):
     """
     Sends order confirmation & invoice emails in background thread.
     - Customer receives Customer Copy Invoice PDF attachment & download link
@@ -117,6 +117,11 @@ def send_order_confirmation_email(order):
         try:
             connection.close()  # Refresh connection in new thread
             time.sleep(0.5)     # Allow caller's DB transaction to commit
+            if isinstance(order_or_id, str):
+                from .models import Order
+                order = Order.objects.get(order_id=order_or_id)
+            else:
+                order = order_or_id
             send_order_invoice_now(order)
 
             # Store Admin Notification
