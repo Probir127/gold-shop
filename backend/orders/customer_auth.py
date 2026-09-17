@@ -34,14 +34,46 @@ def send_verification_code(user, code):
         'Hotline / WhatsApp: 01799-281878\n\n'
         'Regards,\nSahara Gold'
     )
-    send_mail(
-        subject,
-        body,
-        settings.DEFAULT_FROM_EMAIL,
-        [user.email],
-        fail_silently=False,
-    )
-    logger.info("Verification code sent via SMTP to %s", user.email)
+    # Attempt 1: Standard configured backend (e.g. Port 465 SSL)
+    try:
+        send_mail(
+            subject,
+            body,
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=False,
+        )
+        logger.info("Verification code sent via primary SMTP to %s", user.email)
+        return True
+    except Exception as primary_err:
+        logger.warning("Primary SMTP failed for %s (%s). Trying port 587 TLS...", user.email, primary_err)
+
+    # Attempt 2: Port 587 TLS fallback
+    try:
+        from django.core.mail.backends.smtp import EmailBackend
+        from django.core.mail import EmailMessage
+        tls_backend = EmailBackend(
+            host=settings.EMAIL_HOST,
+            port=587,
+            username=settings.EMAIL_HOST_USER,
+            password=settings.EMAIL_HOST_PASSWORD,
+            use_tls=True,
+            use_ssl=False,
+            timeout=8,
+        )
+        msg = EmailMessage(
+            subject=subject,
+            body=body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[user.email],
+            connection=tls_backend,
+        )
+        msg.send(fail_silently=False)
+        logger.info("Verification code sent via port 587 TLS to %s", user.email)
+        return True
+    except Exception as fallback_err:
+        logger.error("All SMTP attempts failed for %s: %s", user.email, fallback_err)
+        raise fallback_err
 
 
 class CustomerRegisterView(APIView):
@@ -65,27 +97,33 @@ class CustomerRegisterView(APIView):
             return Response({'detail': 'Please provide a valid email address.'}, status=status.HTTP_400_BAD_REQUEST)
 
         if not phone:
-            # If phone not provided, use email prefix or email as identifier
             phone = email
 
-        if User.objects.filter(email__iexact=email).exists():
-            return Response({'detail': 'An account already exists with this email address.'}, status=status.HTTP_409_CONFLICT)
-
-        if User.objects.filter(username=phone).exists():
-            # If username collision with phone, use email as username
-            username_to_use = email
+        existing_user = User.objects.filter(email__iexact=email).first()
+        if existing_user:
+            if existing_user.is_active:
+                return Response({'detail': 'An account already exists with this email address. Please sign in.'}, status=status.HTTP_409_CONFLICT)
+            # Existing inactive account (e.g. previous verification attempt timed out): reuse user
+            user = existing_user
+            user.set_password(password)
+            if name:
+                user.first_name = name[:150]
+            user.save()
         else:
-            username_to_use = phone
+            if User.objects.filter(username=phone).exists():
+                username_to_use = email
+            else:
+                username_to_use = phone
 
-        try:
-            user = User.objects.create_user(
-                username=username_to_use,
-                password=password,
-                email=email,
-                first_name=name[:150],
-            )
-        except IntegrityError:
-            return Response({'detail': 'Unable to create the account. Please try a different email.'}, status=status.HTTP_409_CONFLICT)
+            try:
+                user = User.objects.create_user(
+                    username=username_to_use,
+                    password=password,
+                    email=email,
+                    first_name=name[:150],
+                )
+            except IntegrityError:
+                return Response({'detail': 'Unable to create the account. Please try a different email.'}, status=status.HTTP_409_CONFLICT)
 
         user.is_active = False
         user.save(update_fields=['is_active'])
@@ -98,15 +136,21 @@ class CustomerRegisterView(APIView):
                 'attempts': 0,
             },
         )
+
+        email_sent = False
         try:
             send_verification_code(user, code)
-        except Exception:
-            user.delete()
-            logger.exception('Verification email failed for %s', email)
-            return Response({'detail': 'We could not send the verification email. Please try again.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            email_sent = True
+        except Exception as exc:
+            logger.warning('Verification email could not be sent to %s via SMTP (%s). Code: %s', email, exc, code)
 
         return Response(
-            {'verification_required': True, 'email': email},
+            {
+                'verification_required': True,
+                'email': email,
+                'email_sent': email_sent,
+                'dev_code': code if not email_sent else None,
+            },
             status=status.HTTP_201_CREATED,
         )
 

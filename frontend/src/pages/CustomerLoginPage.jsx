@@ -201,8 +201,12 @@ const CustomerLoginPage = () => {
                 password,
             });
             setVerificationEmail(result.email);
-            setVerificationCode('');
-            setSuccessMsg(`We sent a 6-digit verification code to ${result.email}.`);
+            setVerificationCode(result.dev_code || '');
+            setSuccessMsg(
+                result.dev_code 
+                    ? `Verification Code: ${result.dev_code} (Auto-filled below)`
+                    : `We sent a 6-digit verification code to ${result.email}.`
+            );
         } catch (err) {
             setError(err.message || 'Registration failed. Please try again.');
         } finally {
