@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, ShoppingBag, TrendingUp, Diamond, 
   Users, FileText, FlaskConical, BarChart2, Brain, LogOut, 
-  ChevronDown, Sparkles, Shield
+  ChevronDown, Sparkles, Shield, Settings
 } from 'lucide-react';
 import { getMe } from '../api';
 import BrandMark from '../../components/BrandMark';
@@ -26,6 +26,12 @@ const navSections = [
       { to: '/admin/bot-tester',   label: 'AI Bot Sandbox',  icon: FlaskConical    },
       { to: '/admin/bot-training', label: 'Bot Training & RAG', icon: Brain        },
       { to: '/admin/analytics',    label: 'AI Analytics',    icon: BarChart2       },
+    ]
+  },
+  {
+    title: 'SYSTEM',
+    items: [
+      { to: '/admin/settings',     label: 'Settings & Maintenance', icon: Settings },
     ]
   }
 ];

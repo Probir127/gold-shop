@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { getInvoices, sendInvoice, getClients, getServices, createInvoice, markInvoicePaid, openInvoiceHTML } from '../api';
+import { getInvoices, sendInvoice, getClients, getServices, createInvoice, markInvoicePaid, openInvoiceHTML, testSmtpConnection } from '../api';
 import Sidebar from '../components/Sidebar';
 import toast from '../components/Toast';
-import { FileText, Search, Filter, Plus, ChevronRight, X, ExternalLink, RefreshCw, Send, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+import { FileText, Search, Filter, Plus, ChevronRight, X, ExternalLink, RefreshCw, Send, CheckCircle2, Clock, AlertTriangle, Download, Eye, Check, Mail, Server } from 'lucide-react';
 
 const Invoices = () => {
   const location = useLocation();
@@ -77,16 +77,43 @@ const Invoices = () => {
     }
   };
 
-  const handleSend = async (id) => {
+  const [testingSmtp, setTestingSmtp] = useState(false);
+
+  const handleTestSmtp = async () => {
+    setTestingSmtp(true);
     try {
-      const res = await sendInvoice(id);
+      const res = await testSmtpConnection();
+      if (res.data.success) {
+        toast.success(res.data.message || 'SMTP is online & connected successfully!');
+      } else {
+        toast.error(res.data.error || 'SMTP check failed.');
+      }
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message || 'SMTP connection failed.';
+      toast.error(msg);
+    } finally {
+      setTestingSmtp(false);
+    }
+  };
+
+  const handleSend = async (id, overrideEmail = null) => {
+    try {
+      const res = await sendInvoice(id, overrideEmail ? { email: overrideEmail } : {});
       const data = res.data || {};
       if (data.email_sent) {
-        toast.success('Invoice PDF generated & sent via Email!');
+        toast.success(`Invoice PDF sent to ${data.recipient_email}!`);
+      } else if (data.email_error) {
+        if (data.email_error.includes('No recipient email')) {
+          const userEmail = window.prompt('No email found for this client. Enter email address to send invoice:');
+          if (userEmail && userEmail.trim()) {
+            return handleSend(id, userEmail.trim());
+          }
+        }
+        toast.error(data.email_error);
       } else if (data.whatsapp_response?.messages) {
         toast.success('Invoice sent via WhatsApp!');
       } else {
-        toast.success('Invoice PDF generated and marked as Sent!');
+        toast.info('Invoice PDF generated.');
       }
       fetchData();
     } catch (err) {
@@ -131,15 +158,26 @@ const Invoices = () => {
               Create, track, and manage your billing directly via WhatsApp integrations.
             </p>
           </div>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="group relative inline-flex items-center justify-center px-8 py-3.5 text-sm font-bold text-white transition-all duration-300 bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(16,185,129,0.3)]"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            <span className="relative flex items-center gap-2 drop-shadow-md z-10 group-hover:text-white transition-colors duration-300">
-              <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" /> New Invoice
-            </span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleTestSmtp}
+              disabled={testingSmtp}
+              className="inline-flex items-center justify-center px-4 py-3.5 text-xs font-bold text-slate-300 transition-all duration-200 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 hover:text-white disabled:opacity-50"
+              title="Verify Gmail SMTP handshake & send test message"
+            >
+              <Mail size={16} className={`mr-2 text-indigo-400 ${testingSmtp ? 'animate-spin' : ''}`} />
+              {testingSmtp ? 'Testing SMTP...' : 'Test SMTP Mail'}
+            </button>
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="group relative inline-flex items-center justify-center px-8 py-3.5 text-sm font-bold text-white transition-all duration-300 bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(16,185,129,0.3)]"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <span className="relative flex items-center gap-2 drop-shadow-md z-10 group-hover:text-white transition-colors duration-300">
+                <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" /> New Invoice
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Filters */}

@@ -20,7 +20,18 @@ const Login = () => {
       localStorage.setItem('access_token', res.data.access);
       localStorage.setItem('refresh_token', res.data.refresh);
       const me = await getMe();
+      const user = me.data.user || {};
       const memberships = me.data.memberships || [];
+
+      // Staff / superusers bypass tenant membership requirement
+      if (user.is_staff || user.is_superuser) {
+        const slug = memberships[0]?.tenant_slug || 'default';
+        localStorage.setItem('tenant_slug', slug);
+        localStorage.setItem('is_staff', 'true');
+        navigate('/admin');
+        return;
+      }
+
       if (memberships.length === 0) {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
@@ -32,7 +43,7 @@ const Login = () => {
       navigate('/admin');
     } catch (err) {
       setError(err.message === 'No tenant membership'
-        ? 'Your account is valid, but it is not assigned to a store workspace.'
+        ? 'This account has no store access. Log in with admin or shara_gold credentials.'
         : 'Invalid credentials. Please check and try again.');
     } finally {
       setLoading(false);

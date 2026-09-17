@@ -39,6 +39,7 @@ const AdminInvoices = React.lazy(() => import('./admin/pages/Invoices'));
 const AdminBotTester = React.lazy(() => import('./admin/pages/BotTester'));
 const AdminAnalytics = React.lazy(() => import('./admin/pages/Analytics'));
 const AdminBotTraining = React.lazy(() => import('./admin/pages/BotTraining'));
+const AdminSettings = React.lazy(() => import('./admin/pages/Settings'));
 
 // Admin Auth Guard
 const ProtectedAdminRoute = ({ children }) => {
@@ -99,6 +100,7 @@ const AnimatedRoutes = () => {
             <Route path="/admin/bot-tester" element={<ProtectedAdminRoute><AdminBotTester /></ProtectedAdminRoute>} />
             <Route path="/admin/analytics" element={<ProtectedAdminRoute><AdminAnalytics /></ProtectedAdminRoute>} />
             <Route path="/admin/bot-training" element={<ProtectedAdminRoute><AdminBotTraining /></ProtectedAdminRoute>} />
+            <Route path="/admin/settings" element={<ProtectedAdminRoute><AdminSettings /></ProtectedAdminRoute>} />
           </Routes>
         </Suspense>
       </motion.div>

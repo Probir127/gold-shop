@@ -31,18 +31,12 @@ class OrderSerializer(serializers.ModelSerializer):
         read_only_fields = ['order_id', 'total', 'subtotal', 'vat', 'order_status', 'payment_status', 'created_at', 'updated_at']
 
     def get_customer_invoice_url(self, obj):
-        request = self.context.get('request')
-        if request and (request.method == 'POST' or request.user.is_authenticated):
-            token = self.get_customer_access_token(obj)
-            return f"/api/orders/{obj.order_id}/invoice/?copy=customer&token={token}"
-        return None
+        token = self.get_customer_access_token(obj)
+        return f"/api/orders/{obj.order_id}/invoice/?copy=customer&token={token}"
 
     def get_customer_access_token(self, obj):
-        request = self.context.get('request')
-        if request and (request.method == 'POST' or request.user.is_authenticated):
-            from core.utils.invoice_access import make_invoice_access_token
-            return make_invoice_access_token('order', obj.order_id)
-        return None
+        from core.utils.invoice_access import make_invoice_access_token
+        return make_invoice_access_token('order', obj.order_id)
 
     @transaction.atomic
     def create(self, validated_data):
@@ -88,8 +82,6 @@ class OrderSerializer(serializers.ModelSerializer):
         
         # Auto-create core Invoice for Store & Admin. This is inside the
         # transaction so an order cannot commit without its invoice.
-        import logging
-        logger = logging.getLogger(__name__)
         from core.models import Invoice, Client, Tenant
         tenant = Tenant.objects.filter(
             slug=settings.DEFAULT_TENANT_SLUG,

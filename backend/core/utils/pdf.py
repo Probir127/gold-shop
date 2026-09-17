@@ -55,14 +55,6 @@ def generate_invoice_pdf(invoice) -> str:
             fontSize=10,
             textColor=colors.HexColor('#666666'),
         )
-        heading2_style = ParagraphStyle(
-            'Heading2Custom',
-            parent=styles['Heading2'],
-            fontName='Helvetica-Bold',
-            fontSize=14,
-            textColor=colors.HexColor('#1a1a1a'),
-            spaceAfter=6,
-        )
         normal_style = ParagraphStyle(
             'NormalCustom',
             parent=styles['Normal'],

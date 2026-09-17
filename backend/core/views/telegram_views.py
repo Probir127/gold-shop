@@ -7,7 +7,6 @@ from django.shortcuts import get_object_or_404
 from ..models import Tenant, Client, Conversation, Channel, BotAnalytics
 from ..utils.telegram_utils import TelegramBot
 from ..utils.ai_bot import generate_reply
-import time
 import secrets
 
 logger = logging.getLogger(__name__)
@@ -99,8 +98,6 @@ class TelegramWebhookView(APIView):
 
         # 3. AI Response Loop (if bot enabled)
         if client.bot_enabled:
-            start_time = time.time()
-            
             try:
                 # Use the real AI pipeline instead of the mock KnowledgeEngine
                 result = generate_reply(client, user_text, tenant=tenant, channel='telegram')

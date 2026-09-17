@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, render
 from django.http import FileResponse, Http404
 from django.utils import timezone
 from django.conf import settings
-from ..models import Invoice, Tenant
+from ..models import Invoice
 from ..serializers import InvoiceSerializer
 from ..permissions import IsInvoiceHTMLAccessAllowed, IsTenantManagerOrStaff
 from ..utils.pdf import generate_invoice_pdf
@@ -66,23 +66,25 @@ class SendInvoiceView(APIView):
     permission_classes = [IsTenantManagerOrStaff]
 
     def post(self, request, pk):
-        tenant = request.tenant
+        tenant = getattr(request, 'tenant', None)
         if not tenant:
             return Response({'detail': 'No tenant context.'}, status=400)
 
         invoice = get_object_or_404(Invoice, pk=pk, tenant=tenant)
 
-        # Step 1: Generate PDF if not already done
-        if not invoice.pdf_path:
+        # Step 1: Generate PDF if not already done or file missing
+        pdf_disk_path = os.path.join(settings.MEDIA_ROOT, invoice.pdf_path) if invoice.pdf_path else None
+        if not invoice.pdf_path or not pdf_disk_path or not os.path.exists(pdf_disk_path):
             invoice.pdf_path = generate_invoice_pdf(invoice)
-            invoice.save()
+            invoice.save(update_fields=['pdf_path'])
 
         # Step 2: Build public URL for the PDF
         pdf_url = make_invoice_pdf_url(request, invoice)
 
-        # Step 3: Resolve customer email (from client, order, or registered account)
+        # Step 3: Resolve customer email (from request payload, client, order, or registered account)
         email_sent = False
-        client_email = getattr(invoice.client, 'email', '') or ''
+        email_error = None
+        client_email = str(request.data.get('email', '')).strip() or getattr(invoice.client, 'email', '') or ''
         
         if not client_email:
             # Fallback 1: lookup matching order
@@ -95,9 +97,6 @@ class SendInvoiceView(APIView):
                 order = Order.objects.filter(customer_phone=invoice.client.phone).order_by('-created_at').first()
             if order and order.customer_email:
                 client_email = order.customer_email
-                if invoice.client and not invoice.client.email:
-                    invoice.client.email = client_email
-                    invoice.client.save(update_fields=['email'])
 
         if not client_email and invoice.client and invoice.client.phone:
             # Fallback 2: registered user account
@@ -106,6 +105,11 @@ class SendInvoiceView(APIView):
             if usr and usr.email:
                 client_email = usr.email
 
+        # Keep client record updated with detected email
+        if client_email and invoice.client and not invoice.client.email:
+            invoice.client.email = client_email
+            invoice.client.save(update_fields=['email'])
+
         if client_email:
             try:
                 from django.core.mail import EmailMessage
@@ -113,11 +117,11 @@ class SendInvoiceView(APIView):
                 client_name = invoice.client.name if invoice.client else "Valued Customer"
                 biz_name = tenant.business_name if tenant else "Sahara Gold"
                 msg = EmailMessage(
-                    subject=f'Official Invoice #{invoice.invoice_number} | {biz_name}',
+                    subject=f'Official Certified Invoice #{invoice.invoice_number} | {biz_name}',
                     body=(
                         f'Dear {client_name},\n\n'
                         f'Thank you for choosing {biz_name}.\n'
-                        f'Please find your official invoice #{invoice.invoice_number} attached as a PDF.\n\n'
+                        f'Please find your official certified invoice #{invoice.invoice_number} attached as a PDF.\n\n'
                         f'Invoice Summary:\n'
                         f'• Invoice Number: #{invoice.invoice_number}\n'
                         f'• Total Amount: {invoice.currency} {invoice.total_amount:,.2f}\n'
@@ -135,11 +139,14 @@ class SendInvoiceView(APIView):
                 email_sent = True
                 logger.info(f"Invoice email successfully sent to {client_email} for invoice {invoice.invoice_number}")
             except Exception as mail_err:
+                email_error = str(mail_err)
                 logger.error(f"Could not send invoice email to {client_email}: {mail_err}")
+        else:
+            email_error = "No recipient email address found for this client. Please specify an email."
 
         # Step 4: Send via WhatsApp (if credentials configured)
         wa_result = {}
-        if invoice.client.phone:
+        if invoice.client and invoice.client.phone:
             caption = f'Hi! Here is your invoice {invoice.invoice_number} from {tenant.business_name}. Total: {invoice.currency} {invoice.total_amount}.'
             try:
                 wa_result = send_document(
@@ -153,18 +160,20 @@ class SendInvoiceView(APIView):
                 logger.warning(f"WhatsApp send failed: {wa_err}")
                 wa_result = {'error': str(wa_err)}
 
-        # Step 5: Update invoice status
-        invoice.status = 'sent'
-        invoice.sent_at = timezone.now()
-        invoice.save(update_fields=['status', 'sent_at'])
-
-        # Step 6: Update client status
-        invoice.client.status = 'invoiced'
-        invoice.client.save(update_fields=['status'])
+        # Step 5: Update invoice status if dispatched
+        if email_sent or (wa_result and not wa_result.get('error')):
+            invoice.status = 'sent'
+            invoice.sent_at = timezone.now()
+            invoice.save(update_fields=['status', 'sent_at'])
+            if invoice.client:
+                invoice.client.status = 'invoiced'
+                invoice.client.save(update_fields=['status'])
 
         return Response({
-            'status': 'sent',
+            'status': 'sent' if email_sent else ('partial' if (wa_result and not wa_result.get('error')) else 'failed'),
             'email_sent': email_sent,
+            'recipient_email': client_email,
+            'email_error': email_error,
             'whatsapp_response': wa_result,
             'pdf_url': pdf_url
         })

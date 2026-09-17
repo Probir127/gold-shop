@@ -8,7 +8,7 @@ import logging
 from huggingface_hub import InferenceClient
 from django.conf import settings
 from django.utils import timezone
-from ..models import Conversation, BotAnalytics, BotConfig
+from ..models import Conversation, BotConfig
 from .intent_classifier import classify_intent, get_quick_reply, HANDOFF_REPLY
 from .sentiment_analyzer import analyze_sentiment
 

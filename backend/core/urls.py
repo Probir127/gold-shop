@@ -2,7 +2,7 @@ from __future__ import annotations
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import auth_views, client_views, conversation_views
-from .views import invoice_views, dashboard_views, whatsapp_views, service_views, bot_test_views, analytics_views, bot_config_views, reset_views, knowledge_views, team_views, public_views, telegram_views, instagram_views, messenger_views, ai_analytics_views, contact_views
+from .views import invoice_views, dashboard_views, whatsapp_views, service_views, bot_test_views, analytics_views, bot_config_views, reset_views, knowledge_views, team_views, public_views, telegram_views, instagram_views, messenger_views, ai_analytics_views, contact_views, smtp_views, system_views
 
 urlpatterns = [
     # Public (Widget)
@@ -76,4 +76,8 @@ urlpatterns = [
 
     # Maintenance: Manual reset actions
     path('reset/',           reset_views.ResetView.as_view(),     name='reset-app'),
+    # SMTP Diagnostics
+    path('smtp/test/',       smtp_views.SMTPDiagnosticView.as_view(), name='smtp-test'),
+    # System Health
+    path('system/health/',   system_views.SystemHealthView.as_view(), name='system-health'),
 ]

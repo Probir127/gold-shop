@@ -4,8 +4,7 @@ from rest_framework.response import Response
 from rest_framework import permissions
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
-from ..models import Tenant, BotConfig, Client, Conversation, BotAnalytics
-from ..utils.knowledge_engine import KnowledgeEngine
+from ..models import Tenant, Client, Conversation, BotAnalytics
 import uuid
 
 class PublicBotConfigView(APIView):
@@ -15,7 +14,6 @@ class PublicBotConfigView(APIView):
     def get(self, request, tenant_slug):
         try:
             tenant = Tenant.objects.get(slug=tenant_slug, is_active=True)
-            bot_config = BotConfig.get_config(tenant)
             return Response({
                 'business_name': tenant.business_name,
                 'primary_color': tenant.widget_color,

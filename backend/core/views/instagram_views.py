@@ -1,7 +1,6 @@
 from __future__ import annotations
 import json
 import logging
-import time
 import requests
 from django.views import View
 from django.http import JsonResponse, HttpResponse
@@ -80,7 +79,6 @@ class InstagramWebhookView(View):
             for entry in data.get('entry', []):
                 for messaging_event in entry.get('messaging', []):
                     sender_id = messaging_event['sender']['id']
-                    recipient_id = messaging_event['recipient']['id']
                     
                     # Deduplicate outbound bot responses sent back as webhook echoes
                     if sender_id == channel.config.get('instagram_page_id'):
@@ -136,8 +134,6 @@ class InstagramWebhookView(View):
     def _trigger_ai_reply(self, tenant, channel, client, sender_id, user_text, msg_id):
         """Invokes generate_reply and sends response to Instagram via Graph API."""
         try:
-            start_time = time.time()
-            
             # Run LLM pipeline
             result = generate_reply(client, user_text, tenant=tenant, channel='instagram')
             ai_reply = result['reply']

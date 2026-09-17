@@ -1,8 +1,8 @@
-from rest_framework import viewsets, mixins, status, permissions
+from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import BasePermission
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render
 from .models import Order
 from .serializers import OrderSerializer
 from core.utils.invoice_access import validate_invoice_access_token
@@ -17,17 +17,19 @@ def normalize_phone(value):
 
 
 class OrderInvoiceAccessPermission(BasePermission):
-    """Require a signed customer link or an authenticated owner/staff user."""
+    """Require a signed link or an authenticated owner/staff user."""
 
     def has_permission(self, request, view):
+        token = request.query_params.get('token')
+        order_id = getattr(view, 'kwargs', {}).get('order_id')
+        if token and validate_invoice_access_token(token, 'order', order_id):
+            return True
+
         copy_type = request.query_params.get('copy', 'customer').lower()
         if copy_type in {'admin', 'store'}:
-            return bool(request.user and request.user.is_staff)
-        return bool(request.user and request.user.is_authenticated) or validate_invoice_access_token(
-            request.query_params.get('token'),
-            'order',
-            getattr(view, 'kwargs', {}).get('order_id'),
-        )
+            return bool(request.user and (request.user.is_staff or request.user.is_superuser))
+
+        return bool(request.user and request.user.is_authenticated)
 
 
 class OrderAccessPermission(BasePermission):
@@ -176,11 +178,15 @@ class OrderViewSet(viewsets.ModelViewSet):
         is_admin_copy = copy_type in ['admin', 'store']
         copy_title = "Store & Accounts Copy" if is_admin_copy else "Customer Copy"
 
-        if is_admin_copy and not request.user.is_staff:
-            return Response({'detail': 'Admin invoice access requires staff authentication.'}, status=status.HTTP_403_FORBIDDEN)
-        if not is_admin_copy and not validate_invoice_access_token(
+        has_valid_token = validate_invoice_access_token(
             request.query_params.get('token'), 'order', order.order_id
-        ):
+        )
+        is_staff = bool(request.user and (request.user.is_staff or request.user.is_superuser))
+
+        if is_admin_copy and not is_staff and not has_valid_token:
+            return Response({'detail': 'Admin invoice access requires staff authentication or a signed token.'}, status=status.HTTP_403_FORBIDDEN)
+
+        if not is_admin_copy and not has_valid_token:
             user = request.user
             if not user.is_authenticated or (
                 user.email.lower() != order.customer_email.lower()
@@ -205,3 +211,30 @@ class OrderViewSet(viewsets.ModelViewSet):
             'copy_title': copy_title,
         }
         return render(request, 'invoice_luxury.html', context)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAdminUser])
+    def send_invoice(self, request, order_id=None):
+        """
+        Admin action to send or resend the official invoice PDF email to the customer.
+        POST /api/orders/<order_id>/send_invoice/
+        Optional body: { "email": "override@example.com" }
+        """
+        order = self.get_object()
+        override_email = str(request.data.get('email', '')).strip()
+        recipient_email = override_email or order.customer_email
+
+        if not recipient_email:
+            return Response(
+                {"error": "No email address found for this order. Please provide a customer email address.", "success": False},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        from .emails import send_order_invoice_now
+        ok, msg = send_order_invoice_now(order, recipient_email=recipient_email)
+        if ok:
+            return Response({"success": True, "recipient_email": recipient_email, "message": msg})
+        else:
+            return Response(
+                {"error": f"SMTP email delivery failed: {msg}", "success": False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

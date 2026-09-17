@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
-import { getOrders, updateOrderStatus, openOrderInvoiceHTML } from '../api';
+import { getOrders, updateOrderStatus, openOrderInvoiceHTML, sendOrderInvoiceEmail } from '../api';
 import toast from '../components/Toast';
 import { 
   ShoppingBag, Search, Filter, CheckCircle2, Truck, Clock, 
-  XCircle, Send, Phone, MapPin, DollarSign, Calendar, Eye, FileText
+  XCircle, Send, Phone, MapPin, DollarSign, Calendar, Eye, FileText, Mail, Loader2
 } from 'lucide-react';
 
 const Orders = () => {
@@ -47,6 +47,32 @@ const Orders = () => {
       toast.error('Failed to update status');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const [sendingInvoiceId, setSendingInvoiceId] = useState(null);
+
+  const handleSendInvoiceEmail = async (order, customEmail = null) => {
+    let emailToSend = customEmail || order.customer_email;
+    if (!emailToSend) {
+      const prompted = window.prompt('No email address found for this customer. Please enter recipient email:');
+      if (!prompted || !prompted.trim()) return;
+      emailToSend = prompted.trim();
+    }
+
+    setSendingInvoiceId(order.order_id);
+    try {
+      const res = await sendOrderInvoiceEmail(order.order_id, { email: emailToSend });
+      if (res.data?.success) {
+        toast.success(res.data.message || `Invoice PDF successfully emailed to ${emailToSend}!`);
+      } else {
+        toast.error(res.data?.error || 'Failed to send invoice email.');
+      }
+    } catch (err) {
+      const errMsg = err.response?.data?.error || err.message || 'SMTP delivery failed.';
+      toast.error(errMsg);
+    } finally {
+      setSendingInvoiceId(null);
     }
   };
 
@@ -202,12 +228,26 @@ const Orders = () => {
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => openOrderInvoiceHTML(order.order_id, 'admin').catch(() => toast.error('Failed to open invoice.'))}
+                          onClick={() => openOrderInvoiceHTML(order.order_id, 'admin', order.customer_access_token).catch(() => toast.error('Failed to open invoice.'))}
                           className="px-2 py-1 rounded-lg bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/20 hover:bg-[#d4af37] hover:text-black transition flex items-center gap-1 text-xs font-semibold"
                           title="View Store / Admin Copy (Dispatch Slip)"
                         >
                           <FileText size={13} />
                           <span>Invoice</span>
+                        </button>
+
+                        <button
+                          disabled={sendingInvoiceId === order.order_id}
+                          onClick={() => handleSendInvoiceEmail(order)}
+                          className="px-2 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition flex items-center gap-1 text-xs font-semibold disabled:opacity-50"
+                          title={`Email Official Invoice PDF to ${order.customer_email || 'customer'}`}
+                        >
+                          {sendingInvoiceId === order.order_id ? (
+                            <Loader2 size={13} className="animate-spin" />
+                          ) : (
+                            <Mail size={13} />
+                          )}
+                          <span>Email</span>
                         </button>
 
                         <button
@@ -312,18 +352,36 @@ const Orders = () => {
                 {/* Invoice Links */}
                 <div className="flex gap-2">
                   <button
-                    onClick={() => openOrderInvoiceHTML(selectedOrder.order_id, 'admin').catch(() => toast.error('Failed to open invoice.'))}
+                    onClick={() => openOrderInvoiceHTML(selectedOrder.order_id, 'admin', selectedOrder.customer_access_token).catch(() => toast.error('Failed to open invoice.'))}
                     className="flex-1 py-2 rounded-xl bg-[#d4af37]/15 hover:bg-[#d4af37] text-[#d4af37] hover:text-black border border-[#d4af37]/30 text-xs font-bold transition flex items-center justify-center gap-1.5"
                   >
                     <FileText size={14} /> Store Copy (Dispatch Slip)
                   </button>
                   <button
-                    onClick={() => openOrderInvoiceHTML(selectedOrder.order_id, 'customer').catch(() => toast.error('Failed to open invoice.'))}
+                    onClick={() => openOrderInvoiceHTML(selectedOrder.order_id, 'customer', selectedOrder.customer_access_token).catch(() => toast.error('Failed to open invoice.'))}
                     className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition flex items-center justify-center gap-1.5"
                   >
                     <FileText size={14} /> Customer Copy (Hallmark)
                   </button>
                 </div>
+
+                {/* Email Invoice Direct Dispatch */}
+                <button
+                  disabled={sendingInvoiceId === selectedOrder.order_id}
+                  onClick={() => handleSendInvoiceEmail(selectedOrder)}
+                  className="w-full py-2.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-bold transition flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {sendingInvoiceId === selectedOrder.order_id ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <Mail size={15} />
+                  )}
+                  <span>
+                    {sendingInvoiceId === selectedOrder.order_id
+                      ? 'Dispatching Certified PDF via SMTP...'
+                      : `Email Certified Invoice PDF to ${selectedOrder.customer_email || 'Customer'}`}
+                  </span>
+                </button>
 
                 {/* Action Buttons */}
                 <div className="flex gap-3 pt-2">

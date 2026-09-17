@@ -7,7 +7,7 @@ import re
 import logging
 from django.conf import settings
 from rates.models import GoldRate
-from products.models import Product, Category
+from products.models import Product
 from orders.models import Order
 
 logger = logging.getLogger(__name__)
@@ -209,9 +209,9 @@ def generate_ai_response(history_messages, new_user_message):
         # If no specific matched products were found, fallback to general bestsellers
         featured = ProductSerializer(Product.objects.filter(in_stock=True)[:3], many=True).data
         return (
-            f"💎 Sahara Gold Luxury Recommendations:\n\n"
-            f"For weddings & bridal sets, we highly recommend our 22K Royal Heritage Collection, featuring handcrafted necklaces, chokers, and bangles.\n\n"
-            f"Here are some popular signature items from our collection:",
+            "💎 Sahara Gold Luxury Recommendations:\n\n"
+            "For weddings & bridal sets, we highly recommend our 22K Royal Heritage Collection, featuring handcrafted necklaces, chokers, and bangles.\n\n"
+            "Here are some popular signature items from our collection:",
             featured
         )
 

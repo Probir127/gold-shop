@@ -1,6 +1,5 @@
 from sslcommerz_lib import SSLCOMMERZ
 from django.conf import settings
-import uuid
 
 class SslCommerzGateway:
     """

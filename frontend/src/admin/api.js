@@ -137,17 +137,23 @@ export const openInvoiceHTML = async (id, copy = 'customer', signedUrl = '') => 
     setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
-export const openOrderInvoiceHTML = async (orderId, copy = 'admin') => {
+export const openOrderInvoiceHTML = async (orderId, copy = 'admin', token = '') => {
     const preview = window.open('', '_blank')
-    const response = await api.get(`/orders/${encodeURIComponent(orderId)}/invoice/?copy=${copy}`, { responseType: 'blob' })
-    const url = URL.createObjectURL(response.data)
-    if (preview) {
-        preview.opener = null
-        preview.location.href = url
-    } else {
-        window.open(url, '_blank', 'noopener,noreferrer')
+    try {
+        const tokenParam = token ? `&token=${encodeURIComponent(token)}` : ''
+        const response = await api.get(`/orders/${encodeURIComponent(orderId)}/invoice/?copy=${copy}${tokenParam}`, { responseType: 'blob' })
+        const url = URL.createObjectURL(response.data)
+        if (preview) {
+            preview.opener = null
+            preview.location.href = url
+        } else {
+            window.open(url, '_blank', 'noopener,noreferrer')
+        }
+        setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    } catch (err) {
+        if (preview) preview.close()
+        throw err
     }
-    setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 // ── Phase 2: Handoff & Analytics ─────────────────────────────
@@ -167,7 +173,8 @@ export const deleteKnowledgeSource = (id)     => api.delete(`/knowledge-sources/
 export const syncKnowledgeSource   = (id)     => api.post(`/knowledge-sources/${id}/sync/`)
 
 // ── Maintenance: Manual Reset ─────────────────────────────────
-export const resetApp = (action, extraData = {}) => api.post('/reset/', { action, ...extraData })
+export const resetApp       = (action, extraData = {}) => api.post('/reset/', { action, ...extraData })
+export const getSystemHealth = ()                       => api.get('/system/health/')
 
 // ── Omnichannel (Phase 6) ─────────────────────────────────────
 export const registerTelegramWebhook = (slug, url) => api.post(`/webhooks/telegram/${slug}/register/`, { webhook_url: url })
@@ -175,6 +182,8 @@ export const registerTelegramWebhook = (slug, url) => api.post(`/webhooks/telegr
 // ── Sahara Gold E-Commerce Operations ────────────────────────
 export const getOrders       = () => api.get('/orders/')
 export const updateOrderStatus = (orderId, data) => api.post(`/orders/${orderId}/update_status/`, data)
+export const sendOrderInvoiceEmail = (orderId, data = {}) => api.post(`/orders/${orderId}/send_invoice/`, data)
+export const testSmtpConnection = (email) => api.post('/smtp/test/', { email })
 
 export const getGoldRatesHistory = () => api.get('/rates/')
 export const getLatestGoldRate   = () => api.get('/rates/latest/', { params: { _admin_refresh: Date.now() } })

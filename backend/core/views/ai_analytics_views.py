@@ -5,8 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.db.models import Count, Avg, Q, Sum
 from django.utils import timezone
 from datetime import timedelta
-from core.models import BotAnalytics, Client, Invoice, Conversation
-import json
+from core.models import BotAnalytics, Client, Invoice
 
 
 class AIAnalyticsStatsView(APIView):

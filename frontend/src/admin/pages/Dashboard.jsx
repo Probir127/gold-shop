@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { getStats, getClients, getMe, resetApp, getOrders, getLatestGoldRate, getProductsAdmin } from '../api';
 import Sidebar from '../components/Sidebar';
 import toast from '../components/Toast';
-import { Users, MessageSquare, CreditCard, TrendingUp, ChevronRight, Bot, AlertTriangle, Zap, TrendingDown, Trash2, RotateCcw, ShieldOff, X, Smile, Meh, Frown } from 'lucide-react';
+import { Users, MessageSquare, CreditCard, TrendingUp, ChevronRight, Bot, AlertTriangle, Zap, TrendingDown, Trash2, RotateCcw, ShieldOff, X, Smile, Meh, Frown, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const RESET_ACTIONS = [
@@ -297,12 +297,20 @@ const Dashboard = () => {
             </p>
           </div>
           {role === 'admin' && (
-            <button
-              onClick={() => setShowReset(true)}
-              className="group flex items-center gap-2 glass px-5 py-3 rounded-2xl text-sm font-bold text-rose-400 hover:text-white hover:bg-rose-500/20 hover:border-rose-500/40 transition-all duration-300 shadow-[0_0_20px_rgba(244,63,94,0.1)] hover:shadow-[0_0_30px_rgba(244,63,94,0.3)] hover:scale-105 active:scale-95"
-            >
-              <Trash2 size={18} className="group-hover:rotate-12 transition-transform" /> System Settings
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowReset(true)}
+                className="group flex items-center gap-2 glass px-4 py-3 rounded-2xl text-sm font-bold text-rose-400 hover:text-white hover:bg-rose-500/20 hover:border-rose-500/40 transition-all duration-300 shadow-[0_0_20px_rgba(244,63,94,0.1)] hover:shadow-[0_0_30px_rgba(244,63,94,0.3)] hover:scale-105 active:scale-95"
+              >
+                <Trash2 size={16} className="group-hover:rotate-12 transition-transform" /> Quick Reset
+              </button>
+              <button
+                onClick={() => navigate('/admin/settings')}
+                className="group flex items-center gap-2 glass px-5 py-3 rounded-2xl text-sm font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-all duration-300 hover:scale-105 active:scale-95"
+              >
+                <Settings size={16} className="group-hover:rotate-45 transition-transform duration-500" /> System Settings
+              </button>
+            </div>
           )}
         </div>
 

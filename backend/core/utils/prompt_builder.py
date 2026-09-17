@@ -142,7 +142,7 @@ Use ONLY this information to answer questions. Do NOT make up facts.
     prompt += escalation_section
     prompt += custom_rules_section
 
-    prompt += f"""
+    prompt += """
 ## Your Rules
 1. NEVER make up services, prices, or facts not listed above
 2. If asked about something you don't know, say "Let me connect you with our team for more details! 😊"

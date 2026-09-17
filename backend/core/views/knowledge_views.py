@@ -1,12 +1,10 @@
 from __future__ import annotations
-from rest_framework import generics, status, views
+from rest_framework import generics, views
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from ..models import KnowledgeSource, KnowledgeChunk
+from ..models import KnowledgeSource
 from ..serializers import KnowledgeSourceSerializer
 from ..permissions import IsTenantManagerOrStaff
-from ..utils.knowledge_engine import ingest_source
 
 class KnowledgeSourceListCreateView(generics.ListCreateAPIView):
     serializer_class = KnowledgeSourceSerializer

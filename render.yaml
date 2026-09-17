@@ -42,8 +42,10 @@ services:
         value: "False"
       - key: EMAIL_HOST_USER
         value: "saharagold19@gmail.com"
+      - key: EMAIL_HOST_PASSWORD
+        value: "bbashnfejleenppq"
       - key: DEFAULT_FROM_EMAIL
-        value: "saharagold19@gmail.com"
+        value: "Sahara Gold <saharagold19@gmail.com>"
       - key: STORE_EMAIL
         value: "saharagold19@gmail.com"
       - key: USD_TO_BDT_RATE
