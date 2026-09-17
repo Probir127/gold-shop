@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useGoldRates, useGoldRateHistory } from '../hooks/useShopData';
+import { useGoldRates, useGoldRateHistory, useLiveMarketRates } from '../hooks/useShopData';
 import { Calculator, TrendingUp, Sparkles } from 'lucide-react';
 import { formatPrice } from '../utils/formatters';
 import SEO from '../components/SEO';
@@ -8,7 +8,7 @@ import GoldRateChart from '../components/gold/GoldRateChart';
 import PurityComparison from '../components/gold/PurityComparison';
 
 const GoldRatesPage = () => {
-    // Fetch Rates
+    // Fetch Rates — stored rates load instantly from DB
     const { data: goldRates = {
         rate_22k: 0,
         rate_21k: 0,
@@ -17,6 +17,8 @@ const GoldRatesPage = () => {
         date: new Date().toISOString()
     } } = useGoldRates();
     const { data: rateHistory = [] } = useGoldRateHistory();
+    // Live international market data — loads separately, non-blocking
+    const { data: liveMarket } = useLiveMarketRates();
 
     const [weight, setWeight] = useState('');
     const [purity, setPurity] = useState('22K');
@@ -74,6 +76,31 @@ const GoldRatesPage = () => {
 
                 {/* Live Ticker */}
                 <GoldRateTicker rates={goldRates} history={rateHistory} />
+
+                {/* Live International Market Info — shows when external API is available */}
+                {liveMarket && (
+                    <div style={{
+                        margin: '12px 0 20px',
+                        padding: '10px 18px',
+                        background: 'linear-gradient(90deg, rgba(74,222,128,0.07), rgba(212,175,55,0.07))',
+                        border: '1px solid rgba(74,222,128,0.2)',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        flexWrap: 'wrap',
+                        fontSize: '13px',
+                        color: '#aaa',
+                    }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#4ade80', display: 'inline-block', boxShadow: '0 0 6px #4ade80' }} />
+                            <strong style={{ color: '#4ade80' }}>Live Market</strong>
+                        </span>
+                        <span>International: <strong style={{ color: '#fff' }}>${liveMarket.price_usd_per_oz?.toLocaleString()}/oz</strong></span>
+                        <span>24K BDT: <strong style={{ color: 'var(--color-gold-primary)' }}>৳{liveMarket.rate_24k?.toLocaleString()}/g</strong></span>
+                        <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#555' }}>{liveMarket.source}</span>
+                    </div>
+                )}
 
                 {/* Interactive Chart */}
                 <GoldRateChart history={rateHistory} currentRate={goldRates.rate_22k} purity="22K" />

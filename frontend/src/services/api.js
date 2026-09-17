@@ -74,20 +74,18 @@ export const api = {
         return Array.isArray(data) ? data : (data.results || []);
     },
     getLatestRates: async () => {
-        const liveRes = await nf(`${API_BASE}/rates/live-market/`);
-        if (liveRes.ok) {
-            const liveData = await liveRes.json();
-            if (liveData.status === 'success' && liveData.rate_22k) {
-                return {
-                    ...liveData,
-                    date: new Date().toISOString(),
-                };
-            }
-        }
-
+        // Always load stored rates first — fast & reliable
         const storedRes = await nf(`${API_BASE}/rates/latest/`);
         if (!storedRes.ok) throw new Error('Failed to fetch rates');
         return storedRes.json();
+    },
+    getLiveMarketRates: async () => {
+        // Live international market data — separate, non-blocking call
+        const liveRes = await nf(`${API_BASE}/rates/live-market/`);
+        if (!liveRes.ok) throw new Error('Live market unavailable');
+        const data = await liveRes.json();
+        if (data.status !== 'success') throw new Error('Live market data error');
+        return data;
     },
     getGoldRates: async () => {
         const res = await nf(`${API_BASE}/rates/latest/`);

@@ -1,8 +1,6 @@
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
 from django.core.cache import cache
 from .models import GoldRate
 from .serializers import GoldRateSerializer
@@ -15,12 +13,11 @@ def invalidate_rate_cache():
     cache.clear()
 
 class LatestGoldRateView(generics.RetrieveAPIView):
-    # Public: Single latest object
+    # Public: Single latest object — no server-side cache (React Query handles client caching)
     queryset = GoldRate.objects.all().order_by('-date')
     serializer_class = GoldRateSerializer
     permission_classes = [permissions.AllowAny]
 
-    @method_decorator(cache_page(60 * 5))
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
 

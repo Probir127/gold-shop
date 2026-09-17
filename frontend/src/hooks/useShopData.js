@@ -25,9 +25,23 @@ export const useGoldRates = () => {
     });
 };
 
+// Separate hook for live international market data — non-blocking
+// Loads after stored rates are already displayed
+export const useLiveMarketRates = () => {
+    return useQuery({
+        queryKey: ['liveMarketRates'],
+        queryFn: api.getLiveMarketRates,
+        refetchInterval: 2 * 60 * 1000, // Refresh every 2 min
+        retry: 1,
+        // Never throw — just return undefined if unavailable
+        throwOnError: false,
+    });
+};
+
 export const useGoldRateHistory = () => {
     return useQuery({
         queryKey: ['goldRateHistory'],
         queryFn: api.getGoldRatesHistory,
     });
 };
+
