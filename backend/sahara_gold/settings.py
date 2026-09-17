@@ -301,8 +301,10 @@ if EMAIL_USE_TLS and EMAIL_USE_SSL:
 
 if EMAIL_BACKEND.endswith('smtp.EmailBackend'):
     if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
-        raise RuntimeError('SMTP email backend requires EMAIL_HOST_USER and EMAIL_HOST_PASSWORD.')
-    if not DEFAULT_FROM_EMAIL or not STORE_EMAIL:
+        import warnings
+        warnings.warn('EMAIL_HOST_PASSWORD not configured; falling back to console email backend.')
+        EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    elif not DEFAULT_FROM_EMAIL or not STORE_EMAIL:
         raise RuntimeError('SMTP email backend requires DEFAULT_FROM_EMAIL and STORE_EMAIL.')
 
 # AI / LLM Configuration

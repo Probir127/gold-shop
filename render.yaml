@@ -32,8 +32,6 @@ services:
         value: "testbox"
       - key: SSLCOMMERZ_STORE_PASS
         value: "qwerty"
-      - key: EMAIL_BACKEND
-        value: "django.core.mail.backends.smtp.EmailBackend"
       - key: EMAIL_HOST
         value: "smtp.gmail.com"
       - key: EMAIL_PORT
