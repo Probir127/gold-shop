@@ -3,10 +3,16 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
+from django.core.cache import cache
 from .models import GoldRate
 from .serializers import GoldRateSerializer
 from .services import fetch_live_gold_price, sync_live_rate_to_database
 from core.permissions import IsStaffForWrite
+
+
+def invalidate_rate_cache():
+    """Clear cached public responses after official rates change."""
+    cache.clear()
 
 class LatestGoldRateView(generics.RetrieveAPIView):
     # Public: Single latest object
@@ -40,8 +46,11 @@ class GoldRateCreateView(generics.ListCreateAPIView):
                 serializer = self.get_serializer(instance, data=data, partial=True)
                 serializer.is_valid(raise_exception=True)
                 self.perform_update(serializer)
+                invalidate_rate_cache()
                 return Response(serializer.data, status=status.HTTP_200_OK)
-        return super().create(request, *args, **kwargs)
+            response = super().create(request, *args, **kwargs)
+            invalidate_rate_cache()
+            return response
 
     def perform_update(self, serializer):
         serializer.save()
@@ -69,6 +78,7 @@ class SyncLiveGoldRateView(APIView):
         obj, info = sync_live_rate_to_database()
         if not obj:
             return Response({'error': 'Failed to sync with live market', 'details': info}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        invalidate_rate_cache()
         
         serializer = GoldRateSerializer(obj)
         return Response({
