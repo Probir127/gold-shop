@@ -177,7 +177,7 @@ export const getOrders       = () => api.get('/orders/')
 export const updateOrderStatus = (orderId, data) => api.post(`/orders/${orderId}/update_status/`, data)
 
 export const getGoldRatesHistory = () => api.get('/rates/')
-export const getLatestGoldRate   = () => api.get('/rates/latest/')
+export const getLatestGoldRate   = () => api.get('/rates/latest/', { params: { _admin_refresh: Date.now() } })
 export const updateGoldRate      = (data) => api.post('/rates/', data)
 export const getLiveGoldMarket   = () => api.get('/rates/live-market/')
 export const syncLiveGoldRate    = () => api.post('/rates/sync-live/')
