@@ -13,6 +13,7 @@ from ..permissions import IsInvoiceHTMLAccessAllowed, IsTenantManagerOrStaff
 from ..utils.pdf import generate_invoice_pdf
 from ..utils.whatsapp import send_document
 from ..utils.invoice_access import validate_invoice_access_token
+from django.template.loader import render_to_string
 
 logger = logging.getLogger(__name__)
 
@@ -136,10 +137,24 @@ class SendInvoiceView(APIView):
                 f'Hotline / WhatsApp: 01799-281878\n\n'
                 f'Regards,\n{biz_name}'
             )
+            html_message = None
+            try:
+                html_message = render_to_string('emails/invoice_dispatch.html', {
+                    'client_name': client_name,
+                    'invoice_number': invoice.invoice_number,
+                    'invoice_total': invoice.total_amount,
+                    'currency': invoice.currency,
+                    'invoice_status': invoice.status,
+                    'business_name': biz_name,
+                })
+            except Exception as tmpl_err:
+                logger.warning("Could not render invoice HTML template for %s: %s", invoice.invoice_number, tmpl_err)
+
             ok, mail_msg = send_email_resilient(
                 subject=subject,
                 body=body,
                 to_emails=client_email,
+                html_message=html_message,
                 attachments=attachments
             )
             if ok:

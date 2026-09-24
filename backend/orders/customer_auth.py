@@ -15,6 +15,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.template.loader import render_to_string
 from core.utils.mailer import send_email_resilient
 from .models import CustomerEmailVerification
 
@@ -42,10 +43,19 @@ def send_verification_code(user, code: str) -> tuple[bool, str]:
         'Hotline / WhatsApp: 01799-281878\n\n'
         'Regards,\nSahara Gold'
     )
+    html_message = None
+    try:
+        html_message = render_to_string('emails/otp_verification.html', {
+            'user_name': user.first_name or 'Customer',
+            'verification_code': code,
+        })
+    except Exception:
+        pass
     return send_email_resilient(
         subject=subject,
         body=body,
         to_emails=[user.email],
+        html_message=html_message,
     )
 
 
@@ -61,7 +71,15 @@ def _send_welcome_email(user):
             'Hotline / WhatsApp: 01799-281878\n\n'
             'Regards,\nSahara Gold & Diamond'
         )
-        send_email_resilient(subject=subject, body=body, to_emails=[user.email])
+        html_message = None
+        try:
+            html_message = render_to_string('emails/otp_verification.html', {
+                'user_name': user.first_name or 'Customer',
+                'verification_code': 'Welcome!',
+            })
+        except Exception:
+            pass
+        send_email_resilient(subject=subject, body=body, to_emails=[user.email], html_message=html_message)
     except Exception as e:
         logger.debug("Welcome email dispatch notice for %s: %s", user.email, e)
 

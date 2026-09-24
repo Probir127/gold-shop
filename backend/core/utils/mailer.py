@@ -1,7 +1,8 @@
 from __future__ import annotations
 import os
 import logging
-from typing import List, Union, Optional
+import mimetypes
+from typing import List, Union, Optional, Any
 from django.conf import settings
 from django.core.mail.backends.smtp import EmailBackend
 from django.core.mail import EmailMultiAlternatives
@@ -14,7 +15,7 @@ def send_email_resilient(
     body: str,
     to_emails: Union[str, List[str]],
     html_message: Optional[str] = None,
-    attachments: Optional[List[str]] = None,
+    attachments: Optional[List[Any]] = None,
     from_email: Optional[str] = None,
     timeout: int = 12,
 ) -> tuple[bool, str]:
@@ -22,7 +23,7 @@ def send_email_resilient(
     Centralized, highly-resilient SMTP mail dispatcher.
     - Tries Port 465 (SSL direct) first.
     - If blocked/timed-out, automatically falls back to Port 587 (STARTTLS).
-    - Supports attachments (e.g. PDF invoices) and HTML content.
+    - Supports file-path attachments (e.g. PDF invoices) and HTML content.
     - Returns (success: bool, message: str).
     """
     if isinstance(to_emails, str):
@@ -57,6 +58,12 @@ def send_email_resilient(
             for att in attachments:
                 if isinstance(att, str) and os.path.exists(att):
                     msg.attach_file(att)
+                elif isinstance(att, (list, tuple)) and len(att) == 2:
+                    att_data, att_name = att
+                    mime_type, _ = mimetypes.guess_type(att_name)
+                    mime_type = mime_type or 'application/octet-stream'
+                    if isinstance(att_data, bytes):
+                        msg.attach(att_name, att_data, mime_type)
         return msg
 
     err1 = None

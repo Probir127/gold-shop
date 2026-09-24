@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Official Invoice — Sahara Gold</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0a0a0a;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0a0a0a;min-height:100vh;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#1a1400 0%,#2c1f00 60%,#1a1400 100%);border-top:3px solid #b8860b;border-radius:12px 12px 0 0;padding:32px 40px;text-align:center;">
+              <p style="margin:0 0 4px 0;font-size:11px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:#b8860b;">SAHARA GOLD &amp; DIAMOND</p>
+              <p style="margin:0 0 16px 0;font-size:11px;letter-spacing:2px;color:#7a6a3a;text-transform:uppercase;">Official Certified Invoice</p>
+              <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+                <tr>
+                  <td style="border:1px solid #b8860b;border-radius:20px;padding:6px 20px;text-align:center;">
+                    <span style="font-size:11px;font-weight:600;letter-spacing:2px;color:#b8860b;text-transform:uppercase;">&#128196; PDF Attached</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="background-color:#141414;padding:36px 40px;">
+              <p style="margin:0 0 6px 0;font-size:22px;font-weight:700;color:#f0e6c8;">Dear {{ client_name }},</p>
+              <p style="margin:0 0 28px 0;font-size:14px;color:#888;line-height:1.6;">
+                Please find your certified invoice from <strong style="color:#d4af37;">{{ business_name }}</strong> attached as a PDF.
+              </p>
+
+              <!-- Invoice Detail Card -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;background-color:#0f0f0f;border:2px solid #2a2a2a;border-radius:10px;overflow:hidden;">
+                <tr style="background-color:#1f1a00;">
+                  <td colspan="2" style="padding:14px 20px;border-bottom:1px solid #2a2a2a;">
+                    <span style="font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#b8860b;">Invoice Details</span>
+                  </td>
+                </tr>
+                <tr style="border-bottom:1px solid #1f1f1f;">
+                  <td style="padding:14px 20px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#7a6a3a;width:40%;">Invoice Number</td>
+                  <td style="padding:14px 20px;font-size:14px;color:#d4af37;font-weight:700;">{{ invoice_number }}</td>
+                </tr>
+                <tr style="border-bottom:1px solid #1f1f1f;background-color:#111;">
+                  <td style="padding:14px 20px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#7a6a3a;">Amount</td>
+                  <td style="padding:14px 20px;font-size:18px;font-weight:700;color:#d4af37;">{{ currency }} {{ invoice_total|floatformat:2 }}</td>
+                </tr>
+                <tr style="border-bottom:1px solid #1f1f1f;">
+                  <td style="padding:14px 20px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#7a6a3a;">Status</td>
+                  <td style="padding:14px 20px;">
+                    <span style="display:inline-block;background-color:#1a2400;color:#d4af37;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:4px;">{{ invoice_status|upper }}</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 20px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#7a6a3a;">Issued By</td>
+                  <td style="padding:14px 20px;font-size:13px;color:#c8c8c8;">{{ business_name }}</td>
+                </tr>
+              </table>
+
+              <p style="margin:0;font-size:12px;color:#555;line-height:1.7;border-top:1px solid #2a2a2a;padding-top:20px;">
+                The certified PDF invoice is attached. Please retain it for your records.
+                For queries, reach us on WhatsApp at <strong style="color:#b8860b;">01799-281878</strong>.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#0f0f0f;border-top:1px solid #2a2a2a;border-radius:0 0 12px 12px;padding:24px 40px;text-align:center;">
+              <p style="margin:0 0 4px 0;font-size:12px;color:#7a6a3a;font-weight:600;letter-spacing:1px;">SAHARA GOLD &amp; DIAMOND</p>
+              <p style="margin:0 0 4px 0;font-size:11px;color:#555;">Bashundhara City Shopping Mall, Level 7, Block-A, Shop-19, Dhaka</p>
+              <p style="margin:0;font-size:11px;color:#555;">Hotline &amp; WhatsApp: <span style="color:#b8860b;">01799-281878</span></p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

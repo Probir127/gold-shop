@@ -108,7 +108,7 @@ FRONTEND_DIR = BASE_DIR.parent / 'frontend' / 'dist'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [FRONTEND_DIR] if FRONTEND_DIR.exists() else [],
+        'DIRS': [BASE_DIR / 'templates', *([FRONTEND_DIR] if FRONTEND_DIR.exists() else [])],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

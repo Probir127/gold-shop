@@ -4,6 +4,7 @@ import os
 import logging
 from django.conf import settings
 from django.db import connection
+from django.template.loader import render_to_string
 from core.utils.mailer import send_email_resilient
 
 logger = logging.getLogger(__name__)
@@ -107,11 +108,36 @@ def send_order_invoice_now(order, recipient_email: str | None = None) -> tuple[b
         f"Regards,\nSahara Gold"
     )
 
+    # Build HTML email
+    html_message = None
+    try:
+        items_context = []
+        if invoice:
+            for it in (invoice.items or []):
+                items_context.append({
+                    'product_name': it.get('product_name', it.get('name', '')),
+                    'quantity': it.get('quantity', 1),
+                    'price': it.get('price', 0),
+                })
+        html_message = render_to_string('emails/order_confirmation.html', {
+            'customer_name': order.customer_name,
+            'order_id': order.order_id,
+            'order_total': order.total,
+            'payment_method': order.get_payment_method_display(),
+            'payment_status': order.get_payment_status_display(),
+            'shipping_address': f"{order.shipping_address}, {order.city}",
+            'invoice_url': customer_inv_url,
+            'items': items_context,
+        })
+    except Exception as html_err:
+        logger.warning("Could not render order confirmation HTML for order %s: %s", order.order_id, html_err)
+
     attachments = [pdf_full_path] if pdf_full_path else None
     ok, status_msg = send_email_resilient(
         subject=cust_subject,
         body=cust_message,
         to_emails=[target_email],
+        html_message=html_message,
         attachments=attachments,
     )
 

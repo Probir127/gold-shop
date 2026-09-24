@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Confirmed — Sahara Gold</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0a0a0a;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0a0a0a;min-height:100vh;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#1a1400 0%,#2c1f00 60%,#1a1400 100%);border-top:3px solid #b8860b;border-radius:12px 12px 0 0;padding:32px 40px;text-align:center;">
+              <p style="margin:0 0 4px 0;font-size:11px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:#b8860b;">SAHARA GOLD &amp; DIAMOND</p>
+              <p style="margin:0 0 16px 0;font-size:11px;letter-spacing:2px;color:#7a6a3a;text-transform:uppercase;">Bashundhara City &bull; Dhaka</p>
+              <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+                <tr>
+                  <td style="background-color:#b8860b;border-radius:20px;padding:6px 20px;text-align:center;">
+                    <span style="font-size:12px;font-weight:700;letter-spacing:2px;color:#0a0a0a;text-transform:uppercase;">&#10003; Order Confirmed</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="background-color:#141414;padding:36px 40px;">
+              <p style="margin:0 0 6px 0;font-size:22px;font-weight:700;color:#f0e6c8;">Thank you, {{ customer_name }}!</p>
+              <p style="margin:0 0 28px 0;font-size:14px;color:#888;line-height:1.6;">
+                Your order <strong style="color:#d4af37;">#{{ order_id }}</strong> has been placed and confirmed. A certified PDF invoice is attached.
+              </p>
+
+              <!-- Items Table -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;">
+                <tr style="background-color:#1f1a00;">
+                  <td style="padding:10px 16px;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#b8860b;">Item</td>
+                  <td style="padding:10px 16px;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#b8860b;text-align:center;">Qty</td>
+                  <td style="padding:10px 16px;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#b8860b;text-align:right;">Price</td>
+                </tr>
+                {% for item in items %}
+                <tr style="border-top:1px solid #222;">
+                  <td style="padding:12px 16px;font-size:13px;color:#c8c8c8;">{{ item.product_name }}</td>
+                  <td style="padding:12px 16px;font-size:13px;color:#c8c8c8;text-align:center;">{{ item.quantity }}</td>
+                  <td style="padding:12px 16px;font-size:13px;color:#c8c8c8;text-align:right;">&#2547;{{ item.price|floatformat:0 }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="3" style="padding:12px 16px;font-size:13px;color:#666;text-align:center;">See attached invoice for full item list.</td>
+                </tr>
+                {% endfor %}
+                <tr style="background-color:#1a1400;border-top:2px solid #b8860b;">
+                  <td colspan="2" style="padding:14px 16px;font-size:14px;font-weight:700;color:#d4af37;letter-spacing:1px;">TOTAL AMOUNT</td>
+                  <td style="padding:14px 16px;font-size:16px;font-weight:700;color:#d4af37;text-align:right;">&#2547;{{ order_total|floatformat:0 }}</td>
+                </tr>
+              </table>
+
+              <!-- Order Meta -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;background-color:#0f0f0f;border:1px solid #2a2a2a;border-radius:8px;">
+                <tr>
+                  <td style="padding:14px 20px;border-bottom:1px solid #222;">
+                    <span style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#7a6a3a;">Payment</span><br>
+                    <span style="font-size:13px;color:#c8c8c8;">{{ payment_method }}</span>
+                  </td>
+                  <td style="padding:14px 20px;border-bottom:1px solid #222;text-align:right;">
+                    <span style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#7a6a3a;">Status</span><br>
+                    <span style="font-size:13px;color:#d4af37;font-weight:700;">{{ payment_status|upper }}</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan="2" style="padding:14px 20px;">
+                    <span style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#7a6a3a;">Delivery Address</span><br>
+                    <span style="font-size:13px;color:#c8c8c8;">{{ shipping_address }}</span>
+                  </td>
+                </tr>
+              </table>
+
+              {% if invoice_url %}
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
+                <tr>
+                  <td align="center">
+                    <a href="{{ invoice_url }}" style="display:inline-block;background-color:#b8860b;color:#0a0a0a;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:14px 36px;border-radius:6px;">View Invoice Online</a>
+                  </td>
+                </tr>
+              </table>
+              {% endif %}
+
+              <p style="margin:0;font-size:12px;color:#555;line-height:1.7;border-top:1px solid #2a2a2a;padding-top:20px;">
+                &#128196; Your certified PDF invoice &amp; hallmark certificate is attached for your records.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#0f0f0f;border-top:1px solid #2a2a2a;border-radius:0 0 12px 12px;padding:24px 40px;text-align:center;">
+              <p style="margin:0 0 4px 0;font-size:12px;color:#7a6a3a;font-weight:600;letter-spacing:1px;">SAHARA GOLD &amp; DIAMOND</p>
+              <p style="margin:0 0 4px 0;font-size:11px;color:#555;">Bashundhara City Shopping Mall, Level 7, Block-A, Shop-19, Dhaka</p>
+              <p style="margin:0;font-size:11px;color:#555;">Hotline &amp; WhatsApp: <span style="color:#b8860b;">01799-281878</span></p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
