@@ -91,6 +91,8 @@ services:
           type: web
           name: sahara-gold-backend
           envVarKey: RENDER_EXTERNAL_URL
+      - key: VITE_API_URL
+        value: "https://sahara-gold-backend.onrender.com/api"
       - key: VITE_APISED_API_KEY
         value: "sk_4d2dB072e3BF68099002921813848002cce4e2Fa8e7bfe22"
 
