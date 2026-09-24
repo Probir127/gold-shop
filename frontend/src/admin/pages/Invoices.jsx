@@ -19,6 +19,7 @@ const Invoices = () => {
 
   const [isModalOpen, setIsModalOpen]   = useState(false);
   const [generating, setGenerating]     = useState(false);
+  const [sendingId, setSendingId]       = useState(null);
   
   const [formData, setFormData] = useState({
     client_id: initialClient || '',
@@ -97,11 +98,12 @@ const Invoices = () => {
   };
 
   const handleSend = async (id, overrideEmail = null) => {
+    setSendingId(id);
     try {
       const res = await sendInvoice(id, overrideEmail ? { email: overrideEmail } : {});
       const data = res.data || {};
       if (data.email_sent) {
-        toast.success(`Invoice PDF sent to ${data.recipient_email}!`);
+        toast.success(`Invoice email & PDF dispatched to ${data.recipient_email}!`);
       } else if (data.email_error) {
         if (data.email_error.includes('No recipient email')) {
           const userEmail = window.prompt('No email found for this client. Enter email address to send invoice:');
@@ -109,7 +111,7 @@ const Invoices = () => {
             return handleSend(id, userEmail.trim());
           }
         }
-        toast.error(data.email_error);
+        toast.error(`Email delivery: ${data.email_error}`);
       } else if (data.whatsapp_response?.messages) {
         toast.success('Invoice sent via WhatsApp!');
       } else {
@@ -119,6 +121,8 @@ const Invoices = () => {
     } catch (err) {
       const errorMsg = err.response?.data?.detail || err.response?.data?.error || err.message || 'Failed to send invoice.';
       toast.error(errorMsg);
+    } finally {
+      setSendingId(null);
     }
   };
 
@@ -279,10 +283,19 @@ const Invoices = () => {
                     <>
                       <button 
                         onClick={() => handleSend(inv.id)}
-                        className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500 hover:text-white hover:shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all duration-300"
-                        title="Send via WhatsApp"
+                        disabled={sendingId === inv.id}
+                        className={`p-2.5 rounded-xl border transition-all duration-300 ${
+                          sendingId === inv.id 
+                            ? 'bg-blue-500/20 text-blue-300 border-blue-500/40 cursor-wait' 
+                            : 'bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500 hover:text-white hover:shadow-[0_0_15px_rgba(59,130,246,0.5)]'
+                        }`}
+                        title="Send Official Invoice via Email & WhatsApp"
                       >
-                        <Send size={16} />
+                        {sendingId === inv.id ? (
+                          <RefreshCw size={16} className="animate-spin text-blue-400" />
+                        ) : (
+                          <Mail size={16} />
+                        )}
                       </button>
                       <button 
                         onClick={() => handleMarkPaid(inv.id)}
