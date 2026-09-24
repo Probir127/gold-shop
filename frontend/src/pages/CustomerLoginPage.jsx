@@ -113,6 +113,7 @@ const CustomerLoginPage = () => {
     const [verificationEmail, setVerificationEmail] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
     const [sendingInvoiceId, setSendingInvoiceId] = useState(null);
+    const [resendingCode, setResendingCode] = useState(false);
 
     const handleSendInvoiceEmail = async (orderId) => {
         setSendingInvoiceId(orderId);
@@ -166,7 +167,14 @@ const CustomerLoginPage = () => {
             setSuccessMsg('Welcome back! Redirecting…');
             setTimeout(() => navigate(nextPath), 900);
         } catch (err) {
-            setError(err.message || 'Login failed. Please check your email and password.');
+            if (err.message && err.message.toLowerCase().includes('not verified')) {
+                setTab('register');
+                setVerificationEmail(formData.email || identifier);
+                setVerificationCode('');
+                setError(err.message);
+            } else {
+                setError(err.message || 'Login failed. Please check your email and password.');
+            }
         } finally {
             setSubmitting(false);
         }
@@ -201,19 +209,26 @@ const CustomerLoginPage = () => {
                 password,
             });
             setVerificationEmail(result.email);
-            if (result.verification_required === false && result.access) {
-                // SMTP unavailable — backend activated account directly and returned tokens
-                persistSession(result);
-                setSuccessMsg('Account created! Welcome to Sahara Gold.');
-                setTimeout(() => navigate(nextPath), 900);
-            } else {
-                setVerificationCode('');
-                setSuccessMsg(`We sent a 6-digit verification code to ${result.email}.`);
-            }
+            setVerificationCode('');
+            setSuccessMsg(`A 6-digit verification code has been sent to ${result.email}. Please check your inbox.`);
         } catch (err) {
-            setError(err.message || 'Registration failed. Please try again.');
+            setError(err.message || 'Registration failed. Please check your email address and try again.');
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handleResendCode = async () => {
+        if (!verificationEmail) return;
+        setError('');
+        setResendingCode(true);
+        try {
+            const res = await api.customerResendVerification(verificationEmail);
+            setSuccessMsg(res.message || `A fresh 6-digit verification code was sent to ${verificationEmail}.`);
+        } catch (err) {
+            setError(err.message || 'Unable to resend verification code. Please try again shortly.');
+        } finally {
+            setResendingCode(false);
         }
     };
 
@@ -572,26 +587,54 @@ const CustomerLoginPage = () => {
                     {/* ── Register form ── */}
                     {tab === 'register' && verificationEmail ? (
                         <form onSubmit={handleVerifyEmail} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            <div style={{ textAlign: 'center', marginBottom: '4px' }}>
+                                <p style={{ fontSize: '13px', color: '#999', margin: '0 0 4px 0' }}>
+                                    Verification code sent to:
+                                </p>
+                                <span style={{ fontSize: '14px', fontWeight: 600, color: '#e5c100' }}>
+                                    {verificationEmail}
+                                </span>
+                            </div>
                             <div>
-                                <label style={labelStyle}>Email Verification Code</label>
+                                <label style={labelStyle}>6-Digit Verification Code</label>
                                 <input
                                     type="text"
                                     inputMode="numeric"
                                     autoComplete="one-time-code"
                                     maxLength={6}
-                                    placeholder="Enter 6-digit code"
+                                    placeholder="• • • • • •"
                                     value={verificationCode}
                                     onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
-                                    style={{ ...inputStyle, letterSpacing: '6px', textAlign: 'center', fontSize: '20px' }}
+                                    style={{ ...inputStyle, letterSpacing: '6px', textAlign: 'center', fontSize: '22px', fontWeight: 'bold' }}
                                     required
+                                    autoFocus
                                 />
                             </div>
-                            <button type="submit" className="btn btn-primary" disabled={submitting} style={{ width: '100%', justifyContent: 'center', padding: '12px' }}>
-                                {submitting ? 'Verifying…' : 'Verify Email & Create Account'}
+                            <button
+                                type="submit"
+                                className="btn btn-primary"
+                                disabled={submitting || verificationCode.length !== 6}
+                                style={{ width: '100%', justifyContent: 'center', padding: '12px', opacity: (submitting || verificationCode.length !== 6) ? 0.6 : 1 }}
+                            >
+                                {submitting ? 'Verifying…' : 'Verify Email & Activate Account'}
                             </button>
-                            <button type="button" onClick={() => { setVerificationEmail(''); setVerificationCode(''); setSuccessMsg(''); }} style={{ background: 'none', border: 'none', color: '#d4af37', cursor: 'pointer' }}>
-                                Use a different email
-                            </button>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', fontSize: '12px' }}>
+                                <button
+                                    type="button"
+                                    onClick={handleResendCode}
+                                    disabled={resendingCode}
+                                    style={{ background: 'none', border: 'none', color: '#d4af37', cursor: resendingCode ? 'not-allowed' : 'pointer', padding: 0 }}
+                                >
+                                    {resendingCode ? 'Resending code…' : "Didn't receive it? Resend Code"}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setVerificationEmail(''); setVerificationCode(''); setSuccessMsg(''); setError(''); }}
+                                    style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: 0 }}
+                                >
+                                    Change email
+                                </button>
+                            </div>
                         </form>
                     ) : tab === 'register' && (
                         <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>

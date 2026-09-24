@@ -266,6 +266,16 @@ export const api = {
         if (!res.ok) throw new Error(data.detail || 'Email verification failed');
         return data;
     },
+    customerResendVerification: async (email) => {
+        const res = await nf(`${API_BASE}/customer/auth/resend-code/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Unable to resend verification code');
+        return data;
+    },
     // CMS
     getCMSHomepage: async () => {
         const res = await nf(`${API_BASE}/cms/content/homepage/`);

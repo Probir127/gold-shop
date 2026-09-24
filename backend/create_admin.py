@@ -5,43 +5,57 @@ django.setup()
 from django.contrib.auth.models import User
 from core.models import Tenant, TenantMembership
 
-raw_username = os.getenv('DJANGO_SUPERUSER_USERNAME', 'shara_gold')
-# Django usernames cannot contain spaces; replace spaces with underscores automatically
-username = raw_username.strip().replace(' ', '_')
-email = os.getenv('DJANGO_SUPERUSER_EMAIL', 'saharagold19@gmail.com')
 password = os.getenv('DJANGO_SUPERUSER_PASSWORD', 'sahara1122@@')
+email = os.getenv('DJANGO_SUPERUSER_EMAIL', 'saharagold19@gmail.com')
 
-if not User.objects.filter(username=username).exists():
-    admin_user = User.objects.create_superuser(
-        username=username,
-        email=email,
-        password=password,
-        first_name='Shara',
-        last_name='Gold'
-    )
-    print(f"Superuser created successfully: {username} ({email})")
-else:
-    admin_user = User.objects.get(username=username)
-    admin_user.email = email
-    admin_user.set_password(password)
-    admin_user.is_staff = True
-    admin_user.is_superuser = True
-    admin_user.save()
-    print(f"Superuser '{username}' updated with current credentials.")
-
+# 1. Ensure Tenant exists
 tenant, _ = Tenant.objects.get_or_create(
     slug='sahara-gold',
     defaults={
         'name': 'Sahara Gold',
-        'owner': admin_user,
         'business_name': 'Sahara Gold Luxury Jewelry',
-        'contact_phone': '+8801700000000',
+        'contact_phone': '+8801799281878',
         'plan': 'enterprise'
     }
 )
-TenantMembership.objects.get_or_create(
-    tenant=tenant,
-    user=admin_user,
-    defaults={'role': 'admin'}
-)
-print("Store workspace 'sahara-gold' assigned to admin.")
+
+# 2. Sync both 'shara_gold' and 'admin' superusers
+admin_usernames = ['shara_gold', 'admin']
+custom_user = os.getenv('DJANGO_SUPERUSER_USERNAME', '').strip().replace(' ', '_')
+if custom_user and custom_user not in admin_usernames:
+    admin_usernames.append(custom_user)
+
+primary_admin = None
+for uname in admin_usernames:
+    u = User.objects.filter(username__iexact=uname).first()
+    if not u:
+        u = User.objects.create_superuser(
+            username=uname,
+            email=email,
+            password=password,
+            first_name='Sahara',
+            last_name='Admin'
+        )
+        print(f"Superuser '{uname}' created.")
+    else:
+        u.email = email
+        u.set_password(password)
+        u.is_staff = True
+        u.is_superuser = True
+        u.is_active = True
+        u.save()
+        print(f"Superuser '{uname}' credentials updated and verified.")
+
+    TenantMembership.objects.get_or_create(
+        tenant=tenant,
+        user=u,
+        defaults={'role': 'admin'}
+    )
+    if not primary_admin:
+        primary_admin = u
+
+if not tenant.owner and primary_admin:
+    tenant.owner = primary_admin
+    tenant.save(update_fields=['owner'])
+
+print("All admin accounts successfully configured with workspace access.")

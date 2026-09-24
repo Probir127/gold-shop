@@ -1,15 +1,15 @@
+from __future__ import annotations
 import threading
 import os
-import time
 import logging
-from django.core.mail import send_mail, EmailMessage
 from django.conf import settings
 from django.db import connection
+from core.utils.mailer import send_email_resilient
 
 logger = logging.getLogger(__name__)
 
 
-def send_order_invoice_now(order, recipient_email=None):
+def send_order_invoice_now(order, recipient_email: str | None = None) -> tuple[bool, str]:
     """
     Synchronously generates and sends order confirmation with invoice PDF attachment.
     Can be called by admin or background workers. Returns (bool, message).
@@ -49,7 +49,6 @@ def send_order_invoice_now(order, recipient_email=None):
 
         invoice = Invoice.objects.filter(invoice_number=f"INV-{order.order_id}").first()
         if not invoice:
-            # Fallback: create invoice if not yet in DB
             tenant = Tenant.objects.filter(slug=getattr(settings, 'DEFAULT_TENANT_SLUG', 'sahara-gold'), is_active=True).first()
             if not tenant:
                 tenant = Tenant.objects.filter(is_active=True).first()
@@ -108,29 +107,25 @@ def send_order_invoice_now(order, recipient_email=None):
         f"Regards,\nSahara Gold"
     )
 
-    try:
-        email = EmailMessage(
-            subject=cust_subject,
-            body=cust_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[target_email],
-        )
-        if pdf_full_path:
-            email.attach_file(pdf_full_path)
-        email.send(fail_silently=False)
+    attachments = [pdf_full_path] if pdf_full_path else None
+    ok, status_msg = send_email_resilient(
+        subject=cust_subject,
+        body=cust_message,
+        to_emails=[target_email],
+        attachments=attachments,
+    )
+
+    if ok:
         logger.info("Order confirmation email sent to %s with invoice PDF (order %s)", target_email, order.order_id)
-        
-        # Mark invoice as sent if still draft
         if invoice and invoice.status == 'draft':
             from django.utils import timezone
             invoice.status = 'sent'
             invoice.sent_at = timezone.now()
             invoice.save(update_fields=['status', 'sent_at'])
-
         return True, f"Invoice successfully emailed to {target_email}"
-    except Exception as e:
-        logger.error("Customer email delivery error for order %s: %s", order.order_id, e)
-        return False, str(e)
+    else:
+        logger.error("Customer email delivery error for order %s: %s", order.order_id, status_msg)
+        return False, status_msg
 
 
 def send_order_confirmation_email(order_or_id):
@@ -171,12 +166,10 @@ def send_order_confirmation_email(order_or_id):
                     f"Access Admin Orders Command Center: {backend_url}/admin/orders"
                 )
                 try:
-                    send_mail(
-                        admin_subject,
-                        admin_message,
-                        settings.DEFAULT_FROM_EMAIL,
-                        [admin_email],
-                        fail_silently=False,
+                    send_email_resilient(
+                        subject=admin_subject,
+                        body=admin_message,
+                        to_emails=[admin_email],
                     )
                 except Exception as e:
                     logger.error("Store notification email delivery error: %s", e)
@@ -187,5 +180,3 @@ def send_order_confirmation_email(order_or_id):
 
     t = threading.Thread(target=_send, daemon=True)
     t.start()
-
-

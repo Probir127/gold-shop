@@ -42,9 +42,14 @@ const Login = () => {
       localStorage.setItem('tenant_slug', activeMembership.tenant_slug);
       navigate('/admin');
     } catch (err) {
-      setError(err.message === 'No tenant membership'
-        ? 'This account has no store access. Log in with admin or shara_gold credentials.'
-        : 'Invalid credentials. Please check and try again.');
+      const serverMsg = err.response?.data?.detail;
+      if (serverMsg) {
+        setError(serverMsg);
+      } else if (err.message === 'No tenant membership') {
+        setError('This account has no store access. Log in with admin or shara_gold credentials.');
+      } else {
+        setError('Invalid credentials. Please verify your username/email and password.');
+      }
     } finally {
       setLoading(false);
     }
@@ -81,7 +86,7 @@ const Login = () => {
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                  Username
+                  Username or Email
                 </label>
                 <div className="relative">
                   <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -90,7 +95,7 @@ const Login = () => {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="w-full bg-[#0c0c0e] border border-white/10 text-white rounded-xl pl-11 pr-4 py-3 text-sm focus:ring-1 focus:ring-[#d4af37] focus:border-[#d4af37] outline-none transition-all placeholder:text-slate-600"
-                    placeholder="admin"
+                    placeholder="admin or saharagold19@gmail.com"
                     autoComplete="username"
                     required
                   />
