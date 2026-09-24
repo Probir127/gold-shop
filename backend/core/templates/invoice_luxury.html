@@ -473,9 +473,9 @@
         </div>
         <div class="btn-group">
             {% if is_admin_copy %}
-            <a href="?copy=customer" class="btn btn-toggle">👤 Switch to Customer Copy</a>
+            <a href="?copy=customer{% if token %}&token={{ token }}{% endif %}" onclick="switchInvoiceCopy('customer'); return false;" class="btn btn-toggle">👤 Switch to Customer Copy</a>
             {% else %}
-            <a href="?copy=admin" class="btn btn-toggle">🏢 Switch to Store/Admin Copy</a>
+            <a href="?copy=admin{% if token %}&token={{ token }}{% endif %}" onclick="switchInvoiceCopy('admin'); return false;" class="btn btn-toggle">🏢 Switch to Store/Admin Copy</a>
             {% endif %}
             <button onclick="window.print()" class="btn btn-print">
                 🖨️ Print / Save as PDF
@@ -658,5 +658,21 @@
         </div>
     </div>
 
+    <script>
+        function switchInvoiceCopy(targetCopy) {
+            try {
+                const url = new URL(window.location.href);
+                url.searchParams.set('copy', targetCopy);
+                {% if token %}
+                if (!url.searchParams.has('token')) {
+                    url.searchParams.set('token', '{{ token }}');
+                }
+                {% endif %}
+                window.location.href = url.toString();
+            } catch (e) {
+                window.location.href = '?copy=' + targetCopy + '{% if token %}&token={{ token }}{% endif %}';
+            }
+        }
+    </script>
 </body>
 </html>

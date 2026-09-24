@@ -205,12 +205,14 @@ class OrderViewSet(viewsets.ModelViewSet):
             })
 
         items = order.items.select_related('product').all()
+        token = request.query_params.get('token', '')
         context = {
             'order': order,
             'items': items,
             'invoice_number': f"INV-{order.order_id}",
             'is_admin_copy': is_admin_copy,
             'copy_title': copy_title,
+            'token': token,
         }
         return render(request, 'invoice_luxury.html', context)
 
