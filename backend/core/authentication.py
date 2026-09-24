@@ -1,3 +1,4 @@
+from rest_framework.authentication import SessionAuthentication
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, AuthenticationFailed
 import logging
@@ -31,3 +32,13 @@ class SafeJWTAuthentication(JWTAuthentication):
         except (InvalidToken, AuthenticationFailed) as err:
             logger.debug("Bearer token failed validation (%s) — falling back to AnonymousUser", err)
             return None
+
+
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    """
+    SessionAuthentication without enforcing CSRF, intended for SPA and API usage
+    where authentication is primarily Bearer JWT and CSRF cookies are not present.
+    """
+    def enforce_csrf(self, request):
+        return
+

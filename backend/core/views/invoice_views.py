@@ -47,14 +47,17 @@ class GeneratePDFView(APIView):
     permission_classes = [IsTenantManagerOrStaff]
 
     def _generate(self, request, pk):
-        tenant = request.tenant
-        if not tenant:
-            return Response({'detail': 'No tenant context.'}, status=400)
-            
-        invoice = get_object_or_404(Invoice, pk=pk, tenant=tenant)
-        invoice.pdf_path = generate_invoice_pdf(invoice)
-        invoice.save(update_fields=['pdf_path'])
-        return Response({'status': 'success', 'pdf_path': invoice.pdf_path})
+        invoice = Invoice.objects.filter(pk=pk).first()
+        if not invoice:
+            return Response({'detail': 'Invoice not found.'}, status=404)
+        tenant = getattr(request, 'tenant', None) or invoice.tenant or Tenant.objects.filter(slug='sahara-gold').first() or Tenant.objects.first()
+        try:
+            invoice.pdf_path = generate_invoice_pdf(invoice)
+            invoice.save(update_fields=['pdf_path'])
+            return Response({'status': 'success', 'pdf_path': invoice.pdf_path})
+        except Exception as e:
+            logger.error("Failed to generate invoice PDF for %s: %s", invoice.invoice_number, e)
+            return Response({'detail': f'Error generating invoice PDF: {e}'}, status=500)
 
     def get(self, request, pk):
         return self._generate(request, pk)
@@ -66,17 +69,20 @@ class SendInvoiceView(APIView):
     permission_classes = [IsTenantManagerOrStaff]
 
     def post(self, request, pk):
-        tenant = getattr(request, 'tenant', None)
-        if not tenant:
-            return Response({'detail': 'No tenant context.'}, status=400)
+        invoice = Invoice.objects.filter(pk=pk).first()
+        if not invoice:
+            return Response({'detail': 'Invoice not found.'}, status=404)
 
-        invoice = get_object_or_404(Invoice, pk=pk, tenant=tenant)
+        tenant = getattr(request, 'tenant', None) or invoice.tenant or Tenant.objects.filter(slug='sahara-gold').first() or Tenant.objects.first()
 
         # Step 1: Generate PDF if not already done or file missing
-        pdf_disk_path = os.path.join(settings.MEDIA_ROOT, invoice.pdf_path) if invoice.pdf_path else None
-        if not invoice.pdf_path or not pdf_disk_path or not os.path.exists(pdf_disk_path):
-            invoice.pdf_path = generate_invoice_pdf(invoice)
-            invoice.save(update_fields=['pdf_path'])
+        try:
+            pdf_disk_path = os.path.join(settings.MEDIA_ROOT, invoice.pdf_path) if invoice.pdf_path else None
+            if not invoice.pdf_path or not pdf_disk_path or not os.path.exists(pdf_disk_path):
+                invoice.pdf_path = generate_invoice_pdf(invoice)
+                invoice.save(update_fields=['pdf_path'])
+        except Exception as pdf_err:
+            logger.error("Failed generating PDF for invoice %s: %s", invoice.invoice_number, pdf_err)
 
         # Step 2: Build public URL for the PDF
         pdf_url = make_invoice_pdf_url(request, invoice)
@@ -111,48 +117,49 @@ class SendInvoiceView(APIView):
             invoice.client.save(update_fields=['email'])
 
         if client_email:
-            try:
-                from django.core.mail import EmailMessage
-                pdf_abs = os.path.join(settings.MEDIA_ROOT, invoice.pdf_path)
-                client_name = invoice.client.name if invoice.client else "Valued Customer"
-                biz_name = tenant.business_name if tenant else "Sahara Gold"
-                msg = EmailMessage(
-                    subject=f'Official Certified Invoice #{invoice.invoice_number} | {biz_name}',
-                    body=(
-                        f'Dear {client_name},\n\n'
-                        f'Thank you for choosing {biz_name}.\n'
-                        f'Please find your official certified invoice #{invoice.invoice_number} attached as a PDF.\n\n'
-                        f'Invoice Summary:\n'
-                        f'• Invoice Number: #{invoice.invoice_number}\n'
-                        f'• Total Amount: {invoice.currency} {invoice.total_amount:,.2f}\n'
-                        f'• Status: {invoice.status.upper()}\n\n'
-                        f'Showroom: Bashundhara City Shopping Mall, Level 7, Block-A Shop-19, Dhaka.\n'
-                        f'Hotline / WhatsApp: 01799-281878\n\n'
-                        f'Regards,\n{biz_name}'
-                    ),
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    to=[client_email],
-                )
-                if os.path.exists(pdf_abs):
-                    msg.attach_file(pdf_abs)
-                msg.send(fail_silently=False)
+            from core.utils.mailer import send_email_resilient
+            pdf_abs = os.path.join(settings.MEDIA_ROOT, invoice.pdf_path) if invoice.pdf_path else None
+            attachments = [pdf_abs] if (pdf_abs and os.path.exists(pdf_abs)) else None
+            client_name = invoice.client.name if invoice.client else "Valued Customer"
+            biz_name = tenant.business_name if (tenant and getattr(tenant, 'business_name', None)) else "Sahara Gold"
+
+            subject = f'Official Certified Invoice #{invoice.invoice_number} | {biz_name}'
+            body = (
+                f'Dear {client_name},\n\n'
+                f'Thank you for choosing {biz_name}.\n'
+                f'Please find your official certified invoice #{invoice.invoice_number} attached as a PDF.\n\n'
+                f'Invoice Summary:\n'
+                f'• Invoice Number: #{invoice.invoice_number}\n'
+                f'• Total Amount: {invoice.currency} {invoice.total_amount:,.2f}\n'
+                f'• Status: {invoice.status.upper()}\n\n'
+                f'Showroom: Bashundhara City Shopping Mall, Level 7, Block-A Shop-19, Dhaka.\n'
+                f'Hotline / WhatsApp: 01799-281878\n\n'
+                f'Regards,\n{biz_name}'
+            )
+            ok, mail_msg = send_email_resilient(
+                subject=subject,
+                body=body,
+                to_emails=client_email,
+                attachments=attachments
+            )
+            if ok:
                 email_sent = True
-                logger.info(f"Invoice email successfully sent to {client_email} for invoice {invoice.invoice_number}")
-            except Exception as mail_err:
-                email_error = str(mail_err)
-                logger.error(f"Could not send invoice email to {client_email}: {mail_err}")
+                logger.info("Invoice email successfully sent to %s for invoice %s", client_email, invoice.invoice_number)
+            else:
+                email_error = mail_msg
+                logger.error("Could not send invoice email to %s: %s", client_email, mail_msg)
         else:
             email_error = "No recipient email address found for this client. Please specify an email."
 
         # Step 4: Send via WhatsApp (if credentials configured)
         wa_result = {}
-        if invoice.client and invoice.client.phone:
-            caption = f'Hi! Here is your invoice {invoice.invoice_number} from {tenant.business_name}. Total: {invoice.currency} {invoice.total_amount}.'
+        if invoice.client and invoice.client.phone and tenant:
+            caption = f'Hi! Here is your invoice {invoice.invoice_number} from {getattr(tenant, "business_name", "Sahara Gold")}. Total: {invoice.currency} {invoice.total_amount}.'
             try:
                 wa_result = send_document(
                     to_phone=invoice.client.phone,
                     pdf_url=pdf_url,
-                    filename=f'{tenant.slug}_{invoice.invoice_number}.pdf',
+                    filename=f'{getattr(tenant, "slug", "sahara-gold")}_{invoice.invoice_number}.pdf',
                     caption=caption,
                     tenant=tenant
                 )

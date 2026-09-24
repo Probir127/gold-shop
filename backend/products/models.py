@@ -1,6 +1,7 @@
 from django.db import models
 
 class Category(models.Model):
+    tenant = models.ForeignKey('core.Tenant', on_delete=models.CASCADE, related_name='categories', null=True, blank=True)
     name = models.CharField(max_length=50)
     slug = models.SlugField(unique=True)
 
@@ -17,6 +18,7 @@ class Product(models.Model):
         ('18K', '18 Karat'),
     ]
 
+    tenant = models.ForeignKey('core.Tenant', on_delete=models.CASCADE, related_name='products', null=True, blank=True)
     name = models.CharField(max_length=200)
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
     description = models.TextField(blank=True)
@@ -36,3 +38,4 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+

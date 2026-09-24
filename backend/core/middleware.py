@@ -48,7 +48,8 @@ class TenantMiddleware:
             logger.debug("Header slug: %s", slug)
             try:
                 tenant = Tenant.objects.get(slug=slug, is_active=True)
-                if (tenant.owner == request.user or
+                if (request.user.is_superuser or request.user.is_staff or
+                        tenant.owner == request.user or
                         TenantMembership.objects.filter(tenant=tenant, user=request.user).exists()):
                     request.tenant = tenant
                     logger.debug("Resolved header tenant: %s", tenant.name)
@@ -57,6 +58,11 @@ class TenantMiddleware:
                     logger.warning("Access denied for tenant '%s' by user '%s'", slug, request.user.username)
                     return JsonResponse({'detail': 'You do not have access to this tenant.'}, status=403)
             except Tenant.DoesNotExist:
+                if request.user.is_superuser or request.user.is_staff:
+                    tenant = Tenant.objects.filter(is_active=True).first()
+                    if tenant:
+                        request.tenant = tenant
+                        return self.get_response(request)
                 logger.warning("Tenant '%s' not found (requested by '%s')", slug, request.user.username)
                 return JsonResponse({'detail': f'Tenant "{slug}" not found.'}, status=404)
 
@@ -71,6 +77,9 @@ class TenantMiddleware:
             )
             if membership:
                 tenant = membership.tenant
+
+        if not tenant and (request.user.is_superuser or request.user.is_staff):
+            tenant = Tenant.objects.filter(slug='sahara-gold', is_active=True).first() or Tenant.objects.filter(is_active=True).first()
 
         request.tenant = tenant
         logger.debug("Auto-resolved tenant: %s", tenant.name if tenant else 'None')

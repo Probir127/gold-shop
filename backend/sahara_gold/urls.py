@@ -11,6 +11,10 @@ def reject_sensitive_path(request, path=''):
     raise Http404
 
 
+def health_check(request):
+    return JsonResponse({'status': 'ok', 'service': 'sahara-gold-api'})
+
+
 def spa_fallback(request):
     index_file = os.path.join(settings.FRONTEND_DIR, 'index.html')
     if os.path.exists(index_file):
@@ -36,6 +40,7 @@ urlpatterns = [
     path('django-admin/', admin.site.urls),
 
     # Backend APIs
+    path('api/health/', health_check),
     path('api/', include('products.urls')),
     path('api/', include('orders.urls')),
     path('api/', include('rates.urls')),

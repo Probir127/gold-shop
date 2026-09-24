@@ -117,7 +117,8 @@ const Invoices = () => {
       }
       fetchData();
     } catch (err) {
-      toast.error('Failed to send invoice.');
+      const errorMsg = err.response?.data?.detail || err.response?.data?.error || err.message || 'Failed to send invoice.';
+      toast.error(errorMsg);
     }
   };
 

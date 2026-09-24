@@ -244,7 +244,7 @@ from datetime import timedelta
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'core.authentication.SafeJWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
+        'core.authentication.CsrfExemptSessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',

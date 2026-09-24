@@ -119,7 +119,7 @@ export const getInvoices    = ()       => api.get('/invoices/')
 export const createInvoice  = (data)   => api.post('/invoices/', data)
 export const getInvoice     = (id)     => api.get(`/invoices/${id}/`)
 export const generatePDF    = (id)     => api.get(`/invoices/${id}/pdf/`)
-export const sendInvoice    = (id)     => api.post(`/invoices/${id}/send/`)
+export const sendInvoice    = (id, data = {}) => api.post(`/invoices/${id}/send/`, data)
 export const markInvoicePaid = (id)    => api.post(`/invoices/${id}/mark-paid/`)
 export const openInvoiceHTML = async (id, copy = 'customer', signedUrl = '') => {
     const preview = window.open('', '_blank')

@@ -111,3 +111,46 @@ def send_reply(to_phone: str, message: str, reply_to_id: str, tenant=None) -> di
     except requests.exceptions.RequestException as e:
         logger.error(f"WhatsApp reply failed for {to_phone}: {e}")
         return {'error': str(e)}
+
+
+def send_interactive_buttons(to_phone: str, body_text: str, buttons: list[dict], header_text: str = '', tenant=None) -> dict:
+    """
+    Send interactive quick-reply buttons via WhatsApp Cloud API.
+    buttons: [{'id': 'btn_rates', 'title': 'Check Gold Rates'}, {'id': 'btn_agent', 'title': 'Speak to Agent'}]
+    """
+    formatted_buttons = [
+        {
+            'type': 'reply',
+            'reply': {
+                'id': btn['id'],
+                'title': btn['title'][:20],  # WhatsApp max 20 chars
+            }
+        }
+        for btn in buttons[:3]  # WhatsApp max 3 buttons
+    ]
+    interactive_payload = {
+        'type': 'button',
+        'body': {'text': body_text},
+        'action': {'buttons': formatted_buttons}
+    }
+    if header_text:
+        interactive_payload['header'] = {'type': 'text', 'text': header_text}
+
+    payload = {
+        'messaging_product': 'whatsapp',
+        'to': to_phone,
+        'type': 'interactive',
+        'interactive': interactive_payload,
+    }
+    try:
+        response = requests.post(
+            f'{get_base_url(tenant)}/messages',
+            json=payload,
+            headers=get_headers(tenant),
+            timeout=15
+        )
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"WhatsApp interactive button send failed for {to_phone}: {e}")
+        return {'error': str(e)}
+
