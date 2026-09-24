@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAdminUser
 from django.conf import settings
 from django.template.loader import render_to_string
 from core.utils.mailer import send_email_resilient
+from core.permissions import IsTenantManagerOrStaff
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,7 @@ class SMTPDiagnosticView(APIView):
 
     Returns structured JSON:
     {
+      "success": true | false,
       "status": "ok" | "error",
       "message": "...",
       "provider": "smtp",
@@ -28,7 +30,7 @@ class SMTPDiagnosticView(APIView):
       "details": { host, port, user, password_configured }
     }
     """
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsTenantManagerOrStaff]
 
     def post(self, request):
         test_recipient = str(request.data.get('email', '')).strip() or getattr(settings, 'STORE_EMAIL', 'saharagold19@gmail.com')
@@ -72,6 +74,7 @@ class SMTPDiagnosticView(APIView):
 
         if ok:
             return Response({
+                'success': True,
                 'status': 'ok',
                 'message': f'SMTP check passed. Verification message delivered: {msg}',
                 'provider': 'smtp',
@@ -81,8 +84,10 @@ class SMTPDiagnosticView(APIView):
             })
         else:
             return Response({
+                'success': False,
                 'status': 'error',
                 'message': f'SMTP delivery failed: {msg}',
+                'error': f'SMTP delivery failed: {msg}',
                 'provider': 'smtp',
                 'recipient': test_recipient,
                 'timestamp': timestamp,
