@@ -60,6 +60,8 @@ services:
         value: "8801799281878"
       - key: STORE_ADDRESS
         value: "Level-7, Block-A, Shop-19, Bashundhara City Shopping Mall, Dhaka"
+      - key: WEBHOOK_VERIFY_TOKEN
+        value: "saharagold_verify_2026"
       - key: APISED_API_KEY
         sync: false
       - key: DATABASE_URL

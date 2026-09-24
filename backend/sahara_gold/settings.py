@@ -336,7 +336,7 @@ STORE_NAME = os.getenv('STORE_NAME', '')
 STORE_PHONE = os.getenv('STORE_PHONE', '')
 STORE_WHATSAPP = os.getenv('STORE_WHATSAPP', '')
 STORE_ADDRESS = os.getenv('STORE_ADDRESS', '')
-WEBHOOK_VERIFY_TOKEN = os.getenv('WEBHOOK_VERIFY_TOKEN', '')
+WEBHOOK_VERIFY_TOKEN = os.getenv('WEBHOOK_VERIFY_TOKEN', 'saharagold_verify_2026')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
