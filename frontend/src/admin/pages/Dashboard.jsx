@@ -5,6 +5,13 @@ import Sidebar from '../components/Sidebar';
 import toast from '../components/Toast';
 import { Users, MessageSquare, CreditCard, TrendingUp, ChevronRight, Bot, AlertTriangle, Zap, TrendingDown, Trash2, RotateCcw, ShieldOff, X, Smile, Meh, Frown, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useCountUp } from '../../animations';
+
+const StatCounter = ({ value, prefix = '', suffix = '' }) => {
+  const num = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.-]+/g, '')) || 0;
+  const countRef = useCountUp(num, { prefix, suffix, duration: 1300 });
+  return <span ref={countRef} style={{ fontVariantNumeric: 'tabular-nums' }} />;
+};
 
 const RESET_ACTIONS = [
   {
@@ -343,7 +350,7 @@ const Dashboard = () => {
             { label: 'Total Clients', value: stats.total_clients, icon: Users, color: 'blue' },
             { label: 'Active Leads',  value: stats.leads,         icon: MessageSquare, color: 'emerald' },
             { label: 'Total Invoices',value: stats.total_invoices,icon: CreditCard, color: 'purple' },
-            { label: 'Revenue (BDT)', value: `৳${stats.total_revenue}`, icon: TrendingUp, color: 'amber' },
+            { label: 'Revenue (BDT)', value: stats.total_revenue, prefix: '৳', icon: TrendingUp, color: 'amber' },
             { label: 'Messages Today',value: stats.messages_today,icon: MessageSquare, color: 'indigo' },
           ].map((k, i) => (
             <div key={i} className={`glass-premium rounded-3xl p-6 flex flex-col gap-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 card-glow-${k.color}`}>
@@ -357,7 +364,7 @@ const Dashboard = () => {
               </div>
               
               <h3 className="text-4xl font-black text-white tracking-tighter relative z-10 drop-shadow-md">
-                {k.value}
+                <StatCounter value={k.value} prefix={k.prefix || ''} suffix={k.suffix || ''} />
               </h3>
             </div>
           ))}
@@ -367,9 +374,9 @@ const Dashboard = () => {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10 animate-in fade-in slide-in-from-bottom-12 duration-700 delay-200">
           {[
             { label: 'Bot Interactions', value: stats.bot_interactions,      icon: Bot, color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' },
-            { label: 'Avg Response',     value: `${stats.avg_response_ms}ms`,icon: Zap, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-            { label: 'Fallback Rate',    value: `${stats.fallback_rate}%`,   icon: TrendingDown, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-            { label: 'Escalation Rate',  value: `${stats.escalation_rate}%`, icon: AlertTriangle, color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
+            { label: 'Avg Response',     value: stats.avg_response_ms, suffix: 'ms', icon: Zap, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+            { label: 'Fallback Rate',    value: stats.fallback_rate,   suffix: '%',  icon: TrendingDown, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+            { label: 'Escalation Rate',  value: stats.escalation_rate, suffix: '%',  icon: AlertTriangle, color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
           ].map((k, i) => (
             <div key={i} className="glass rounded-3xl p-6 flex items-center gap-5 hover:bg-white/[0.02] transition-colors duration-300 border border-white/5">
               <div className={`p-3.5 rounded-2xl ${k.bg} ${k.border} border shadow-inner`}>
@@ -377,7 +384,9 @@ const Dashboard = () => {
               </div>
               <div>
                 <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">{k.label}</p>
-                <p className="text-2xl font-black text-white tracking-tight drop-shadow-sm">{k.value}</p>
+                <p className="text-2xl font-black text-white tracking-tight drop-shadow-sm">
+                  <StatCounter value={k.value} suffix={k.suffix || ''} />
+                </p>
               </div>
             </div>
           ))}
@@ -392,9 +401,9 @@ const Dashboard = () => {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
             {[
               { label: 'Total Orders', value: ecomStats.orders, sub: `${ecomStats.pendingOrders} pending`, color: '#d4af37', bg: 'rgba(212,175,55,0.08)', path: '/orders' },
-              { label: '22K Gold Rate', value: ecomStats.goldRate22k ? `৳${Number(ecomStats.goldRate22k).toLocaleString()}` : '—', sub: 'per gram (live)', color: '#f4d03f', bg: 'rgba(244,208,63,0.08)', path: '/gold-rates' },
+              { label: '22K Gold Rate', value: ecomStats.goldRate22k, prefix: '৳', sub: 'per gram (live)', color: '#f4d03f', bg: 'rgba(244,208,63,0.08)', path: '/gold-rates' },
               { label: 'Products Listed', value: ecomStats.productCount, sub: 'active jewelry', color: '#c0c0c0', bg: 'rgba(192,192,192,0.07)', path: '/products' },
-              { label: 'Store Revenue', value: `৳${Number(ecomStats.revenue).toLocaleString()}`, sub: 'total orders', color: '#5eead4', bg: 'rgba(94,234,212,0.07)', path: '/orders' },
+              { label: 'Store Revenue', value: ecomStats.revenue, prefix: '৳', sub: 'total orders', color: '#5eead4', bg: 'rgba(94,234,212,0.07)', path: '/orders' },
             ].map((k, i) => (
               <div
                 key={i}
@@ -403,7 +412,9 @@ const Dashboard = () => {
                 style={{ background: k.bg }}
               >
                 <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: k.color }}>{k.label}</p>
-                <p className="text-3xl font-black text-white tracking-tight drop-shadow-sm">{k.value}</p>
+                <p className="text-3xl font-black text-white tracking-tight drop-shadow-sm">
+                  {k.value != null ? <StatCounter value={k.value} prefix={k.prefix || ''} /> : '—'}
+                </p>
                 <p className="text-xs text-slate-500 mt-1 font-medium">{k.sub}</p>
               </div>
             ))}

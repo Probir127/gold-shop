@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import BrandMark from '../BrandMark';
+import { anime } from '../../animations';
 
 const Hero = ({ data }) => {
     const defaultHero = {
@@ -15,6 +16,8 @@ const Hero = ({ data }) => {
     };
 
     const heroContent = data && data.length > 0 ? data[0] : defaultHero;
+    const ctaRef     = useRef(null);
+    const shimmerRef = useRef(null);
 
     const getImageUrl = (path) => {
         if (!path) return '';
@@ -24,6 +27,52 @@ const Hero = ({ data }) => {
     };
 
     const bgImage = getImageUrl(heroContent.image);
+
+    // ── Anime.js: cinematic entrance timeline ──────────────────────────
+    useEffect(() => {
+        const reducedMotion =
+            typeof window !== 'undefined' &&
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        if (reducedMotion) return;
+
+        const tl = anime.timeline({ autoplay: true });
+
+        // Phase A: shimmer overlay sweep across hero
+        if (shimmerRef.current) {
+            tl.add({
+                targets: shimmerRef.current,
+                backgroundPosition: ['-200% -200%', '200% 200%'],
+                opacity: [0.4, 0.8, 0],
+                duration: 2200,
+                easing: 'easeInOutSine',
+                delay: 600,
+            });
+        }
+
+        // Phase B: CTA button breathes with a golden glow pulse
+        if (ctaRef.current) {
+            tl.add({
+                targets: ctaRef.current,
+                boxShadow: [
+                    '0 10px 40px rgba(212, 175, 55, 0.3)',
+                    '0 15px 60px rgba(212, 175, 55, 0.7)',
+                    '0 10px 40px rgba(212, 175, 55, 0.3)',
+                ],
+                duration: 1800,
+                easing: 'easeInOutSine',
+                loop: true,
+            }, '+=200');
+        }
+
+        return () => {
+            tl.pause();
+            if (ctaRef.current) anime.remove(ctaRef.current);
+            if (shimmerRef.current) anime.remove(shimmerRef.current);
+        };
+    }, []);
+    // ──────────────────────────────────────────────────────────────────
+
 
     // Animation Variants
     const containerVariants = {
@@ -92,8 +141,8 @@ const Hero = ({ data }) => {
                 zIndex: 2
             }} />
 
-            {/* Gold Shimmer Overlay */}
-            <div style={shimmerStyle} />
+            {/* Gold Shimmer Overlay — Anime.js target */}
+            <div ref={shimmerRef} style={shimmerStyle} />
 
             {/* Floating Gold Particles Effect */}
             <div style={{
@@ -180,6 +229,7 @@ const Hero = ({ data }) => {
                 {/* Premium CTA Button */}
                 <motion.div variants={itemVariants}>
                     <Link
+                        ref={ctaRef}
                         to={heroContent.cta_link}
                         style={{
                             display: 'inline-flex',

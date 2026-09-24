@@ -22,6 +22,9 @@ export default defineConfig({
       }
     }
   },
+  optimizeDeps: {
+    include: ['animejs']
+  },
   build: {
     chunkSizeWarningLimit: 600,
     rollupOptions: {
@@ -29,7 +32,7 @@ export default defineConfig({
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
           charts: ['recharts'],
-          motion: ['framer-motion'],
+          motion: ['framer-motion', 'animejs'],
           icons: ['lucide-react'],
         }
       }

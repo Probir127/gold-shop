@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, X, ShoppingBag, Search, Phone, User } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
@@ -6,14 +6,27 @@ import SearchModal from '../search/SearchModal';
 import { useGoldRates } from '../../hooks/useShopData'; // Prepare for live rate
 import BrandMark from '../BrandMark';
 import { STORE_INFO } from '../../utils/constants';
+import { anime, SPRING_LUXURY } from '../../animations';
 
 const Header = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const { cartCount, toggleCart } = useCart();
+    const badgeRef = useRef(null);
 
     const { data: rates } = useGoldRates();
+
+    useEffect(() => {
+        if (cartCount > 0 && badgeRef.current) {
+            anime({
+                targets: badgeRef.current,
+                scale: [0.5, 1.35, 1],
+                duration: 550,
+                easing: SPRING_LUXURY,
+            });
+        }
+    }, [cartCount]);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -69,7 +82,7 @@ const Header = () => {
                         </Link>
                         <button className="icon-btn" onClick={toggleCart} title="View Cart">
                             <ShoppingBag size={22} />
-                            {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
+                            {cartCount > 0 && <span ref={badgeRef} className="cart-badge">{cartCount}</span>}
                         </button>
                         <button
                             className="icon-btn mobile-toggle"
