@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async';
 
 const SEO = ({ title, description, image, url, noindex = false }) => {
     const siteTitle = 'Sahara Gold & Diamond';
+    const siteName = 'Sahara Gold';
     const siteDescription = 'Premium handcrafted gold and diamond jewelry in Bangladesh. Hallmark certified ensuring purity and quality.';
     const siteUrl = (import.meta.env.VITE_SITE_URL || 'https://www.shaharagold.org').replace(/\/$/, '');
     const siteImage = '/assets/images/logo.png';
@@ -26,7 +27,7 @@ const SEO = ({ title, description, image, url, noindex = false }) => {
             <meta property="og:description" content={finalDescription} />
             <meta property="og:image" content={finalImage} />
             <meta property="og:url" content={finalUrl} />
-            <meta property="og:site_name" content={siteTitle} />
+            <meta property="og:site_name" content={siteName} />
             <meta property="og:locale" content="en_BD" />
             <meta property="og:locale:alternate" content="bn_BD" />
 
