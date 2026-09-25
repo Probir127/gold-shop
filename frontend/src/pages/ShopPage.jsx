@@ -53,8 +53,8 @@ const ShopPage = () => {
         }
     }, [products, sortBy]);
 
-    const handleCategoryChange = (id) => {
-        setSearchParams(id === 'all' ? {} : { cat: id });
+    const handleCategoryChange = (slug) => {
+        setSearchParams(slug === 'all' ? {} : { cat: slug });
     };
 
     return (
@@ -114,14 +114,14 @@ const ShopPage = () => {
                         }}>
                             {categories.map(cat => (
                                 <button
-                                    key={cat.id}
-                                    onClick={() => handleCategoryChange(cat.id)}
+                                    key={cat.slug || cat.id}
+                                    onClick={() => handleCategoryChange(cat.slug || cat.id)}
                                     style={{
                                         padding: '8px 16px',
                                         borderRadius: '20px',
-                                        border: `1px solid ${activeCategory === cat.id ? 'var(--color-gold-primary)' : '#333'}`,
-                                        backgroundColor: activeCategory === cat.id ? 'var(--color-gold-primary)' : 'transparent',
-                                        color: activeCategory === cat.id ? '#000' : '#888',
+                                        border: `1px solid ${activeCategory === (cat.slug || String(cat.id)) ? 'var(--color-gold-primary)' : '#333'}`,
+                                        backgroundColor: activeCategory === (cat.slug || String(cat.id)) ? 'var(--color-gold-primary)' : 'transparent',
+                                        color: activeCategory === (cat.slug || String(cat.id)) ? '#000' : '#888',
                                         cursor: 'pointer',
                                         fontSize: '13px',
                                         fontWeight: '500',

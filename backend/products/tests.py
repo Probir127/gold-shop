@@ -61,3 +61,19 @@ class ProductVisibilityTests(APITestCase):
 		self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 		self.assertTrue(Category.objects.filter(slug='temple-gold').exists())
 
+	def test_category_filter_accepts_numeric_id_or_slug(self):
+		self.user.is_staff = True
+		self.user.save()
+		self.client.force_authenticate(user=self.user)
+		category = Category.objects.create(name='Bridal Sets', slug='bridal-sets')
+		Product.objects.create(name='Royal Bridal Ring', category=category, weight=2.5, in_stock=True)
+		Product.objects.create(name='Other Ring', category=Category.objects.create(name='Everyday Rings', slug='everyday-rings'), weight=1.5, in_stock=True)
+
+		by_slug = self.client.get('/api/products/', {'category': 'bridal-sets'})
+		by_id = self.client.get('/api/products/', {'category': str(category.id)})
+
+		self.assertEqual(by_slug.status_code, status.HTTP_200_OK)
+		self.assertEqual(by_id.status_code, status.HTTP_200_OK)
+		self.assertEqual([p['name'] for p in by_slug.data['results']], ['Royal Bridal Ring'])
+		self.assertEqual([p['name'] for p in by_id.data['results']], ['Royal Bridal Ring'])
+

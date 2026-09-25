@@ -59,7 +59,11 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         category = self.request.query_params.get('category')
         if category:
-            qs = qs.filter(category__slug=category)
+            category = category.strip()
+            if category.isdigit():
+                qs = qs.filter(category_id=int(category))
+            else:
+                qs = qs.filter(category__slug=category)
         return qs
 
     def perform_create(self, serializer):
