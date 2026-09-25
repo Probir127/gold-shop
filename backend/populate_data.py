@@ -22,11 +22,7 @@ for c in categories_data:
     cat_objs[c] = obj
     print(f"Category: {obj.name} {'(created)' if created else ''}")
 
-# Clear previous demo products as requested
-Product.objects.all().delete()
-print("Cleared previous products.")
-
-# 5 New Real Products from Uploaded Assets
+# Seed products across all categories idempotently (never delete existing catalog)
 products_data = [
     {
         "name": "Floral Cutout Gold Ring",
@@ -83,22 +79,93 @@ products_data = [
         "new": False,
         "description": "Contemporary 22K yellow gold bypass leaf ring crowned with two sparkling brilliant zircons."
     },
+    {
+        "name": "Traditional Handcrafted Gold Bala",
+        "cat": "bangles",
+        "weight": 12.50,
+        "purity": "22K",
+        "img": "1.jpg.jpeg",
+        "making_charge": 600,
+        "bestseller": True,
+        "new": False,
+        "description": "Exquisite 22K gold handcrafted bala bangles with intricate engraving and royal finish (12.50 GM)."
+    },
+    {
+        "name": "Royal Filigree Bridal Kada",
+        "cat": "bangles",
+        "weight": 15.20,
+        "purity": "22K",
+        "img": "2.jpg.jpeg",
+        "making_charge": 650,
+        "bestseller": False,
+        "new": True,
+        "description": "Heavy bridal 22K gold kada featuring traditional filigree craftsmanship (15.20 GM)."
+    },
+    {
+        "name": "Delicate Bead Drop Gold Wristlet",
+        "cat": "wristlets",
+        "weight": 4.80,
+        "purity": "22K",
+        "img": "WRISTLET.jpg.jpeg",
+        "making_charge": 500,
+        "bestseller": True,
+        "new": True,
+        "description": "Modern minimalist 22K gold wristlet bracelet with delicate polished beads (4.80 GM)."
+    },
+    {
+        "name": "Polished Modern Link Wristlet",
+        "cat": "wristlets",
+        "weight": 6.10,
+        "purity": "22K",
+        "img": "WRISTLET 2.jpg.jpeg",
+        "making_charge": 500,
+        "bestseller": False,
+        "new": False,
+        "description": "Sleek interlocking link wristlet in 22K yellow gold with secure clasp (6.10 GM)."
+    },
+    {
+        "name": "Royal Heritage Bridal Choker Set",
+        "cat": "necklace",
+        "weight": 28.50,
+        "purity": "22K",
+        "img": "3.jpg.jpeg",
+        "making_charge": 800,
+        "bestseller": True,
+        "new": True,
+        "description": "Magnificent 22K bridal gold choker necklace crafted with traditional craftsmanship (28.50 GM)."
+    },
+    {
+        "name": "Floral Diamond-Cut Gold Necklace",
+        "cat": "necklace",
+        "weight": 22.00,
+        "purity": "22K",
+        "img": "4.jpg.jpeg",
+        "making_charge": 750,
+        "bestseller": False,
+        "new": False,
+        "description": "Opulent 22K gold necklace with gleaming diamond-cut floral motifs (22.00 GM)."
+    },
 ]
 
 for p in products_data:
-    obj = Product.objects.create(
+    obj, created = Product.objects.get_or_create(
         name=p['name'],
-        category=cat_objs[p['cat']],
-        weight=Decimal(str(p['weight'])),
-        purity=p.get('purity', '22K'),
-        making_charge_per_gram=p.get('making_charge', 500),
-        description=p.get('description', ''),
-        image=f"products/{p['img']}",
-        is_bestseller=p.get('bestseller', False),
-        is_new=p.get('new', False),
-        in_stock=True
+        defaults={
+            'category': cat_objs[p['cat']],
+            'weight': Decimal(str(p['weight'])),
+            'purity': p.get('purity', '22K'),
+            'making_charge_per_gram': p.get('making_charge', 500),
+            'description': p.get('description', ''),
+            'image': f"products/{p['img']}",
+            'is_bestseller': p.get('bestseller', False),
+            'is_new': p.get('new', False),
+            'in_stock': True
+        }
     )
-    print(f"Product Created: {obj.name} ({obj.weight}g {obj.purity})")
+    if created:
+        print(f"Product Created: {obj.name} ({obj.weight}g {obj.purity})")
+    else:
+        print(f"Product Exists: {obj.name}")
 
 print(f"\nTotal Products in DB: {Product.objects.count()}")
 print(f"Total Categories in DB: {Category.objects.count()}")

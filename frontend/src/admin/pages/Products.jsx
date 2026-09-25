@@ -321,7 +321,10 @@ const Products = () => {
       p.name?.toLowerCase().includes(search.toLowerCase()) ||
       p.category_name?.toLowerCase().includes(search.toLowerCase()) ||
       p.purity?.toLowerCase().includes(search.toLowerCase());
-    const matchCat = filterCategory === 'all' || String(p.category) === filterCategory;
+    const selectedCat = categories.find(c => String(c.id) === filterCategory);
+    const matchCat = filterCategory === 'all' ||
+      String(p.category) === filterCategory ||
+      (selectedCat && (p.category_name || '').toLowerCase() === (selectedCat.name || '').toLowerCase());
     const matchStock = filterStock === 'all' || (filterStock === 'in' ? p.in_stock : !p.in_stock);
     return matchSearch && matchCat && matchStock;
   });

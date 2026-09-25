@@ -78,13 +78,25 @@ class ProductViewSet(viewsets.ModelViewSet):
         if tenant:
             qs = qs.filter(tenant=tenant)
 
-        # Optional category filter — accepts numeric ID or slug
+        # Optional category filter — accepts numeric ID, slug, or name (case-insensitive)
         category = self.request.query_params.get('category', '').strip()
-        if category:
+        if category and category.lower() != 'all':
             if category.isdigit():
-                qs = qs.filter(category_id=int(category))
+                cat_id = int(category)
+                cat_obj = Category.objects.filter(pk=cat_id).first()
+                if cat_obj:
+                    qs = qs.filter(
+                        Q(category_id=cat_id) |
+                        Q(category__name__iexact=cat_obj.name) |
+                        Q(category__slug__iexact=cat_obj.slug)
+                    )
+                else:
+                    qs = qs.filter(category_id=cat_id)
             else:
-                qs = qs.filter(category__slug=category)
+                qs = qs.filter(
+                    Q(category__slug__iexact=category) |
+                    Q(category__name__iexact=category)
+                )
 
         return qs
 
@@ -127,6 +139,24 @@ class ProductViewSet(viewsets.ModelViewSet):
                 Q(description__icontains=query) |
                 Q(category__name__icontains=query)
             )
+
+        if category and category.lower() != 'all':
+            if category.isdigit():
+                cat_id = int(category)
+                cat_obj = Category.objects.filter(pk=cat_id).first()
+                if cat_obj:
+                    qs = qs.filter(
+                        Q(category_id=cat_id) |
+                        Q(category__name__iexact=cat_obj.name) |
+                        Q(category__slug__iexact=cat_obj.slug)
+                    )
+                else:
+                    qs = qs.filter(category_id=cat_id)
+            else:
+                qs = qs.filter(
+                    Q(category__slug__iexact=category) |
+                    Q(category__name__iexact=category)
+                )
 
         if purity:
             qs = qs.filter(purity__iexact=purity)

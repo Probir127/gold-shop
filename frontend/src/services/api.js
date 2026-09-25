@@ -49,7 +49,7 @@ export const api = {
     getProducts: async (category) => {
         let url = `${API_BASE}/products/`;
         if (category && category !== 'all') {
-            url += `?category=${category}`;
+            url += `?category=${encodeURIComponent(category)}`;
         }
         const res = await nf(url);
         if (!res.ok) throw new Error('Failed to fetch products');

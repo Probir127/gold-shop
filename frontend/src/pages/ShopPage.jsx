@@ -36,7 +36,12 @@ const ShopPage = () => {
     }, [rawCategories]);
 
     const activeCatObj = useMemo(() => {
-        return categories.find(c => (c.slug && c.slug === activeCategory) || String(c.id) === activeCategory);
+        const lower = (activeCategory || '').toLowerCase();
+        return categories.find(c =>
+            (c.slug && c.slug.toLowerCase() === lower) ||
+            (c.name && c.name.toLowerCase() === lower) ||
+            String(c.id) === activeCategory
+        );
     }, [categories, activeCategory]);
 
     const { data: products = [], isLoading } = useProducts(activeCategory);
@@ -121,9 +126,14 @@ const ShopPage = () => {
                         }}>
                             {categories.map(cat => {
                                 const catKey = cat.slug || String(cat.id);
-                                const isActive = activeCategory === 'all'
+                                const lowerActive = (activeCategory || '').toLowerCase();
+                                const isActive = lowerActive === 'all'
                                     ? (cat.slug === 'all' || cat.id === 'all')
-                                    : (cat.slug === activeCategory || String(cat.id) === activeCategory);
+                                    : (
+                                        (cat.slug && cat.slug.toLowerCase() === lowerActive) ||
+                                        (cat.name && cat.name.toLowerCase() === lowerActive) ||
+                                        String(cat.id) === activeCategory
+                                    );
                                 return (
                                     <button
                                         key={catKey}
