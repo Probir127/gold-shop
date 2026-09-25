@@ -243,7 +243,15 @@ export const api = {
             body: JSON.stringify(credentials),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Unable to sign in');
+        if (!res.ok) {
+            const err = new Error(data.detail || 'Unable to sign in');
+            // Attach verification metadata so the login handler can act on it
+            if (data.verification_required) {
+                err.verificationRequired = true;
+                err.email = data.email || '';
+            }
+            throw err;
+        }
         return data;
     },
     customerRegister: async (details) => {

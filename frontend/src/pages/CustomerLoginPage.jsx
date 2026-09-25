@@ -167,8 +167,12 @@ const CustomerLoginPage = () => {
             setSuccessMsg('Welcome back! Redirecting…');
             setTimeout(() => navigate(nextPath), 900);
         } catch (err) {
-            if (err.message && err.message.toLowerCase().includes('not verified')) {
-                const unverifiedEmail = formData.email || identifier;
+            // err.verificationRequired is set by the API client when backend returns 403
+            const needsVerification = err.verificationRequired ||
+                (err.message && err.message.toLowerCase().includes('not verified'));
+            if (needsVerification) {
+                // Use the email from the backend response (works even if user logged in with phone)
+                const unverifiedEmail = err.email || formData.email || identifier;
                 setTab('register');
                 setVerificationEmail(unverifiedEmail);
                 setVerificationCode('');
