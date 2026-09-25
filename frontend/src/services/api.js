@@ -25,11 +25,15 @@ const refreshCustomerToken = async () => {
     return customerRefreshPromise;
 };
 
-// Helper for fetch with ngrok bypass
+// Tenant slug — always send so public endpoints are scoped correctly
+const TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG || 'sahara-gold';
+
+// Helper for fetch with tenant scoping
 const nf = async (url, options = {}) => {
     const headers = {
         ...options.headers,
-        'ngrok-skip-browser-warning': 'true'
+        'ngrok-skip-browser-warning': 'true',
+        'X-Tenant-Slug': TENANT_SLUG,
     };
     const customerToken = localStorage.getItem('customer_access_token');
     if (customerToken) headers.Authorization = `Bearer ${customerToken}`;
@@ -40,6 +44,7 @@ const nf = async (url, options = {}) => {
     const retryHeaders = {
         ...options.headers,
         'ngrok-skip-browser-warning': 'true',
+        'X-Tenant-Slug': TENANT_SLUG,
         Authorization: `Bearer ${localStorage.getItem('customer_access_token')}`,
     };
     return fetch(url, { ...options, headers: retryHeaders });
