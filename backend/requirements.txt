@@ -29,6 +29,7 @@ psycopg-binary==3.2.13
 Pygments==2.21.0
 PyJWT==2.14.0
 pypdf==6.18.1
+reportlab==4.2.5
 python-dotenv==1.2.1
 PyYAML==6.0.3
 requests==2.32.5

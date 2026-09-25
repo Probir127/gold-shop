@@ -193,6 +193,9 @@ export const syncLiveGoldRate    = () => api.post('/rates/sync-live/')
 
 export const getProductsAdmin    = () => api.get('/products/')
 export const getCategories       = () => api.get('/categories/')
+export const createCategoryAdmin = (data) => api.post('/categories/', data)
+export const updateCategoryAdmin = (id, data) => api.patch(`/categories/${id}/`, data)
+export const deleteCategoryAdmin = (id) => api.delete(`/categories/${id}/`)
 export const createProductAdmin  = (data) => api.post('/products/', data, {
     headers: { 'Content-Type': 'multipart/form-data' }
 })

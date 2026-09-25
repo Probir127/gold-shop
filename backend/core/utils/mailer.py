@@ -62,14 +62,20 @@ def _send_via_resend_api(
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
+            "User-Agent": "SaharaGoldApp/1.0 (Django; Python urllib)",
         },
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=20) as resp:
-        resp_data = json.loads(resp.read().decode("utf-8"))
-        email_id = resp_data.get("id", "unknown")
-        logger.info("Resend API delivered '%s' to %s — id: %s", subject, recipients, email_id)
-        return True, f"Delivered to {', '.join(recipients)} via Resend API (id: {email_id})"
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            resp_data = json.loads(resp.read().decode("utf-8"))
+            email_id = resp_data.get("id", "unknown")
+            logger.info("Resend API delivered '%s' to %s — id: %s", subject, recipients, email_id)
+            return True, f"Delivered to {', '.join(recipients)} via Resend API (id: {email_id})"
+    except urllib.error.HTTPError as he:
+        err_body = he.read().decode("utf-8", errors="replace")
+        logger.error("Resend HTTP Error %s: %s", he.code, err_body)
+        raise RuntimeError(f"Resend HTTP {he.code}: {err_body}") from he
 
 
 def send_email_resilient(
@@ -106,18 +112,17 @@ def send_email_resilient(
     resend_from = str(getattr(settings, 'RESEND_FROM_EMAIL', '') or '').strip()
 
     if not sender:
-        return False, "DEFAULT_FROM_EMAIL is not configured."
+        sender = "Sahara Gold <info@shaharagold.org>"
 
-    if any(domain in sender.lower() for domain in ('gmail.com', 'googlemail.com')):
-        err_msg = (
-            'The app is configured to use a Gmail mailbox as the sender. '
-            'Set DEFAULT_FROM_EMAIL to info@shaharagold.org and redeploy.'
-        )
-        logger.error(err_msg)
-        return False, err_msg
-
-    # Determine the "from" address: use "Display Name <email>" format
-    api_sender = f'"Sahara Gold" <{resend_from}>' if resend_from else sender
+    # Determine the "from" address: prefer resend_from, fallback to sender, default to info@shaharagold.org
+    from_addr = resend_from or sender
+    if not from_addr or any(d in from_addr.lower() for d in ('gmail.com', 'googlemail.com')):
+        from_addr = "info@shaharagold.org"
+    
+    if "<" in from_addr and ">" in from_addr:
+        api_sender = from_addr
+    else:
+        api_sender = f"Sahara Gold <{from_addr}>"
 
     # ── Attempt 1: Resend HTTP API ────────────────────────────────────
     if resend_api_key:

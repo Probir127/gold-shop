@@ -12,7 +12,7 @@ from core.models import Tenant
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all().order_by('name', 'id')
     serializer_class = CategorySerializer
-    lookup_field = 'slug'
+    lookup_field = 'pk'
     permission_classes = [IsStaffForWrite]
 
     def get_queryset(self):

@@ -1,11 +1,29 @@
+from django.utils.text import slugify
 from rest_framework import serializers
 from .models import Product, Category
 from rates.models import GoldRate
 
 class CategorySerializer(serializers.ModelSerializer):
+    slug = serializers.SlugField(required=False, allow_blank=True)
+
     class Meta:
         model = Category
         fields = ['id', 'name', 'slug']
+
+    def validate(self, attrs):
+        name = attrs.get('name') or getattr(self.instance, 'name', None)
+        slug = attrs.get('slug') or getattr(self.instance, 'slug', None)
+
+        if name and not slug:
+            base_slug = slugify(name)
+            slug = base_slug
+            counter = 2
+            while Category.objects.filter(slug=slug).exclude(pk=getattr(self.instance, 'pk', None)).exists():
+                slug = f'{base_slug}-{counter}'
+                counter += 1
+            attrs['slug'] = slug
+
+        return attrs
 
 class ProductSerializer(serializers.ModelSerializer):
     category_slug = serializers.CharField(source='category.slug', read_only=True)

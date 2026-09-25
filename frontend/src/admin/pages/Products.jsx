@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
 import {
   getProductsAdmin, getCategories,
+  createCategoryAdmin, updateCategoryAdmin, deleteCategoryAdmin,
   createProductAdmin, updateProductAdmin, deleteProductAdmin
 } from '../api';
 import toast from '../components/Toast';
@@ -125,6 +126,8 @@ const Products = () => {
   const [selected, setSelected]           = useState(new Set());
   const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null, name: '' });
   const [bulkConfirm, setBulkConfirm]     = useState(false);
+  const [categoryDraft, setCategoryDraft] = useState('');
+  const [categoryConfirm, setCategoryConfirm] = useState({ open: false, id: null, name: '' });
   const fileRef = useRef(null);
 
   const [form, setForm] = useState({
@@ -269,6 +272,46 @@ const Products = () => {
     else setSelected(new Set(filtered.map(p => p.id)));
   };
 
+  const handleCategoryCreate = async (e) => {
+    e.preventDefault();
+    const name = categoryDraft.trim();
+    if (!name) {
+      toast.error('Category name is required');
+      return;
+    }
+
+    try {
+      await createCategoryAdmin({ name });
+      setCategoryDraft('');
+      fetchProducts();
+      toast.success(`✅ Added category "${name}"`);
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.response?.data?.message || Object.values(err.response?.data || {}).flat().join(', ') || 'Failed to add category';
+      toast.error(msg);
+    }
+  };
+
+  const handleCategoryDelete = async () => {
+    const { id, name } = categoryConfirm;
+    if (!id) return;
+    setCategoryConfirm({ open: false, id: null, name: '' });
+
+    try {
+      await deleteCategoryAdmin(id);
+      if (filterCategory === String(id)) setFilterCategory('all');
+      fetchProducts();
+      toast.success(`🗑️ Removed category "${name}"`);
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.response?.data?.message || 'Failed to delete category';
+      toast.error(msg);
+    }
+  };
+
+  const safeCategoryName = (categoryId) => {
+    const match = categories.find((cat) => String(cat.id) === String(categoryId));
+    return match?.name || 'Uncategorized';
+  };
+
   /* filter */
   const filtered = products.filter(p => {
     const matchSearch = !search ||
@@ -322,38 +365,87 @@ const Products = () => {
         </div>
 
         {/* ── Filters Row ── */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={15} />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search by name, category, or purity…"
-              className="w-full bg-[#18181b] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#d4af37] transition"
-            />
+        <div className="flex flex-col gap-3 mb-6">
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Search */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={15} />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search by name, category, or purity…"
+                className="w-full bg-[#18181b] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#d4af37] transition"
+              />
+            </div>
+            {/* Category filter */}
+            <select
+              value={filterCategory}
+              onChange={e => setFilterCategory(e.target.value)}
+              className="bg-[#18181b] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#d4af37] min-w-[180px]"
+            >
+              <option value="all">All Categories</option>
+              {categories.map(c => (
+                <option key={c.id} value={String(c.id)}>{c.name}</option>
+              ))}
+            </select>
+            {/* Stock filter */}
+            <select
+              value={filterStock}
+              onChange={e => setFilterStock(e.target.value)}
+              className="bg-[#18181b] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#d4af37] min-w-[140px]"
+            >
+              <option value="all">All Stock</option>
+              <option value="in">In Stock</option>
+              <option value="out">Out of Stock</option>
+            </select>
           </div>
-          {/* Category filter */}
-          <select
-            value={filterCategory}
-            onChange={e => setFilterCategory(e.target.value)}
-            className="bg-[#18181b] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#d4af37]"
-          >
-            <option value="all">All Categories</option>
-            {categories.map(c => (
-              <option key={c.id} value={String(c.id)}>{c.name}</option>
-            ))}
-          </select>
-          {/* Stock filter */}
-          <select
-            value={filterStock}
-            onChange={e => setFilterStock(e.target.value)}
-            className="bg-[#18181b] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#d4af37]"
-          >
-            <option value="all">All Stock</option>
-            <option value="in">In Stock</option>
-            <option value="out">Out of Stock</option>
-          </select>
+
+          <div className="bg-[#121215] border border-white/10 rounded-2xl p-3">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Product Types</p>
+                <p className="text-sm text-slate-300">Manage product categories used in filtering</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleCategoryCreate} className="flex flex-col sm:flex-row gap-2">
+              <input
+                value={categoryDraft}
+                onChange={(e) => setCategoryDraft(e.target.value)}
+                placeholder="Add product category type"
+                className="flex-1 bg-[#18181b] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#d4af37]"
+              />
+              <button
+                type="submit"
+                className="bg-[#d4af37] hover:brightness-110 text-black font-bold px-4 py-2.5 rounded-xl text-sm transition"
+              >
+                Add Type
+              </button>
+            </form>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {categories.length === 0 ? (
+                <span className="text-sm text-slate-500">No categories yet.</span>
+              ) : (
+                categories.map((cat) => (
+                  <span
+                    key={cat.id}
+                    className="inline-flex items-center gap-2 rounded-full border border-[#d4af37]/40 bg-[#d4af37]/10 px-2.5 py-1 text-xs text-[#f2d67a]"
+                  >
+                    {cat.name}
+                    <button
+                      type="button"
+                      onClick={() => setCategoryConfirm({ open: true, id: cat.id, name: cat.name })}
+                      className="text-rose-300 hover:text-rose-200 transition"
+                      aria-label={`Delete category ${cat.name}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))
+              )}
+            </div>
+          </div>
         </div>
 
         {/* ── Bulk Action Bar ── */}
@@ -453,7 +545,7 @@ const Products = () => {
                   <div className="p-4 flex-1 flex flex-col justify-between">
                     <div>
                       <span className="text-[11px] text-slate-500 font-medium uppercase tracking-wider">
-                        {p.category_name || 'Jewelry'}
+                        {safeCategoryName(p.category) || 'Jewelry'}
                       </span>
                       <h3 className="font-semibold text-white text-sm mt-0.5 leading-snug line-clamp-2" title={p.name}>
                         {p.name}
@@ -682,6 +774,14 @@ const Products = () => {
         message={`Permanently delete ${selected.size} selected jewelry item${selected.size > 1 ? 's' : ''}? This cannot be undone.`}
         onConfirm={handleBulkDelete}
         onCancel={() => setBulkConfirm(false)}
+      />
+
+      <ConfirmDialog
+        open={categoryConfirm.open}
+        title="Delete Category"
+        message={`This will remove "${categoryConfirm.name}" from the product type filter. Products in this category may need reassigning. Continue?`}
+        onConfirm={handleCategoryDelete}
+        onCancel={() => setCategoryConfirm({ open: false, id: null, name: '' })}
       />
     </div>
   );

@@ -39,3 +39,25 @@ class ProductVisibilityTests(APITestCase):
 		self.assertIn('Alpha Diamond Ring', names_a)
 		self.assertNotIn('Beta Emerald Ring', names_a)
 
+	def test_category_delete_works_with_primary_key_lookup(self):
+		self.user.is_staff = True
+		self.user.save()
+		self.client.force_authenticate(user=self.user)
+		category = Category.objects.create(name='Custom Bridal', slug='custom-bridal')
+		Product.objects.create(name='Bridal Set', category=category, weight=3, in_stock=True)
+
+		response = self.client.delete(f'/api/categories/{category.id}/')
+
+		self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+		self.assertFalse(Category.objects.filter(id=category.id).exists())
+		self.assertFalse(Product.objects.filter(name='Bridal Set').exists())
+
+	def test_category_create_works_for_admin(self):
+		self.user.is_staff = True
+		self.user.save()
+		self.client.force_authenticate(user=self.user)
+		response = self.client.post('/api/categories/', {'name': 'Temple Gold'}, format='json')
+
+		self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+		self.assertTrue(Category.objects.filter(slug='temple-gold').exists())
+
