@@ -9,7 +9,7 @@ services:
     rootDir: backend
     buildCommand: "./build.sh"
     startCommand: "gunicorn sahara_gold.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 120"
-    healthCheckPath: /api/rates/latest/
+    healthCheckPath: /api/health/
     autoDeploy: true
     envVars:
       - key: DEBUG
