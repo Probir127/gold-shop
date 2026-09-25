@@ -50,8 +50,6 @@ services:
         value: "Sahara Gold <saharagold19@gmail.com>"
       - key: STORE_EMAIL
         value: "saharagold19@gmail.com"
-      - key: RESEND_API_KEY
-        sync: false
       - key: USD_TO_BDT_RATE
         value: "122.5"
       - key: STORE_NAME
