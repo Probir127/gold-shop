@@ -23,7 +23,16 @@ const ShopPage = () => {
 
     const { data: rawCategories = [] } = useCategories();
     const categories = useMemo(() => {
-        return [{ id: 'all', slug: 'all', name: 'All Collection' }, ...rawCategories];
+        const unique = [];
+        const seenNames = new Set();
+        for (const cat of rawCategories) {
+            const normalized = (cat.name || '').trim().toLowerCase();
+            if (normalized && !seenNames.has(normalized)) {
+                seenNames.add(normalized);
+                unique.push(cat);
+            }
+        }
+        return [{ id: 'all', slug: 'all', name: 'All Collection' }, ...unique];
     }, [rawCategories]);
 
     const activeCatObj = useMemo(() => {

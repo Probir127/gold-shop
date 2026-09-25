@@ -15,12 +15,10 @@ _DEFAULT_TENANT_SLUG = 'sahara-gold'
 
 def _resolve_tenant(request):
     """
-    Returns the Tenant for the current request using this priority order:
+    Returns the Tenant for the current request:
       1. request.tenant set by TenantMiddleware (authenticated users)
-      2. X-Tenant-Slug request header
-      3. ?tenant= query param
-      4. Default 'sahara-gold' tenant (guarantees public store never leaks
-         cross-tenant data when no context is provided)
+      2. Valid active tenant matching X-Tenant-Slug header
+      3. Valid active tenant matching ?tenant= query param
     """
     tenant = getattr(request, 'tenant', None)
     if tenant:
@@ -29,9 +27,11 @@ def _resolve_tenant(request):
     slug = (
         request.headers.get('X-Tenant-Slug', '').strip()
         or request.query_params.get('tenant', '').strip()
-        or _DEFAULT_TENANT_SLUG
     )
-    return Tenant.objects.filter(slug=slug, is_active=True).first()
+    if slug:
+        return Tenant.objects.filter(slug=slug, is_active=True).first()
+
+    return None
 
 
 # ---------------------------------------------------------------------------
