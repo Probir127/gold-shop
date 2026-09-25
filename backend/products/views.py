@@ -6,9 +6,37 @@ from django.db.models import Q
 from .models import Product, Category
 from .serializers import ProductSerializer, CategorySerializer
 from rates.models import GoldRate
-
 from core.models import Tenant
 
+# ---------------------------------------------------------------------------
+# Tenant resolution helper
+# ---------------------------------------------------------------------------
+_DEFAULT_TENANT_SLUG = 'sahara-gold'
+
+def _resolve_tenant(request):
+    """
+    Returns the Tenant for the current request using this priority order:
+      1. request.tenant set by TenantMiddleware (authenticated users)
+      2. X-Tenant-Slug request header
+      3. ?tenant= query param
+      4. Default 'sahara-gold' tenant (guarantees public store never leaks
+         cross-tenant data when no context is provided)
+    """
+    tenant = getattr(request, 'tenant', None)
+    if tenant:
+        return tenant
+
+    slug = (
+        request.headers.get('X-Tenant-Slug', '').strip()
+        or request.query_params.get('tenant', '').strip()
+        or _DEFAULT_TENANT_SLUG
+    )
+    return Tenant.objects.filter(slug=slug, is_active=True).first()
+
+
+# ---------------------------------------------------------------------------
+# Category ViewSet
+# ---------------------------------------------------------------------------
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all().order_by('name', 'id')
     serializer_class = CategorySerializer
@@ -17,23 +45,19 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        tenant = getattr(self.request, 'tenant', None)
-        if not tenant:
-            slug = self.request.headers.get('X-Tenant-Slug') or self.request.query_params.get('tenant')
-            if slug:
-                tenant = Tenant.objects.filter(slug=slug, is_active=True).first()
+        tenant = _resolve_tenant(self.request)
         if tenant:
             qs = qs.filter(tenant=tenant)
         return qs
 
     def perform_create(self, serializer):
-        tenant = getattr(self.request, 'tenant', None)
-        if not tenant:
-            slug = self.request.headers.get('X-Tenant-Slug') or self.request.query_params.get('tenant')
-            if slug:
-                tenant = Tenant.objects.filter(slug=slug, is_active=True).first()
+        tenant = _resolve_tenant(self.request)
         serializer.save(tenant=tenant or Tenant.objects.first())
 
+
+# ---------------------------------------------------------------------------
+# Product ViewSet
+# ---------------------------------------------------------------------------
 class ProductViewSet(viewsets.ModelViewSet):
     # Default queryset — select_related('category') avoids N+1 on category fields
     queryset = Product.objects.select_related('category').filter(in_stock=True).order_by('-created_at', 'id')
@@ -43,12 +67,9 @@ class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [IsStaffForWrite]
 
     def get_queryset(self):
-        tenant = getattr(self.request, 'tenant', None)
-        if not tenant:
-            slug = self.request.headers.get('X-Tenant-Slug') or self.request.query_params.get('tenant')
-            if slug:
-                tenant = Tenant.objects.filter(slug=slug, is_active=True).first()
+        tenant = _resolve_tenant(self.request)
 
+        # Staff see all products (incl. out-of-stock); public only sees in-stock
         if self.request.user.is_staff:
             qs = Product.objects.select_related('category').all().order_by('-created_at', 'id')
         else:
@@ -57,23 +78,19 @@ class ProductViewSet(viewsets.ModelViewSet):
         if tenant:
             qs = qs.filter(tenant=tenant)
 
-        category = self.request.query_params.get('category')
+        # Optional category filter — accepts numeric ID or slug
+        category = self.request.query_params.get('category', '').strip()
         if category:
-            category = category.strip()
             if category.isdigit():
                 qs = qs.filter(category_id=int(category))
             else:
                 qs = qs.filter(category__slug=category)
+
         return qs
 
     def perform_create(self, serializer):
-        tenant = getattr(self.request, 'tenant', None)
-        if not tenant:
-            slug = self.request.headers.get('X-Tenant-Slug') or self.request.query_params.get('tenant')
-            if slug:
-                tenant = Tenant.objects.filter(slug=slug, is_active=True).first()
+        tenant = _resolve_tenant(self.request)
         serializer.save(tenant=tenant or Tenant.objects.first())
-
 
     def get_serializer_context(self):
         """Inject the current gold rate once per request into all serializer instances."""
@@ -96,10 +113,14 @@ class ProductViewSet(viewsets.ModelViewSet):
         min_weight = request.query_params.get('min_weight', None)
         max_weight = request.query_params.get('max_weight', None)
 
-        # Base Query — select_related avoids per-result category hit
-        qs = Product.objects.select_related('category').filter(in_stock=True)
+        tenant = _resolve_tenant(request)
 
-        # Text Search
+        # Base query scoped to tenant
+        qs = Product.objects.select_related('category').filter(in_stock=True)
+        if tenant:
+            qs = qs.filter(tenant=tenant)
+
+        # Text search
         if query:
             qs = qs.filter(
                 Q(name__icontains=query) |
@@ -107,9 +128,8 @@ class ProductViewSet(viewsets.ModelViewSet):
                 Q(category__name__icontains=query)
             )
 
-        # Filters
         if purity:
-            qs = qs.filter(purity__iexact=purity)  # Case insensitive just in case
+            qs = qs.filter(purity__iexact=purity)
 
         if min_weight:
             try:
@@ -123,9 +143,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             except ValueError:
                 pass
 
-        # Limit results for performance
         qs = qs[:20]
-
         serializer = self.get_serializer(qs, many=True)
         return Response({
             'count': len(serializer.data),
