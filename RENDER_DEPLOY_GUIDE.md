@@ -1,127 +1,162 @@
-# Sahara Gold: Render Free Tier Deployment Guide
+﻿# Sahara Gold — Render Deployment Guide
 
-This guide walks you through deploying **Sahara Gold** completely free on [Render](https://render.com).
-
----
-
-## 1. Architecture on Render
-
-- **Frontend (`sahara-gold-frontend`)**: **Render Static Site (100% Free Forever)**
-  - Fast global CDN with automatic SSL.
-  - Zero cold starts (visitors can browse the catalog instantly).
-  - Single-Page Application rewrites configured via `_redirects` and `render.yaml`.
-- **Backend (`sahara-gold-backend`)**: **Render Web Service (Free Tier)**
-  - Python WSGI server using `gunicorn` with worker optimization for 512MB RAM.
-  - Managed build script (`build.sh`) handles migrations and static files collection.
-  - Automatic spin-down after 15 minutes of inactivity; wakes up on incoming API requests.
-- **Database (`sahara-gold-db`)**: **PostgreSQL**
-  - Connects using `DATABASE_URL` via `dj-database-url`.
-  - *Tip*: Render's free PostgreSQL databases expire after 30 days. For a permanent free database, you can create a free database on [Supabase](https://supabase.com) or [Neon](https://neon.tech) and paste its connection string into `DATABASE_URL`.
+> **One-click Blueprint deployment** for Sahara Gold & Diamond store.
+> Deploys PostgreSQL database + Django backend + React frontend on Render's free tier.
 
 ---
 
-## 2. Default Superuser Credentials
+## Prerequisites
 
-When the database is initialized, the following administrator is automatically provisioned:
-- **Username**: `shara_gold`
-- **Password**: `sahara1122@@`
-- **Email**: `saharagold19@gmail.com`
-- **Assigned Workspace**: `sahara-gold`
-
----
-
-## 3. Deployment Steps
-
-### Option A: 1-Click Blueprint Deployment (Fastest)
-
-1. Push this repository to your GitHub account:
-   ```bash
-   git push -u origin main
-   ```
-2. Log in to [dashboard.render.com](https://dashboard.render.com/).
-3. Click **New +** -> **Blueprint**.
-4. Connect your `gold-shop` repository.
-5. Render will automatically detect `render.yaml` and configure:
-   - The PostgreSQL Database
-   - The Django Backend Web Service
-   - The React Frontend Static Site
-6. Click **Apply**.
+| Requirement | Details |
+|---|---|
+| GitHub account | Repository must be connected to Render |
+| Render account | Free at [render.com](https://render.com) |
+| `RESEND_API_KEY` | Get from [resend.com](https://resend.com) — needed for transactional email |
+| `APISED_API_KEY` | Gold rate API key (optional — rate fallback exists) |
 
 ---
 
-### Option B: Manual Setup via Render Dashboard
+## Step 1 — Connect Repository to Render
 
-If you prefer creating services manually:
-
-#### Step 1: Create the Database
-1. In Render Dashboard, click **New +** -> **PostgreSQL**.
-2. Name: `sahara-gold-db`
-3. Plan: **Free**
-4. Click **Create Database**.
-5. Once created, copy the **Internal Database URL** (or External if connecting from outside).
-
-#### Step 2: Create the Backend Web Service
-1. In Render Dashboard, click **New +** -> **Web Service**.
-2. Connect your `gold-shop` repository.
-3. Configure the service:
-   - **Name**: `sahara-gold-backend`
-   - **Root Directory**: `backend`
-   - **Language / Environment**: `Python`
-   - **Build Command**: `./build.sh`
-   - **Start Command**: `gunicorn sahara_gold.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 120`
-   - **Plan**: **Free**
-4. In the **Environment Variables** section, click **Add from .env** and paste the production environment block provided below.
-
-#### Step 3: Create the Frontend Static Site
-1. In Render Dashboard, click **New +** -> **Static Site**.
-2. Connect your `gold-shop` repository.
-3. Configure the service:
-   - **Name**: `sahara-gold-frontend`
-   - **Root Directory**: `frontend`
-   - **Build Command**: `npm install && npm run build`
-   - **Publish Directory**: `dist`
-4. Under **Redirects/Rewrites**:
-   - Add a rewrite rule: Source: `/*`, Destination: `/index.html`, Action: `Rewrite`.
-5. Under **Environment Variables**, add:
-   - `VITE_API_URL`: `https://sahara-gold-backend.onrender.com/api` (replace with your actual backend URL)
-   - `VITE_BACKEND_URL`: `https://sahara-gold-backend.onrender.com`
-   - `VITE_SITE_URL`: `https://sahara-gold-frontend.onrender.com`
+1. Log in to [dashboard.render.com](https://dashboard.render.com)
+2. Click **New → Blueprint**
+3. Select your GitHub repository: `sahara-gold`
+4. Render will auto-detect `render.yaml` at the project root
 
 ---
 
-## 4. Production Environment Variables (Backend)
+## Step 2 — Set Dashboard-Only Secrets
 
-When setting up your Backend Web Service, copy and paste this into Render's **"Add from .env"** box:
+These secrets are marked `sync: false` in `render.yaml` and **must be set manually** in the Render dashboard before the first deploy:
 
-```text
-DEBUG=False
-SECRET_KEY=your-secure-random-secret-key-at-least-50-chars
-ALLOWED_HOSTS=.onrender.com,localhost,127.0.0.1
-AUTO_POPULATE_DATA=True
-DJANGO_SUPERUSER_USERNAME=shara_gold
-DJANGO_SUPERUSER_EMAIL=saharagold19@gmail.com
-DJANGO_SUPERUSER_PASSWORD=sahara1122@@
-SSLCOMMERZ_IS_SANDBOX=True
-ALLOW_SANDBOX_PAYMENTS=True
-SSLCOMMERZ_STORE_ID=testbox
-SSLCOMMERZ_STORE_PASS=qwerty
-EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=465
-EMAIL_USE_SSL=True
-EMAIL_USE_TLS=False
-EMAIL_HOST_USER=saharagold19@gmail.com
-EMAIL_HOST_PASSWORD=your-gmail-app-password
-DEFAULT_FROM_EMAIL=saharagold19@gmail.com
-STORE_EMAIL=saharagold19@gmail.com
-HUGGINGFACE_API_KEY=your-huggingface-token-if-any
-APISED_API_KEY=your-apised-key-if-any
-USD_TO_BDT_RATE=122.5
-AI_MODEL=Qwen/Qwen2.5-72B-Instruct
-STORE_NAME=Sahara Gold & Diamond
-STORE_PHONE=01799-281878
-STORE_WHATSAPP=8801799281878
-STORE_ADDRESS=Level-7, Block-A, Shop-19, Bashundhara City Shopping Mall, Dhaka
+1. After selecting the repository in Blueprint setup, click **Configure** next to `sahara-gold-backend`
+2. Scroll to **Environment Variables** and add:
+
+| Variable | Value | Notes |
+|---|---|---|
+| `RESEND_API_KEY` | `re_xxxxxxxxxxxx` | From [resend.com/api-keys](https://resend.com/api-keys) |
+| `APISED_API_KEY` | `sk_xxxxxxxxxxxx` | From your Apised dashboard |
+
+> **Never** commit these values to `render.yaml` or your repository.
+
+---
+
+## Step 3 — Apply Blueprint
+
+Click **Apply** — Render will:
+
+1. Create the PostgreSQL database (`sahara-gold-db`)
+2. Build the Django backend (`./build.sh`):
+   - Install Python dependencies
+   - Run database migrations
+   - Collect static files
+   - Create Django superuser (from env vars)
+3. Build the React frontend (`npm install && npm run build`)
+4. Deploy both services
+
+---
+
+## Step 4 — Verify Deployment
+
+### Health Check
+Once deployed, visit:
+```
+https://sahara-gold-backend.onrender.com/api/health/
+```
+Expected response:
+```json
+{"status": "ok", "service": "sahara-gold-api"}
 ```
 
-*(Note: If you linked a Render database, Render automatically adds `DATABASE_URL`. If using Supabase or Neon, add `DATABASE_URL=postgresql://...` to the list).*
+### Pre-Deploy Local Audit
+Run locally before pushing to ensure everything is production-ready:
+```bash
+cd gold-shop
+python scripts/verify_production_readiness.py
+```
+All checks must pass (exit code 0) before deploying.
+
+### Frontend
+```
+https://sahara-gold-frontend.onrender.com
+```
+Or your custom domain: `https://www.shaharagold.org`
+
+---
+
+## Step 5 — Custom Domain (Optional)
+
+1. In Render dashboard → `sahara-gold-frontend` → **Custom Domains**
+2. Add `shaharagold.org` and `www.shaharagold.org`
+3. Update your DNS (CNAME or A record) as shown by Render
+4. SSL certificate is provisioned automatically
+
+---
+
+## Keep-Alive (Prevents Cold Starts)
+
+Render Free Tier spins down services after **15 minutes of inactivity**, causing 40-50 second cold starts when customers visit.
+
+### Automated Keep-Alive via GitHub Actions
+
+A pre-configured workflow is included at `.github/workflows/render_keepalive.yml`.
+It pings `/api/health/` every 13 minutes during business hours (weekdays).
+
+**To enable:**
+1. Go to your GitHub repo → **Settings → Secrets and variables → Actions**
+2. Add a **Repository Secret**:
+   - Name: `RENDER_BACKEND_URL`
+   - Value: `https://sahara-gold-backend.onrender.com`
+3. The workflow activates on the next scheduled run automatically
+
+**To disable:** Delete or rename `.github/workflows/render_keepalive.yml`
+
+**Coverage:** Monday–Friday, 10:00 AM – 1:00 AM Dhaka time (UTC+6)
+
+---
+
+## Troubleshooting
+
+### Build Fails
+- Check `backend/build.sh` for syntax errors
+- Verify all dependencies are in `requirements.txt`
+- Run `python scripts/verify_production_readiness.py` locally
+
+### Health Check Fails (Service Won't Start)
+- Render requires `/api/health/` to return HTTP 200
+- Check `backend/sahara_gold/urls.py` for the health route
+- Check `ALLOWED_HOSTS` includes `.onrender.com`
+
+### 500 Errors After Deploy
+- Check `RESEND_API_KEY` is set in the Render dashboard
+- Verify `DATABASE_URL` is wired from `sahara-gold-db` in `render.yaml`
+- Check Django logs in Render dashboard → `sahara-gold-backend` → **Logs**
+
+### Static Files Not Loading
+- Ensure `build.sh` runs `collectstatic`
+- Verify WhiteNoise is in `INSTALLED_APPS` and `MIDDLEWARE` in `settings.py`
+
+### CORS Errors
+- `CORS_ALLOWED_ORIGINS` in `render.yaml` must include the frontend URL
+- For custom domain: add `https://www.shaharagold.org` to `CORS_ALLOWED_ORIGINS`
+
+---
+
+## Environment Variables Reference
+
+All environment variables are defined in `render.yaml`. Variables marked `sync: false` must be set in the Render dashboard.
+
+| Variable | Source | Notes |
+|---|---|---|
+| `SECRET_KEY` | Auto-generated by Render | Rotates on each deploy |
+| `DATABASE_URL` | From `sahara-gold-db` service | Auto-wired by Render |
+| `DEBUG` | `"False"` | Hardcoded in render.yaml |
+| `RESEND_API_KEY` | Dashboard secret | Email notifications |
+| `APISED_API_KEY` | Dashboard secret | Gold rate API |
+| `ALLOWED_HOSTS` | render.yaml | Includes `.onrender.com` wildcard |
+| `CORS_ALLOWED_ORIGINS` | render.yaml | Frontend + custom domain |
+| `FRONTEND_URL` | render.yaml | `https://www.shaharagold.org` |
+
+---
+
+*Last updated: Phase 2 — Production Deployment & Monitoring (Milestone v6.0)*
