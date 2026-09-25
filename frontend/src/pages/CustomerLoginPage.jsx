@@ -168,10 +168,16 @@ const CustomerLoginPage = () => {
             setTimeout(() => navigate(nextPath), 900);
         } catch (err) {
             if (err.message && err.message.toLowerCase().includes('not verified')) {
+                const unverifiedEmail = formData.email || identifier;
                 setTab('register');
-                setVerificationEmail(formData.email || identifier);
+                setVerificationEmail(unverifiedEmail);
                 setVerificationCode('');
                 setError(err.message);
+                // Auto-send a fresh code so the user doesn't have to click Resend
+                try {
+                    await api.customerResendVerification(unverifiedEmail);
+                    setSuccessMsg(`A fresh 6-digit code has been sent to ${unverifiedEmail}. Check your inbox (and spam folder).`);
+                } catch (_) { /* silent — user can manually resend */ }
             } else {
                 setError(err.message || 'Login failed. Please check your email and password.');
             }
@@ -210,7 +216,7 @@ const CustomerLoginPage = () => {
             });
             setVerificationEmail(result.email);
             setVerificationCode('');
-            setSuccessMsg(`A 6-digit verification code has been sent to ${result.email}. Please check your inbox.`);
+            setSuccessMsg(`A 6-digit verification code has been sent to ${result.email}. Please check your inbox — if you don't see it within a minute, check your Spam / Junk folder.`);
         } catch (err) {
             setError(err.message || 'Registration failed. Please check your email address and try again.');
         } finally {
@@ -594,6 +600,9 @@ const CustomerLoginPage = () => {
                                 <span style={{ fontSize: '14px', fontWeight: 600, color: '#e5c100' }}>
                                     {verificationEmail}
                                 </span>
+                                <p style={{ fontSize: '11px', color: '#666', margin: '6px 0 0 0' }}>
+                                    📬 Don't see the email? Check your <strong style={{ color: '#999' }}>Spam / Junk</strong> folder.
+                                </p>
                             </div>
                             <div>
                                 <label style={labelStyle}>6-Digit Verification Code</label>
