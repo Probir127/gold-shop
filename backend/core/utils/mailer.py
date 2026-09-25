@@ -17,14 +17,17 @@ def send_email_resilient(
     html_message: Optional[str] = None,
     attachments: Optional[List[Any]] = None,
     from_email: Optional[str] = None,
-    timeout: int = 15,
+    timeout: int = 20,
 ) -> tuple[bool, str]:
     """
-    Direct, highly-resilient SMTP mail dispatcher.
+    Direct, resilient SMTP mail dispatcher.
     Strategy:
       1. SMTP Port 465 (SSL direct - fastest & most reliable)
       2. SMTP Port 587 (STARTTLS - fallback)
     Returns (success: bool, message: str).
+
+    NOTE: Render free tier blocks outbound SMTP.
+    Upgrade to Render paid plan to enable SMTP delivery.
     """
     if isinstance(to_emails, str):
         recipients = [to_emails.strip()]
@@ -95,5 +98,3 @@ def send_email_resilient(
             subject, recipients, err1, exc2
         )
         return False, f"SMTP delivery failed. Port 465: ({err1}) | Port 587: ({exc2})"
-
-
