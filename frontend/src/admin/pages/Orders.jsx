@@ -41,10 +41,33 @@ const Orders = () => {
       toast.success(`Order #${orderId} marked as ${newStatus}. WhatsApp dispatched!`);
       fetchOrders();
       if (selectedOrder?.order_id === orderId) {
-        setSelectedOrder(prev => ({ ...prev, order_status: newStatus }));
+        setSelectedOrder(prev => ({
+          ...prev,
+          order_status: newStatus,
+          payment_status: (newStatus === 'delivered' && prev.payment_method === 'cod') ? 'paid' : prev.payment_status
+        }));
       }
     } catch (err) {
       toast.error('Failed to update status');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handlePaymentStatusChange = async (orderId, newPaymentStatus) => {
+    setUpdating(true);
+    try {
+      await updateOrderStatus(orderId, {
+        payment_status: newPaymentStatus,
+        send_whatsapp: false
+      });
+      toast.success(`Order #${orderId} payment marked as ${newPaymentStatus}!`);
+      fetchOrders();
+      if (selectedOrder?.order_id === orderId) {
+        setSelectedOrder(prev => ({ ...prev, payment_status: newPaymentStatus }));
+      }
+    } catch (err) {
+      toast.error('Failed to update payment status');
     } finally {
       setUpdating(false);
     }
@@ -101,6 +124,34 @@ const Orders = () => {
       default:
         return <span className="px-2.5 py-1 text-xs rounded-full bg-slate-500/10 text-slate-300 border border-slate-500/20 font-medium">Pending</span>;
     }
+  };
+
+  const getPaymentBadge = (paymentStatus, orderId) => {
+    const isPaid = paymentStatus === 'paid';
+    return (
+      <div className="inline-flex items-center gap-1.5">
+        <select
+          value={paymentStatus}
+          disabled={updating}
+          onChange={(e) => handlePaymentStatusChange(orderId, e.target.value)}
+          className={`text-[11px] font-semibold uppercase px-2 py-0.5 rounded-lg border outline-none cursor-pointer transition ${
+            isPaid
+              ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:border-emerald-500/60'
+              : paymentStatus === 'refunded'
+              ? 'bg-purple-500/15 text-purple-400 border-purple-500/30 hover:border-purple-500/60'
+              : paymentStatus === 'failed'
+              ? 'bg-rose-500/15 text-rose-400 border-rose-500/30 hover:border-rose-500/60'
+              : 'bg-amber-500/15 text-amber-400 border-amber-500/30 hover:border-amber-500/60'
+          }`}
+          title="Click to change payment status"
+        >
+          <option value="pending" className="bg-[#18181b] text-amber-400">Pending</option>
+          <option value="paid" className="bg-[#18181b] text-emerald-400">Paid</option>
+          <option value="refunded" className="bg-[#18181b] text-purple-400">Refunded</option>
+          <option value="failed" className="bg-[#18181b] text-rose-400">Failed</option>
+        </select>
+      </div>
+    );
   };
 
   return (
@@ -215,12 +266,12 @@ const Orders = () => {
                       ৳{Number(order.total || 0).toLocaleString()}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-xs font-mono uppercase bg-white/5 text-slate-300 px-2 py-0.5 rounded">
-                        {order.payment_method}
-                      </span>
-                      <span className="ml-2 text-[11px] text-slate-400">
-                        {order.payment_status}
-                      </span>
+                      <div className="flex flex-col gap-1.5 items-start">
+                        <span className="text-[11px] font-mono uppercase bg-white/5 text-slate-300 px-2 py-0.5 rounded border border-white/5">
+                          {order.payment_method}
+                        </span>
+                        {getPaymentBadge(order.payment_status, order.order_id)}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       {getStatusBadge(order.order_status)}
@@ -346,6 +397,20 @@ const Orders = () => {
                   <div className="flex justify-between text-sm font-bold text-white border-t border-white/10 pt-2">
                     <span>Total Amount:</span>
                     <span className="text-[#d4af37]">৳{Number(selectedOrder.total || 0).toLocaleString()}</span>
+                  </div>
+                </div>
+
+                {/* Payment Settlement Card */}
+                <div className="bg-[#1a1a24] p-4 rounded-xl border border-white/10 flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Payment Settlement</h4>
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      Method: <span className="font-mono text-white uppercase font-bold">{selectedOrder.payment_method}</span>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400 font-medium">Status:</span>
+                    {getPaymentBadge(selectedOrder.payment_status, selectedOrder.order_id)}
                   </div>
                 </div>
 

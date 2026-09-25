@@ -140,9 +140,35 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         if new_status:
             order.order_status = new_status
+            # Auto-promote COD orders to paid when marked as delivered
+            if new_status == 'delivered' and order.payment_method == 'cod' and not new_payment and order.payment_status == 'pending':
+                order.payment_status = 'paid'
+                new_payment = 'paid'
+
         if new_payment:
             order.payment_status = new_payment
+
         order.save()
+
+        # Synchronize payment status with core Invoice
+        # Invoice.STATUS_CHOICES: draft | sent | paid | overdue
+        try:
+            from core.models import Invoice
+            inv = Invoice.objects.filter(invoice_number=f"INV-{order.order_id}").first()
+            if inv:
+                status_map = {
+                    'paid': 'paid',
+                    'pending': 'sent',          # awaiting settlement
+                    'awaiting_payment': 'sent',
+                    'failed': 'overdue',
+                    'refunded': 'draft',
+                }
+                mapped = status_map.get(order.payment_status)
+                if mapped and inv.status != mapped:
+                    inv.status = mapped
+                    inv.save(update_fields=['status'])
+        except Exception as inv_err:
+            logger.warning(f"Could not synchronize Invoice status for order {order.order_id}: {inv_err}")
 
         # Send WhatsApp status notification if requested
         if send_wa and order.customer_phone:
