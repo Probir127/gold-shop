@@ -17,17 +17,14 @@ def send_email_resilient(
     html_message: Optional[str] = None,
     attachments: Optional[List[Any]] = None,
     from_email: Optional[str] = None,
-    timeout: int = 20,
+    timeout: int = 15,
 ) -> tuple[bool, str]:
     """
-    Direct, resilient SMTP mail dispatcher.
+    Direct, highly-resilient SMTP mail dispatcher.
     Strategy:
       1. SMTP Port 465 (SSL direct - fastest & most reliable)
       2. SMTP Port 587 (STARTTLS - fallback)
     Returns (success: bool, message: str).
-
-    NOTE: Render free tier blocks outbound SMTP.
-    Upgrade to Render paid plan to enable SMTP delivery.
     """
     if isinstance(to_emails, str):
         recipients = [to_emails.strip()]
@@ -37,13 +34,24 @@ def send_email_resilient(
     if not recipients:
         return False, "No recipient email addresses provided."
 
-    sender = from_email or getattr(settings, 'DEFAULT_FROM_EMAIL', 'Sahara Gold <saharagold19@gmail.com>')
-    host = getattr(settings, 'EMAIL_HOST', 'smtp.gmail.com')
-    user = getattr(settings, 'EMAIL_HOST_USER', 'saharagold19@gmail.com')
-    password = getattr(settings, 'EMAIL_HOST_PASSWORD', '').strip()
+    sender = (from_email or getattr(settings, 'DEFAULT_FROM_EMAIL', '') or '').strip()
+    host = str(getattr(settings, 'EMAIL_HOST', '') or '').strip()
+    user = str(getattr(settings, 'EMAIL_HOST_USER', '') or '').strip()
+    password = str(getattr(settings, 'EMAIL_HOST_PASSWORD', '') or '').strip()
 
-    if not password:
-        err_msg = "EMAIL_HOST_PASSWORD is not configured. Cannot send email."
+    if not host or not user or not password or not sender:
+        err_msg = (
+            'SMTP is not configured for this app. Set EMAIL_HOST, EMAIL_HOST_USER, '
+            'EMAIL_HOST_PASSWORD, and DEFAULT_FROM_EMAIL to a valid domain mailbox before sending mail.'
+        )
+        logger.error(err_msg)
+        return False, err_msg
+
+    if any(domain in sender.lower() for domain in ('gmail.com', 'googlemail.com')):
+        err_msg = (
+            'The app is configured to use a fixed Gmail mailbox. This is not allowed for storefront invoice mail. '
+            'Set a real domain mailbox such as info@shaharagold.org and redeploy.'
+        )
         logger.error(err_msg)
         return False, err_msg
 
@@ -98,3 +106,5 @@ def send_email_resilient(
             subject, recipients, err1, exc2
         )
         return False, f"SMTP delivery failed. Port 465: ({err1}) | Port 587: ({exc2})"
+
+

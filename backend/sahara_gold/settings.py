@@ -21,6 +21,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
 
+def _split_csv(value: str) -> list[str]:
+    return [entry.strip().rstrip('/') for entry in value.split(',') if entry.strip()]
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
@@ -30,7 +34,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'dev-only-change-me-before-deployment')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()]
+ALLOWED_HOSTS = _split_csv(os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1'))
 
 # Auto-detect Render external hostname
 render_external_hostname = os.getenv('RENDER_EXTERNAL_HOSTNAME')
@@ -41,15 +45,45 @@ if render_external_hostname and render_external_hostname not in ALLOWED_HOSTS:
 if os.getenv('RENDER') and '.onrender.com' not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append('.onrender.com')
 
+# Include custom storefront domains for live deploys (for example, https://www.shaharagold.org)
+for domain_name in [os.getenv('FRONTEND_URL', ''), os.getenv('SITE_URL', ''), os.getenv('APP_URL', '')]:
+    if not domain_name:
+        continue
+    parsed = domain_name.rstrip('/')
+    if '://' in parsed:
+        host = parsed.split('://', 1)[1].split('/', 1)[0].lower()
+        if host and host not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(host)
+            if host.startswith('www.'):
+                ALLOWED_HOSTS.append(host[4:])
+
 CSRF_TRUSTED_ORIGINS = [
     'https://*.ngrok-free.app',
     'https://*.ngrok.io',
     'https://pei-baddish-bruce.ngrok-free.dev',
     'https://*.onrender.com',
+    'https://*.shaharagold.org',
 ]
 
 extra_csrf = [origin.strip() for origin in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if origin.strip()]
 CSRF_TRUSTED_ORIGINS.extend(extra_csrf)
+
+for domain_name in [os.getenv('FRONTEND_URL', ''), os.getenv('SITE_URL', ''), os.getenv('APP_URL', '')]:
+    if not domain_name:
+        continue
+    parsed = domain_name.rstrip('/')
+    if parsed and parsed.startswith(('http://', 'https://')):
+        if parsed not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(parsed)
+        host = parsed.split('://', 1)[1].split('/', 1)[0].lower()
+        if host.startswith('www.'):
+            bare = f'https://{host[4:]}'
+            if bare not in CSRF_TRUSTED_ORIGINS:
+                CSRF_TRUSTED_ORIGINS.append(bare)
+        elif host:
+            www_variant = f'https://www.{host}'
+            if www_variant not in CSRF_TRUSTED_ORIGINS:
+                CSRF_TRUSTED_ORIGINS.append(www_variant)
 
 if render_external_hostname:
     render_origin = f'https://{render_external_hostname}'
@@ -218,25 +252,38 @@ else:
     }
 
 # CORS Settings
-CORS_ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv(
+CORS_ALLOWED_ORIGINS = _split_csv(os.getenv(
     'CORS_ALLOWED_ORIGINS',
     'http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174',
-).split(',') if origin.strip()]
+))
 
-# Allow Render & Ngrok origins for CORS
+# Allow Render, custom store domains, and Ngrok origins for CORS
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://.*\.onrender\.com$",
+    r"^https://.*\.shaharagold\.org$",
 ] if not DEBUG else [
     r"^https://.*\.ngrok-free\.app$",
     r"^https://.*\.ngrok\.io$",
     r"^https://.*\.onrender\.com$",
+    r"^https://.*\.shaharagold\.org$",
 ]
 
-frontend_url = os.getenv('FRONTEND_URL', '').strip()
-if frontend_url and frontend_url not in CORS_ALLOWED_ORIGINS:
-    CORS_ALLOWED_ORIGINS.append(frontend_url)
-if frontend_url and frontend_url.startswith('https://') and frontend_url not in CSRF_TRUSTED_ORIGINS:
-    CSRF_TRUSTED_ORIGINS.append(frontend_url)
+for domain_name in [os.getenv('FRONTEND_URL', ''), os.getenv('SITE_URL', ''), os.getenv('APP_URL', '')]:
+    if not domain_name:
+        continue
+    parsed = domain_name.rstrip('/')
+    if parsed and parsed not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(parsed)
+    if parsed and parsed.startswith('https://') and parsed not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(parsed)
+    if parsed and '://' in parsed:
+        host = parsed.split('://', 1)[1].split('/', 1)[0].lower()
+        if host.startswith('www.'):
+            bare = f'https://{host[4:]}'
+            if bare not in CORS_ALLOWED_ORIGINS:
+                CORS_ALLOWED_ORIGINS.append(bare)
+            if bare not in CSRF_TRUSTED_ORIGINS:
+                CSRF_TRUSTED_ORIGINS.append(bare)
 
 from datetime import timedelta
 
@@ -301,22 +348,22 @@ JAZZMIN_SETTINGS = {
 }
 
 # Email Backend
-# Email Backend - Safe fallback to console backend if SMTP password is not set
+# Email Backend - Safe fallback to console backend if SMTP configuration is missing.
 EMAIL_BACKEND = os.getenv(
     'EMAIL_BACKEND',
     'django.core.mail.backends.smtp.EmailBackend' if os.getenv('EMAIL_HOST_PASSWORD') else 'django.core.mail.backends.console.EmailBackend'
 )
-EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_HOST = os.getenv('EMAIL_HOST', '').strip()
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '465'))
 EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'True').lower() == 'true'
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'False').lower() == 'true'
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'saharagold19@gmail.com')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Sahara Gold <saharagold19@gmail.com>')
-STORE_EMAIL = os.getenv('STORE_EMAIL', 'saharagold19@gmail.com')
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '').strip()
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '').strip()
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', '').strip()
+STORE_EMAIL = os.getenv('STORE_EMAIL', '').strip()
 EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '25'))
 RESEND_API_KEY = os.getenv('RESEND_API_KEY', '').strip()
-RESEND_FROM_EMAIL = os.getenv('RESEND_FROM_EMAIL', DEFAULT_FROM_EMAIL)
+RESEND_FROM_EMAIL = os.getenv('RESEND_FROM_EMAIL', DEFAULT_FROM_EMAIL).strip()
 
 if EMAIL_USE_TLS and EMAIL_USE_SSL:
     raise RuntimeError('EMAIL_USE_TLS and EMAIL_USE_SSL cannot both be enabled.')

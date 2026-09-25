@@ -78,3 +78,35 @@ class InvoiceAccessTests(APITestCase):
 			}, format='json')
 
 		self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+	def test_email_resilient_rejects_unconfigured_smtp_identity(self):
+		with self.settings(
+			EMAIL_HOST='',
+			EMAIL_HOST_USER='',
+			EMAIL_HOST_PASSWORD='',
+			DEFAULT_FROM_EMAIL='',
+		):
+			ok, msg = __import__('core.utils.mailer', fromlist=['send_email_resilient']).send_email_resilient(
+				subject='Test',
+				body='Body',
+				to_emails='customer@example.com',
+			)
+
+		self.assertFalse(ok)
+		self.assertIn('SMTP is not configured', msg)
+
+	def test_email_resilient_rejects_fixed_gmail_sender_identity(self):
+		with self.settings(
+			EMAIL_HOST='smtp.gmail.com',
+			EMAIL_HOST_USER='store@gmail.com',
+			EMAIL_HOST_PASSWORD='app-password',
+			DEFAULT_FROM_EMAIL='Sahara Gold <store@gmail.com>',
+		):
+			ok, msg = __import__('core.utils.mailer', fromlist=['send_email_resilient']).send_email_resilient(
+				subject='Test',
+				body='Body',
+				to_emails='customer@example.com',
+			)
+
+		self.assertFalse(ok)
+		self.assertIn('fixed Gmail mailbox', msg)
