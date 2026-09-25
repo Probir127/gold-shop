@@ -45,3 +45,4 @@ urllib3==2.6.3
 whitenoise==6.11.0
 gunicorn==23.0.0
 dj-database-url==2.3.0
+resend>=2.6.0
