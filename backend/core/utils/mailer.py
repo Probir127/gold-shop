@@ -1,13 +1,75 @@
 from __future__ import annotations
 import os
+import base64
+import json
 import logging
 import mimetypes
+import urllib.request
+import urllib.error
 from typing import List, Union, Optional, Any
 from django.conf import settings
 from django.core.mail.backends.smtp import EmailBackend
 from django.core.mail import EmailMultiAlternatives
 
 logger = logging.getLogger(__name__)
+
+
+def _send_via_resend_api(
+    subject: str,
+    body: str,
+    recipients: List[str],
+    html_message: Optional[str],
+    sender: str,
+    attachments: Optional[List[Any]],
+    api_key: str,
+) -> tuple[bool, str]:
+    """
+    Sends email via Resend HTTP API — no SMTP ports needed.
+    This is the most reliable path on Render (no outbound port restrictions).
+    """
+    payload: dict = {
+        "from": sender,
+        "to": recipients,
+        "subject": subject,
+        "text": body,
+    }
+    if html_message:
+        payload["html"] = html_message
+
+    if attachments:
+        encoded = []
+        for att in attachments:
+            if isinstance(att, str) and os.path.exists(att):
+                with open(att, "rb") as f:
+                    data = f.read()
+                encoded.append({
+                    "filename": os.path.basename(att),
+                    "content": base64.b64encode(data).decode(),
+                })
+            elif isinstance(att, (list, tuple)) and len(att) == 2:
+                att_data, att_name = att
+                if isinstance(att_data, bytes):
+                    encoded.append({
+                        "filename": att_name,
+                        "content": base64.b64encode(att_data).decode(),
+                    })
+        if encoded:
+            payload["attachments"] = encoded
+
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        resp_data = json.loads(resp.read().decode("utf-8"))
+        email_id = resp_data.get("id", "unknown")
+        logger.info("Resend API delivered '%s' to %s — id: %s", subject, recipients, email_id)
+        return True, f"Delivered to {', '.join(recipients)} via Resend API (id: {email_id})"
 
 
 def send_email_resilient(
@@ -17,13 +79,15 @@ def send_email_resilient(
     html_message: Optional[str] = None,
     attachments: Optional[List[Any]] = None,
     from_email: Optional[str] = None,
-    timeout: int = 15,
+    timeout: int = 20,
 ) -> tuple[bool, str]:
     """
-    Direct, highly-resilient SMTP mail dispatcher.
-    Strategy:
-      1. SMTP Port 465 (SSL direct - fastest & most reliable)
-      2. SMTP Port 587 (STARTTLS - fallback)
+    Resilient email dispatcher for Sahara Gold.
+
+    Strategy (in order):
+      1. Resend HTTP API  — preferred: no SMTP port restrictions on Render
+      2. SMTP Port 587    — STARTTLS fallback if Resend API key unavailable
+
     Returns (success: bool, message: str).
     """
     if isinstance(to_emails, str):
@@ -38,22 +102,50 @@ def send_email_resilient(
     host = str(getattr(settings, 'EMAIL_HOST', '') or '').strip()
     user = str(getattr(settings, 'EMAIL_HOST_USER', '') or '').strip()
     password = str(getattr(settings, 'EMAIL_HOST_PASSWORD', '') or '').strip()
+    resend_api_key = str(getattr(settings, 'RESEND_API_KEY', '') or '').strip()
+    resend_from = str(getattr(settings, 'RESEND_FROM_EMAIL', '') or '').strip()
 
-    if not host or not user or not password or not sender:
-        err_msg = (
-            'SMTP is not configured for this app. Set EMAIL_HOST, EMAIL_HOST_USER, '
-            'EMAIL_HOST_PASSWORD, and DEFAULT_FROM_EMAIL to a valid domain mailbox before sending mail.'
-        )
-        logger.error(err_msg)
-        return False, err_msg
+    if not sender:
+        return False, "DEFAULT_FROM_EMAIL is not configured."
 
     if any(domain in sender.lower() for domain in ('gmail.com', 'googlemail.com')):
         err_msg = (
-            'The app is configured to use a fixed Gmail mailbox. This is not allowed for storefront invoice mail. '
-            'Set a real domain mailbox such as info@shaharagold.org and redeploy.'
+            'The app is configured to use a Gmail mailbox as the sender. '
+            'Set DEFAULT_FROM_EMAIL to info@shaharagold.org and redeploy.'
         )
         logger.error(err_msg)
         return False, err_msg
+
+    # Determine the "from" address: use "Display Name <email>" format
+    api_sender = f'"Sahara Gold" <{resend_from}>' if resend_from else sender
+
+    # ── Attempt 1: Resend HTTP API ────────────────────────────────────
+    if resend_api_key:
+        try:
+            ok, msg = _send_via_resend_api(
+                subject=subject,
+                body=body,
+                recipients=recipients,
+                html_message=html_message,
+                sender=api_sender,
+                attachments=attachments,
+                api_key=resend_api_key,
+            )
+            if ok:
+                return True, msg
+        except Exception as exc_api:
+            logger.warning("Resend API failed for '%s': %s. Trying SMTP 587…", subject, exc_api)
+            resend_err = str(exc_api)
+    else:
+        resend_err = "RESEND_API_KEY not set"
+        logger.info("RESEND_API_KEY not configured, using SMTP fallback.")
+
+    # ── Attempt 2: SMTP Port 587 (STARTTLS) ───────────────────────────
+    if not host or not user or not password:
+        return False, (
+            f"Resend API failed ({resend_err}) and SMTP is not fully configured "
+            "(EMAIL_HOST / EMAIL_HOST_USER / EMAIL_HOST_PASSWORD missing)."
+        )
 
     def _build_message(backend_conn):
         msg = EmailMultiAlternatives(
@@ -77,21 +169,6 @@ def send_email_resilient(
                         msg.attach(att_name, att_data, mime_type)
         return msg
 
-    err1 = None
-    # ── Attempt 1: Port 465 (SSL) ─────────────────────────────────────
-    try:
-        ssl_backend = EmailBackend(
-            host=host, port=465, username=user, password=password,
-            use_ssl=True, use_tls=False, timeout=timeout,
-        )
-        _build_message(ssl_backend).send(fail_silently=False)
-        logger.info("SMTP Port 465 delivered '%s' to %s", subject, recipients)
-        return True, f"Delivered to {', '.join(recipients)} via SMTP Port 465 (SSL)"
-    except Exception as exc1:
-        err1 = exc1
-        logger.warning("SMTP Port 465 failed for '%s': %s. Trying Port 587…", subject, exc1)
-
-    # ── Attempt 2: Port 587 (STARTTLS) ───────────────────────────────
     try:
         tls_backend = EmailBackend(
             host=host, port=587, username=user, password=password,
@@ -102,9 +179,7 @@ def send_email_resilient(
         return True, f"Delivered to {', '.join(recipients)} via SMTP Port 587 (TLS)"
     except Exception as exc2:
         logger.error(
-            "All SMTP delivery attempts failed for '%s' to %s. Port 465: %s | Port 587: %s",
-            subject, recipients, err1, exc2
+            "All delivery attempts failed for '%s' to %s. Resend API: %s | SMTP 587: %s",
+            subject, recipients, resend_err, exc2
         )
-        return False, f"SMTP delivery failed. Port 465: ({err1}) | Port 587: ({exc2})"
-
-
+        return False, f"Delivery failed. Resend API: ({resend_err}) | SMTP 587: ({exc2})"
