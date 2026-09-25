@@ -25,7 +25,7 @@ const Login = () => {
 
       // Staff / superusers bypass tenant membership requirement
       if (user.is_staff || user.is_superuser) {
-        const slug = memberships[0]?.tenant_slug || 'default';
+        const slug = memberships[0]?.tenant_slug || 'sahara-gold';
         localStorage.setItem('tenant_slug', slug);
         localStorage.setItem('is_staff', 'true');
         navigate('/admin');

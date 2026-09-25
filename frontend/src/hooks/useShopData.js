@@ -8,6 +8,13 @@ export const useProducts = (category) => {
     });
 };
 
+export const useCategories = () => {
+    return useQuery({
+        queryKey: ['categories'],
+        queryFn: api.getCategories,
+    });
+};
+
 export const useProduct = (id) => {
     return useQuery({
         queryKey: ['product', id],

@@ -284,6 +284,7 @@ const Products = () => {
       await createCategoryAdmin({ name });
       setCategoryDraft('');
       fetchProducts();
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
       toast.success(`✅ Added category "${name}"`);
     } catch (err) {
       const msg = err.response?.data?.detail || err.response?.data?.message || Object.values(err.response?.data || {}).flat().join(', ') || 'Failed to add category';
@@ -300,6 +301,8 @@ const Products = () => {
       await deleteCategoryAdmin(id);
       if (filterCategory === String(id)) setFilterCategory('all');
       fetchProducts();
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success(`🗑️ Removed category "${name}"`);
     } catch (err) {
       const msg = err.response?.data?.detail || err.response?.data?.message || 'Failed to delete category';

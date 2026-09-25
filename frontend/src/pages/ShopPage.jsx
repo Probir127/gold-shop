@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ProductGrid from '../components/product/ProductGrid';
-import { useProducts } from '../hooks/useShopData';
+import { useProducts, useCategories } from '../hooks/useShopData';
 import { api } from '../services/api';
 import SEO from '../components/SEO';
 import PageTransition from '../components/PageTransition';
@@ -20,17 +20,15 @@ const ShopPage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const activeCategory = searchParams.get('cat') || 'all';
     const [sortBy, setSortBy] = useState('default');
-    const [categories, setCategories] = useState([{ id: 'all', name: 'All Collection' }]);
 
-    useEffect(() => {
-        let active = true;
-        api.getCategories()
-            .then(items => {
-                if (active) setCategories([{ id: 'all', name: 'All Collection' }, ...items]);
-            })
-            .catch(() => {});
-        return () => { active = false; };
-    }, []);
+    const { data: rawCategories = [] } = useCategories();
+    const categories = useMemo(() => {
+        return [{ id: 'all', slug: 'all', name: 'All Collection' }, ...rawCategories];
+    }, [rawCategories]);
+
+    const activeCatObj = useMemo(() => {
+        return categories.find(c => (c.slug && c.slug === activeCategory) || String(c.id) === activeCategory);
+    }, [categories, activeCategory]);
 
     const { data: products = [], isLoading } = useProducts(activeCategory);
 
@@ -61,13 +59,13 @@ const ShopPage = () => {
         <PageTransition>
             <div className="section shop-page">
                 <SEO
-                    title={activeCategory === 'all' ? 'Shop All Collection' : `Shop ${categories.find(c => c.id === activeCategory)?.name}`}
+                    title={activeCategory === 'all' ? 'Shop All Collection' : `Shop ${activeCatObj?.name || 'Collection'}`}
                     description="Browse our exclusive gold and diamond jewelry collection."
                 />
                 <div className="container">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', flexWrap: 'wrap', gap: '20px' }}>
                         <h1 className="section-title" style={{ margin: 0, fontSize: '2rem' }}>
-                            {categories.find(c => c.id === activeCategory)?.name || 'Collection'}
+                            {activeCatObj?.name || 'Collection'}
                         </h1>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
@@ -112,25 +110,31 @@ const ShopPage = () => {
                             marginBottom: '30px',
                             flexWrap: 'wrap'
                         }}>
-                            {categories.map(cat => (
-                                <button
-                                    key={cat.slug || cat.id}
-                                    onClick={() => handleCategoryChange(cat.slug || cat.id)}
-                                    style={{
-                                        padding: '8px 16px',
-                                        borderRadius: '20px',
-                                        border: `1px solid ${activeCategory === (cat.slug || String(cat.id)) ? 'var(--color-gold-primary)' : '#333'}`,
-                                        backgroundColor: activeCategory === (cat.slug || String(cat.id)) ? 'var(--color-gold-primary)' : 'transparent',
-                                        color: activeCategory === (cat.slug || String(cat.id)) ? '#000' : '#888',
-                                        cursor: 'pointer',
-                                        fontSize: '13px',
-                                        fontWeight: '500',
-                                        transition: 'all 0.3s'
-                                    }}
-                                >
-                                    {cat.name}
-                                </button>
-                            ))}
+                            {categories.map(cat => {
+                                const catKey = cat.slug || String(cat.id);
+                                const isActive = activeCategory === 'all'
+                                    ? (cat.slug === 'all' || cat.id === 'all')
+                                    : (cat.slug === activeCategory || String(cat.id) === activeCategory);
+                                return (
+                                    <button
+                                        key={catKey}
+                                        onClick={() => handleCategoryChange(catKey)}
+                                        style={{
+                                            padding: '8px 16px',
+                                            borderRadius: '20px',
+                                            border: `1px solid ${isActive ? 'var(--color-gold-primary)' : '#333'}`,
+                                            backgroundColor: isActive ? 'var(--color-gold-primary)' : 'transparent',
+                                            color: isActive ? '#000' : '#888',
+                                            cursor: 'pointer',
+                                            fontSize: '13px',
+                                            fontWeight: '500',
+                                            transition: 'all 0.3s'
+                                        }}
+                                    >
+                                        {cat.name}
+                                    </button>
+                                );
+                            })}
                         </div>
 
                         {/* Grid */}
