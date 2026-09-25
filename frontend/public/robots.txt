@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /login
+Disallow: /account
+Disallow: /order-success
+Disallow: /payment-failed
+Disallow: /track-order
+
+Sitemap: https://www.shaharagold.org/sitemap.xml
