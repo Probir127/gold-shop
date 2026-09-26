@@ -17,7 +17,7 @@ services:
       - key: PYTHON_VERSION
         value: "3.11.9"
       - key: AUTO_POPULATE_DATA
-        value: "True"
+        value: "False"
       - key: DJANGO_SUPERUSER_USERNAME
         value: "shara_gold"
       - key: DJANGO_SUPERUSER_EMAIL

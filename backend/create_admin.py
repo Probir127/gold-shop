@@ -58,4 +58,14 @@ if not tenant.owner and primary_admin:
     tenant.owner = primary_admin
     tenant.save(update_fields=['owner'])
 
+# 3. Auto-claim any unassigned products & categories so they appear in Admin
+try:
+    from products.models import Product, Category
+    claimed_prods = Product.objects.filter(tenant__isnull=True).update(tenant=tenant)
+    claimed_cats = Category.objects.filter(tenant__isnull=True).update(tenant=tenant)
+    if claimed_prods or claimed_cats:
+        print(f"Assigned {claimed_prods} products and {claimed_cats} categories to '{tenant.name}'.")
+except Exception as e:
+    print(f"Warning: could not auto-claim products/categories: {e}")
+
 print("All admin accounts successfully configured with workspace access.")

@@ -47,7 +47,11 @@ class CategoryViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         tenant = _resolve_tenant(self.request)
         if tenant:
-            qs = qs.filter(tenant=tenant)
+            if self.request.user.is_staff:
+                Category.objects.filter(tenant__isnull=True).update(tenant=tenant)
+                qs = qs.filter(tenant=tenant)
+            else:
+                qs = qs.filter(Q(tenant=tenant) | Q(tenant__isnull=True))
         return qs
 
     def perform_create(self, serializer):
@@ -76,7 +80,12 @@ class ProductViewSet(viewsets.ModelViewSet):
             qs = Product.objects.select_related('category').filter(in_stock=True).order_by('-created_at', 'id')
 
         if tenant:
-            qs = qs.filter(tenant=tenant)
+            if self.request.user.is_staff:
+                # Claim unassigned products to this store tenant so admin can manage, edit, upload photos, or delete them
+                Product.objects.filter(tenant__isnull=True).update(tenant=tenant)
+                qs = qs.filter(tenant=tenant)
+            else:
+                qs = qs.filter(Q(tenant=tenant) | Q(tenant__isnull=True))
 
         # Optional category filter — accepts numeric ID, slug, or name (case-insensitive)
         category = self.request.query_params.get('category', '').strip()
@@ -103,6 +112,13 @@ class ProductViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         tenant = _resolve_tenant(self.request)
         serializer.save(tenant=tenant or Tenant.objects.first())
+
+    def perform_update(self, serializer):
+        tenant = _resolve_tenant(self.request)
+        if tenant:
+            serializer.save(tenant=tenant)
+        else:
+            serializer.save()
 
     def get_serializer_context(self):
         """Inject the current gold rate once per request into all serializer instances."""
