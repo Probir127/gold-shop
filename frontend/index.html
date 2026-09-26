@@ -9,6 +9,14 @@
   <meta name="theme-color" content="#050505" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
 
+  <!-- Resource Hints: preconnect to backend and CDNs -->
+  <link rel="preconnect" href="https://sahara-gold-backend.onrender.com" crossorigin />
+  <link rel="dns-prefetch" href="https://sahara-gold-backend.onrender.com" />
+  <link rel="dns-prefetch" href="https://apised.com" />
+
+  <!-- Preload LCP hero image (above-the-fold) -->
+  <link rel="preload" as="image" href="/assets/images/5.jpg.jpeg" fetchpriority="high" />
+
   <!-- SEO Meta Tags -->
   <meta name="description"
     content="Sahara Gold & Diamond - The symbol of trust. Discover our premium collection of hallmark certified gold and diamond jewelry in Bangladesh. Lifetime warranty included." />
@@ -54,12 +62,16 @@
     }
   </script>
 
-  <!-- Google Fonts -->
+  <!-- Google Fonts: preconnect + async load to prevent render-blocking -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
     href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@300;400;500;600;700&family=Noto+Serif+Bengali:wght@400;500;600;700&display=swap"
-    rel="stylesheet">
+    rel="stylesheet"
+    media="print" onload="this.media='all'">
+  <noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@300;400;500;600;700&family=Noto+Serif+Bengali:wght@400;500;600;700&display=swap" rel="stylesheet">
+  </noscript>
 
   <title>Sahara Gold & Diamond | Hallmark Gold & Diamond Jewelry in Bangladesh</title>
 </head>

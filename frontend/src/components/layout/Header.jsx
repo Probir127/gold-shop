@@ -74,19 +74,21 @@ const Header = () => {
 
                     {/* Actions */}
                     <div className="header-actions">
-                        <button className="icon-btn" onClick={() => setIsSearchOpen(true)} title="Search Products">
+                        <button className="icon-btn" onClick={() => setIsSearchOpen(true)} title="Search Products" aria-label="Search products">
                             <Search size={22} />
                         </button>
-                        <Link to="/login" className="icon-btn" title="Customer Account / Sign In">
+                        <Link to="/login" className="icon-btn" title="Customer Account / Sign In" aria-label="Sign in to your account">
                             <User size={22} />
                         </Link>
-                        <button className="icon-btn" onClick={toggleCart} title="View Cart">
+                        <button className="icon-btn" onClick={toggleCart} title="View Cart" aria-label={`View cart${cartCount > 0 ? `, ${cartCount} item${cartCount > 1 ? 's' : ''}` : ''}`}>
                             <ShoppingBag size={22} />
                             {cartCount > 0 && <span ref={badgeRef} className="cart-badge">{cartCount}</span>}
                         </button>
                         <button
                             className="icon-btn mobile-toggle"
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+                            aria-expanded={isMenuOpen}
                         >
                             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
                         </button>

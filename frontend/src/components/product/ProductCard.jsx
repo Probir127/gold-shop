@@ -100,8 +100,10 @@ const ProductCard = ({ product }) => {
                     <div className="product-card-image" style={{ position: 'relative', paddingTop: '100%', overflow: 'hidden' }}>
                         <img
                             src={product.image || FALLBACK_JEWELRY_IMG}
-                            alt={product.name}
+                            alt={`${product.name} — ${product.weight}g ${product.purity} Gold`}
                             onError={(e) => { e.currentTarget.src = FALLBACK_JEWELRY_IMG; }}
+                            width={600}
+                            height={600}
                             style={{
                                 position: 'absolute',
                                 top: 0,
@@ -113,6 +115,7 @@ const ProductCard = ({ product }) => {
                                 transform: isHovered ? 'scale(1.1)' : 'scale(1)'
                             }}
                             loading="lazy"
+                            decoding="async"
                         />
 
                         {/* Sparkle Overlay */}

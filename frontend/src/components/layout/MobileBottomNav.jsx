@@ -86,6 +86,7 @@ const MobileBottomNav = () => {
             {/* Cart Button */}
             <button
                 onClick={toggleCart}
+                aria-label={`View cart${cartCount > 0 ? `, ${cartCount} item${cartCount > 1 ? 's' : ''}` : ''}`}
                 style={{
                     display: 'flex',
                     flexDirection: 'column',

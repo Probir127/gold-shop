@@ -205,6 +205,8 @@ const Hero = ({ data }) => {
             {/* Animated Background with Zoom Effect */}
             <div
                 className="hero-bg-zoom"
+                role="img"
+                aria-label="Sahara Gold luxury jewelry showcase"
                 style={{
                     position: 'absolute',
                     top: 0,
