@@ -1,1 +1,67 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="31.88" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 257"><defs><linearGradient id="IconifyId1813088fe1fbc01fb466" x1="-.828%" x2="57.636%" y1="7.652%" y2="78.411%"><stop offset="0%" stop-color="#41D1FF"></stop><stop offset="100%" stop-color="#BD34FE"></stop></linearGradient><linearGradient id="IconifyId1813088fe1fbc01fb467" x1="43.376%" x2="50.316%" y1="2.242%" y2="89.03%"><stop offset="0%" stop-color="#FFEA83"></stop><stop offset="8.333%" stop-color="#FFDD35"></stop><stop offset="100%" stop-color="#FFA800"></stop></linearGradient></defs><path fill="url(#IconifyId1813088fe1fbc01fb466)" d="M255.153 37.938L134.897 252.976c-2.483 4.44-8.862 4.466-11.382.048L.875 37.958c-2.746-4.814 1.371-10.646 6.827-9.67l120.385 21.517a6.537 6.537 0 0 0 2.322-.004l117.867-21.483c5.438-.991 9.574 4.796 6.877 9.62Z"></path><path fill="url(#IconifyId1813088fe1fbc01fb467)" d="M185.432.063L96.44 17.501a3.268 3.268 0 0 0-2.634 3.014l-5.474 92.456a3.268 3.268 0 0 0 3.997 3.378l24.777-5.718c2.318-.535 4.413 1.507 3.936 3.838l-7.361 36.047c-.495 2.426 1.782 4.5 4.151 3.78l15.304-4.649c2.372-.72 4.652 1.36 4.15 3.788l-11.698 56.621c-.732 3.542 3.979 5.473 5.943 2.437l1.313-2.028l72.516-144.72c1.215-2.423-.88-5.186-3.54-4.672l-25.505 4.922c-2.396.462-4.435-1.77-3.759-4.114l16.646-57.705c.677-2.35-1.37-4.583-3.769-4.113Z"></path></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Sahara Gold &amp; Diamond">
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#F7E7B4"/>
+      <stop offset="30%"  stop-color="#E5C05B"/>
+      <stop offset="60%"  stop-color="#C9941A"/>
+      <stop offset="100%" stop-color="#B8860B"/>
+    </linearGradient>
+    <linearGradient id="goldGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"   stop-color="#F7E7B4"/>
+      <stop offset="50%"  stop-color="#D4AF37"/>
+      <stop offset="100%" stop-color="#8B6914"/>
+    </linearGradient>
+    <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#F7E7B4" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#050505"  stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="256" height="256" rx="36" fill="#0A0A0C"/>
+
+  <!-- Soft radial glow behind gem -->
+  <circle cx="128" cy="118" r="90" fill="url(#glowGrad)"/>
+
+  <!-- Outer dashed circle ring -->
+  <circle cx="128" cy="118" r="88" fill="none" stroke="#D4AF37" stroke-width="1"
+          stroke-dasharray="5 6" stroke-opacity="0.35"/>
+
+  <!-- ── Main Diamond Gem ── -->
+  <!-- Top facet (bright) -->
+  <polygon points="128,34  172,96  128,82  84,96" fill="url(#goldGrad)" filter="url(#glow)"/>
+  <!-- Left upper facet -->
+  <polygon points="84,96  128,82  128,162  60,130" fill="#C9941A"/>
+  <!-- Right upper facet -->
+  <polygon points="172,96  196,130  128,162  128,82" fill="#E5C05B"/>
+  <!-- Left lower facet -->
+  <polygon points="60,130  128,162  128,202" fill="#B8860B"/>
+  <!-- Right lower facet -->
+  <polygon points="196,130 128,202  128,162" fill="#D4AF37"/>
+  <!-- Center reflection streak -->
+  <polygon points="128,50  145,90  128,82  111,90" fill="#F7E7B4" fill-opacity="0.55"/>
+
+  <!-- Outline strokes for sharp gem edges -->
+  <g stroke="#F7E7B4" stroke-opacity="0.45" stroke-width="0.8" fill="none">
+    <polygon points="128,34  172,96  128,82  84,96"/>
+    <polygon points="84,96  128,82  128,162  60,130"/>
+    <polygon points="172,96  196,130  128,162  128,82"/>
+    <polygon points="60,130  128,162  128,202"/>
+    <polygon points="196,130 128,202  128,162"/>
+    <line x1="128" y1="34"  x2="128" y2="202"/>
+    <line x1="84"  y1="96"  x2="196" y2="130"/>
+    <line x1="60"  y1="130" x2="172" y2="96"/>
+  </g>
+
+  <!-- Brand text -->
+  <text x="128" y="232"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="16" font-weight="700"
+        letter-spacing="4"
+        text-anchor="middle"
+        fill="url(#goldGrad2)">SAHARA GOLD</text>
+</svg>
