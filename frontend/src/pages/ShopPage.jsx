@@ -75,6 +75,7 @@ const ShopPage = () => {
                 <SEO
                     title={activeCategory === 'all' ? 'Shop All Collection' : `Shop ${activeCatObj?.name || 'Collection'}`}
                     description="Browse our exclusive gold and diamond jewelry collection."
+                    url={activeCategory === 'all' ? '/shop' : `/shop?cat=${activeCategory}`}
                 />
                 <div className="container">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', flexWrap: 'wrap', gap: '20px' }}>

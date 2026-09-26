@@ -5,7 +5,7 @@ services:
   - type: web
     name: sahara-gold-backend
     env: python
-    plan: free
+    plan: starter
     rootDir: backend
     buildCommand: "./build.sh"
     startCommand: "gunicorn sahara_gold.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 120"
