@@ -70,7 +70,7 @@ services:
         value: ".onrender.com,localhost,127.0.0.1,www.shaharagold.org,shaharagold.org"
 
   # ---------------------------------------------------------------------------
-  # 2. Frontend Static Site (React/Vite - 100% Free CDN & No Cold Starts)
+  # 2. Frontend Static Site (React/Vite CDN)
   # ---------------------------------------------------------------------------
   - type: web
     name: sahara-gold-frontend
@@ -98,9 +98,9 @@ services:
 
 databases:
   # ---------------------------------------------------------------------------
-  # 3. PostgreSQL Database (Free Tier)
+  # 3. PostgreSQL Database (Starter)
   # ---------------------------------------------------------------------------
   - name: sahara-gold-db
-    plan: free
+    plan: starter
     databaseName: sahara_gold
     user: sahara_user
