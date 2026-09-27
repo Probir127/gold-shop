@@ -1,3 +1,5 @@
+import { fetchMarketRates, fetchRateJson } from './goldRates.js';
+
 const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.VITE_BACKEND_URL ? `${import.meta.env.VITE_BACKEND_URL}/api` : '/api');
 
 let customerRefreshPromise = null;
@@ -89,53 +91,10 @@ export const api = {
             const live = await api.getLiveMarketRates();
             if (live && live.rate_22k) return live;
         } catch (_) {}
-        const storedRes = await nf(`${API_BASE}/rates/latest/`);
-        if (!storedRes.ok) throw new Error('Failed to fetch rates');
-        return storedRes.json();
+        const stored = await fetchRateJson(`${API_BASE}/rates/latest/`);
+        return { ...stored, status: 'stored', source: 'Saved store rate' };
     },
-    getLiveMarketRates: async () => {
-        const TROY_OZ_TO_GRAM = 31.1034768;
-        const USD_BDT = parseFloat(import.meta.env.VITE_USD_TO_BDT || '122.5');
-
-        // The APISED key is server-side only; the backend endpoint below handles it.
-
-        // 2. Fallback to free public gold-api.com
-        try {
-            const res = await fetch('https://api.gold-api.com/price/XAU', {
-                headers: { 'User-Agent': 'SaharaGold/1.0' }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                const oz_usd = parseFloat(data.price || 0);
-                if (oz_usd > 0) {
-                    const gram_usd = oz_usd / TROY_OZ_TO_GRAM;
-                    const rate_24k = Math.round(gram_usd * USD_BDT);
-                    return {
-                        source: 'Global Gold Market Exchange (Live)',
-                        price_usd_per_gram: Math.round(gram_usd * 100) / 100,
-                        price_usd_per_oz: Math.round(oz_usd * 100) / 100,
-                        usd_to_bdt: USD_BDT,
-                        rate_24k,
-                        rate_22k: Math.round(rate_24k * 0.916),
-                        rate_21k: Math.round(rate_24k * 0.875),
-                        rate_18k: Math.round(rate_24k * 0.750),
-                        rate_traditional: Math.round(rate_24k * 0.625),
-                        updated_at: data.updatedAtReadable || 'just now',
-                        date: new Date().toISOString(),
-                        status: 'success',
-                    };
-                }
-            }
-        } catch (_) { /* CORS / network fallback below */ }
-
-        // Fallback: ask the backend to fetch it (works locally, may be slow on Render free tier)
-        const liveRes = await nf(`${API_BASE}/rates/live-market/`);
-        if (!liveRes.ok) throw new Error('Live market unavailable');
-        const data = await liveRes.json();
-        if (data.status !== 'success') throw new Error('Live market data error');
-        if (!data.date) data.date = new Date().toISOString();
-        return data;
-    },
+    getLiveMarketRates: async () => fetchMarketRates(API_BASE),
     getGoldRates: async () => {
         return api.getLatestRates();
     },
