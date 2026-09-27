@@ -54,7 +54,17 @@ export const api = {
         const res = await nf(url);
         if (!res.ok) throw new Error('Failed to fetch products');
         const data = await res.json();
-        return Array.isArray(data) ? data : (data.results || []);
+        if (Array.isArray(data)) return data;
+        const products = [...(data.results || [])];
+        let next = data.next;
+        while (next) {
+            const page = await nf(next);
+            if (!page.ok) throw new Error('Failed to fetch more products');
+            const result = await page.json();
+            products.push(...result.results);
+            next = result.next;
+        }
+        return products;
     },
     searchProducts: async (query, filters = {}) => {
         const params = new URLSearchParams({ q: query, ...filters });
@@ -87,46 +97,7 @@ export const api = {
         const TROY_OZ_TO_GRAM = 31.1034768;
         const USD_BDT = parseFloat(import.meta.env.VITE_USD_TO_BDT || '122.5');
 
-        // 1. Try APISED directly from the browser (CORS supported, key supported)
-        const apisedKey = import.meta.env.VITE_APISED_API_KEY || 'sk_4d2dB072e3BF68099002921813848002cce4e2Fa8e7bfe22';
-        if (apisedKey) {
-            try {
-                const res = await fetch('https://gold.g.apised.com/v1/latest?metals=XAU&weight_unit=gram&base_currency=USD', {
-                    headers: { 'x-api-key': apisedKey }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    const xau = data?.data?.metal_prices?.XAU || data?.metal_prices?.XAU;
-                    if (xau && (xau.price_24k || xau.price)) {
-                        const p24 = parseFloat(xau.price_24k || xau.price);
-                        const p22 = parseFloat(xau.price_22k || 0);
-                        const p21 = parseFloat(xau.price_21k || 0);
-                        const p18 = parseFloat(xau.price_18k || 0);
-
-                        const rate_24k = Math.round(p24 * USD_BDT);
-                        const rate_22k = p22 > 0 ? Math.round(p22 * USD_BDT) : Math.round(rate_24k * 0.916);
-                        const rate_21k = p21 > 0 ? Math.round(p21 * USD_BDT) : Math.round(rate_24k * 0.875);
-                        const rate_18k = p18 > 0 ? Math.round(p18 * USD_BDT) : Math.round(rate_24k * 0.750);
-                        const rate_traditional = Math.round(rate_24k * 0.625);
-
-                        return {
-                            source: 'APISED Live Gold Exchange',
-                            price_usd_per_gram: Math.round(p24 * 100) / 100,
-                            price_usd_per_oz: Math.round(p24 * TROY_OZ_TO_GRAM * 100) / 100,
-                            usd_to_bdt: USD_BDT,
-                            rate_24k,
-                            rate_22k,
-                            rate_21k,
-                            rate_18k,
-                            rate_traditional,
-                            updated_at: 'just now',
-                            date: new Date().toISOString(),
-                            status: 'success',
-                        };
-                    }
-                }
-            } catch (_) { /* fallback to gold-api.com */ }
-        }
+        // The APISED key is server-side only; the backend endpoint below handles it.
 
         // 2. Fallback to free public gold-api.com
         try {

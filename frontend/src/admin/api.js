@@ -191,7 +191,19 @@ export const updateGoldRate      = (data) => api.post('/rates/', data)
 export const getLiveGoldMarket   = () => api.get('/rates/live-market/')
 export const syncLiveGoldRate    = () => api.post('/rates/sync-live/')
 
-export const getProductsAdmin    = () => api.get('/products/')
+const getAllPages = async (path) => {
+    const first = await api.get(path)
+    if (!first.data?.next) return first
+    const results = [...first.data.results]
+    let next = first.data.next
+    while (next) {
+        const page = await api.get(next)
+        results.push(...page.data.results)
+        next = page.data.next
+    }
+    return { ...first, data: { ...first.data, results } }
+}
+export const getProductsAdmin    = () => getAllPages('/products/')
 export const getCategories       = () => api.get('/categories/')
 export const createCategoryAdmin = (data) => api.post('/categories/', data)
 export const updateCategoryAdmin = (id, data) => api.patch(`/categories/${id}/`, data)

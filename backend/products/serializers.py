@@ -29,14 +29,28 @@ class ProductSerializer(serializers.ModelSerializer):
     category_slug = serializers.CharField(source='category.slug', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
     current_price = serializers.SerializerMethodField()
+    images = serializers.SerializerMethodField()
+    gallery = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = [
             'id', 'name', 'category', 'category_name', 'category_slug',
             'description', 'weight', 'purity', 'making_charge_per_gram',
-            'image', 'in_stock', 'is_bestseller', 'is_new', 'current_price'
+            'image', 'images', 'gallery', 'in_stock', 'is_bestseller', 'is_new', 'current_price'
         ]
+
+    def _image_url(self, image):
+        if not image:
+            return None
+        request = self.context.get('request')
+        return request.build_absolute_uri(image.url) if request else image.url
+
+    def get_gallery(self, obj):
+        return [{'id': item.id, 'url': self._image_url(item.image)} for item in obj.gallery_images.all()]
+
+    def get_images(self, obj):
+        return [url for url in [self._image_url(obj.image), *(item['url'] for item in self.get_gallery(obj))] if url]
 
     def get_current_price(self, obj):
         """Calculate price using the gold rate injected into context (1 query per request)."""

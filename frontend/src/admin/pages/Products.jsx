@@ -88,28 +88,40 @@ const StockToggle = ({ productId, inStock, onToggled }) => {
 /* ── Image Preview ───────────────────────────────────────────────── */
 const ImagePreview = ({ file, currentUrl }) => {
   const [preview, setPreview] = useState(null);
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
     if (!file) { setPreview(null); return; }
     const url = URL.createObjectURL(file);
     setPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [file]);
+  useEffect(() => setFailed(false), [preview, currentUrl]);
 
   const src = preview || currentUrl;
-  if (!src) return (
+  if (!src || failed) return (
     <div className="w-full h-32 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center text-slate-500 gap-2">
       <ImageIcon size={24} />
-      <span className="text-xs">No image selected</span>
+      <span className="text-xs">{failed ? 'Photo unavailable — upload a replacement' : 'No image selected'}</span>
     </div>
   );
   return (
     <div className="relative w-full h-32 rounded-xl overflow-hidden border border-white/10">
-      <img src={src} alt="preview" className="w-full h-full object-cover" />
+      <img src={src} alt="Product preview" onError={() => setFailed(true)} className="w-full h-full object-contain" />
       {preview && (
         <span className="absolute top-2 right-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">New</span>
       )}
     </div>
   );
+};
+
+const SelectedPhoto = ({ file }) => {
+  const [url, setUrl] = useState(null);
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+  return url ? <img src={url} alt={file.name} className="w-full h-full object-contain" /> : null;
 };
 
 /* ── Main Component ──────────────────────────────────────────────── */
@@ -135,6 +147,8 @@ const Products = () => {
     purity: '22K', making_charge_per_gram: '500',
     in_stock: true, is_bestseller: false, is_new: false, image: null
   });
+  const [additionalImages, setAdditionalImages] = useState([]);
+  const [removedImageIds, setRemovedImageIds] = useState([]);
 
   /* fetch */
   const fetchProducts = async () => {
@@ -155,6 +169,8 @@ const Products = () => {
 
   /* open modals */
   const openCreate = () => {
+    setAdditionalImages([]);
+    setRemovedImageIds([]);
     setEditingProduct(null);
     setForm({
       name: '', category: categories[0]?.id ? String(categories[0].id) : '',
@@ -166,6 +182,8 @@ const Products = () => {
   };
 
   const openEdit = (p) => {
+    setAdditionalImages([]);
+    setRemovedImageIds([]);
     setEditingProduct(p);
     setForm({
       name: p.name || '', category: p.category ? String(p.category) : '',
@@ -194,6 +212,8 @@ const Products = () => {
     fd.append('is_bestseller', form.is_bestseller);
     fd.append('is_new', form.is_new);
     if (form.image) fd.append('image', form.image);
+    additionalImages.forEach(file => fd.append('additional_images', file));
+    removedImageIds.forEach(id => fd.append('remove_image_ids', id));
 
     try {
       if (editingProduct) {
@@ -514,7 +534,7 @@ const Products = () => {
                   {/* Image area */}
                   <div className="relative h-44 bg-[#18181e] flex items-center justify-center overflow-hidden">
                     {p.image ? (
-                      <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                      <img src={p.image} alt={p.name} className="w-full h-full object-contain group-hover:scale-105 transition duration-300" />
                     ) : (
                       <div className="text-slate-600 flex flex-col items-center gap-1">
                         <ImageIcon size={28} /><span className="text-xs">No image</span>
@@ -631,6 +651,37 @@ const Products = () => {
                   className="hidden"
                   onChange={e => setForm({ ...form, image: e.target.files[0] })}
                 />
+                <label className="block text-xs font-semibold text-slate-300 uppercase mt-5 mb-2">More photos (up to 8)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="block w-full text-sm text-slate-300"
+                  onChange={e => {
+                    const files = Array.from(e.target.files);
+                    if (files.some(file => file.size > 10 * 1024 * 1024)) {
+                      toast.error('Each photo must be under 10 MB');
+                      return;
+                    }
+                    setAdditionalImages(previous => [...previous, ...files].slice(0, 8));
+                    e.target.value = '';
+                  }}
+                />
+                <p className="text-xs text-slate-500 mt-1">Original quality is kept. The full photo is shown without cropping.</p>
+                <div className="grid grid-cols-4 gap-2 mt-3">
+                  {(editingProduct?.gallery || []).filter(item => !removedImageIds.includes(item.id)).map(item => (
+                    <div key={item.id} className="relative h-20 bg-white/5 rounded-lg">
+                      <img src={item.url} alt="Additional product view" className="w-full h-full object-contain" />
+                      <button type="button" aria-label="Remove photo" onClick={() => setRemovedImageIds(ids => [...ids, item.id])} className="absolute top-0 right-0 bg-rose-600 rounded-full p-1"><X size={12} /></button>
+                    </div>
+                  ))}
+                  {additionalImages.map((file, index) => (
+                    <div key={`${file.name}-${index}`} className="relative h-20 bg-white/5 rounded-lg flex items-center justify-center text-xs text-center p-2 truncate">
+                      <SelectedPhoto file={file} />
+                      <button type="button" aria-label="Remove selected photo" onClick={() => setAdditionalImages(files => files.filter((_, i) => i !== index))} className="absolute top-0 right-0 bg-rose-600 rounded-full p-1"><X size={12} /></button>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Name */}
@@ -785,7 +836,7 @@ const Products = () => {
       <ConfirmDialog
         open={categoryConfirm.open}
         title="Delete Category"
-        message={`This will remove "${categoryConfirm.name}" from the product type filter. Products in this category may need reassigning. Continue?`}
+        message={`Delete "${categoryConfirm.name}"? Products must be moved to another category first.`}
         onConfirm={handleCategoryDelete}
         onCancel={() => setCategoryConfirm({ open: false, id: null, name: '' })}
       />
