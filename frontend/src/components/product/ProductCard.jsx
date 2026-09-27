@@ -110,9 +110,9 @@ const ProductCard = ({ product }) => {
                                 left: 0,
                                 width: '100%',
                                 height: '100%',
-                                objectFit: 'cover',
+                                objectFit: 'contain',
                                 transition: 'transform 0.5s ease',
-                                transform: isHovered ? 'scale(1.1)' : 'scale(1)'
+                                transform: isHovered ? 'scale(1.04)' : 'scale(1)'
                             }}
                             loading="lazy"
                             decoding="async"

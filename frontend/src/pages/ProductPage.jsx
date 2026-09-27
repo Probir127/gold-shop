@@ -16,9 +16,11 @@ const ProductPage = () => {
     const [product, setProduct] = useState(null);
     const [relatedProducts, setRelatedProducts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [activeImage, setActiveImage] = useState(null);
 
     useEffect(() => {
         setLoading(true);
+        setActiveImage(null);
         window.scrollTo(0, 0);
 
         api.getProduct(id).then(data => {
@@ -85,7 +87,7 @@ const ProductPage = () => {
                         className="product-gallery-sticky"
                     >
                         <div style={{ border: '1px solid #222', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.5)', position: 'relative' }}>
-                            <ImageZoom src={product.image} alt={product.name} />
+                            <ImageZoom key={activeImage || product.image || 'empty'} src={activeImage || product.image} alt={product.name} />
 
                             {product.is_bestseller && (
                                 <span className="badge-gold-premium" style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 20 }}>
@@ -98,8 +100,8 @@ const ProductPage = () => {
                         {Array.isArray(product.images) && product.images.length > 1 && (
                             <div className="custom-scrollbar" style={{ marginTop: '16px', display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '8px' }}>
                                 {product.images.map((img, idx) => (
-                                    <button key={idx} style={{ width: '80px', height: '80px', borderRadius: '8px', border: idx === 0 ? '2px solid var(--color-gold-primary)' : '1px solid #333', overflow: 'hidden', flexShrink: 0, cursor: 'pointer', padding: 0, backgroundColor: 'transparent' }}>
-                                        <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    <button key={img} type="button" onClick={() => setActiveImage(img)} aria-label={`View product photo ${idx + 1}`} aria-pressed={(activeImage || product.image) === img} style={{ width: '80px', height: '80px', borderRadius: '8px', border: (activeImage || product.image) === img ? '2px solid var(--color-gold-primary)' : '1px solid #333', overflow: 'hidden', flexShrink: 0, cursor: 'pointer', padding: 0, backgroundColor: 'transparent' }}>
+                                        <img src={img} alt={`${product.name} view ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                     </button>
                                 ))}
                             </div>

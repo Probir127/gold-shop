@@ -229,7 +229,7 @@ WHITENOISE_MANIFEST_STRICT = False
 
 # Media Files
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = os.getenv('MEDIA_ROOT', str(BASE_DIR / 'media'))
 
 # API response cache. Use Redis in multi-process production deployments and
 # local memory for development when REDIS_URL is not configured.

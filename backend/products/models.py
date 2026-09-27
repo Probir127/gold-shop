@@ -20,7 +20,7 @@ class Product(models.Model):
 
     tenant = models.ForeignKey('core.Tenant', on_delete=models.CASCADE, related_name='products', null=True, blank=True)
     name = models.CharField(max_length=200)
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
+    category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='products')
     description = models.TextField(blank=True)
     weight = models.DecimalField(max_digits=6, decimal_places=2)  # grams
     purity = models.CharField(max_length=3, choices=PURITY_CHOICES, default='22K')
@@ -38,4 +38,13 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class ProductImage(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='gallery_images')
+    image = models.ImageField(upload_to='products/')
+    position = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['position', 'id']
 

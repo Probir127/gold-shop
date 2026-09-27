@@ -11,7 +11,13 @@ services:
     startCommand: "gunicorn sahara_gold.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 120"
     healthCheckPath: /api/health/
     autoDeploy: true
+    disk:
+      name: sahara-gold-media
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
+      - key: MEDIA_ROOT
+        value: /var/data
       - key: DEBUG
         value: "False"
       - key: PYTHON_VERSION
@@ -23,7 +29,7 @@ services:
       - key: DJANGO_SUPERUSER_EMAIL
         value: "saharagold19@gmail.com"
       - key: DJANGO_SUPERUSER_PASSWORD
-        value: "sahara1122@@"
+        sync: false
       - key: ALLOW_SANDBOX_PAYMENTS
         value: "True"
       - key: SSLCOMMERZ_IS_SANDBOX
@@ -31,7 +37,7 @@ services:
       - key: SSLCOMMERZ_STORE_ID
         value: "testbox"
       - key: SSLCOMMERZ_STORE_PASS
-        value: "qwerty"
+        sync: false
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_FROM_EMAIL
@@ -51,7 +57,7 @@ services:
       - key: STORE_ADDRESS
         value: "Level-7, Block-A, Shop-19, Bashundhara City Shopping Mall, Dhaka"
       - key: WEBHOOK_VERIFY_TOKEN
-        value: "saharagold_verify_2026"
+        sync: false
       - key: APISED_API_KEY
         sync: false
       - key: DATABASE_URL
@@ -93,8 +99,6 @@ services:
         value: "https://sahara-gold-backend.onrender.com/api"
       - key: VITE_SITE_URL
         value: "https://www.shaharagold.org"
-      - key: VITE_APISED_API_KEY
-        value: "sk_4d2dB072e3BF68099002921813848002cce4e2Fa8e7bfe22"
 
 databases:
   # ---------------------------------------------------------------------------
