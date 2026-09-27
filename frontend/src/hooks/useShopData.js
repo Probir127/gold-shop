@@ -27,8 +27,10 @@ export const useGoldRates = () => {
     return useQuery({
         queryKey: ['goldRates'],
         queryFn: api.getLatestRates,
-        refetchInterval: 5 * 60 * 1000,
-        refetchOnWindowFocus: true,
+        refetchInterval: 2 * 60 * 1000,
+        staleTime: 0,
+        refetchOnWindowFocus: 'always',
+        refetchOnReconnect: 'always',
     });
 };
 

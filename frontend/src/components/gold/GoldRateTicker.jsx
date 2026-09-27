@@ -8,7 +8,7 @@ import { TrendingUp, TrendingDown, Minus, Activity } from 'lucide-react';
 import { anime, useCountUp, SMOOTH_DECEL } from '../../animations';
 
 /* ── Individual rate cell with live roll-up ─────────────────────────── */
-const RateCell = ({ label, value, trend }) => {
+const RateCell = ({ label, value, trend, status }) => {
     const displayRef = useCountUp(value || 0, {
         prefix: '৳',
         suffix: '/g',
@@ -70,7 +70,7 @@ const RateCell = ({ label, value, trend }) => {
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: trendColor, fontWeight: '600' }}>
                 {TrendIcon}
-                <span>{trend !== 0 ? (trend > 0 ? `+৳${trend}` : `-৳${Math.abs(trend)}`) : 'STABLE'}</span>
+                <span>{trend == null ? (status === 'success' ? 'LIVE' : 'SAVED RATE') : trend !== 0 ? (trend > 0 ? `+৳${trend}` : `-৳${Math.abs(trend)}`) : 'STABLE'}</span>
             </div>
         </div>
     );
@@ -81,13 +81,20 @@ const GoldRateTicker = ({ rates, history = [] }) => {
     const trackRef = useRef(null);
     const aniRef   = useRef(null);
 
-    const previousRates = history[1] || {};
+    const previousRates = history[1];
     const items = [
-        { label: '22K Gold',    value: rates.rate_22k,         trend: (rates.rate_22k         || 0) - (previousRates.rate_22k         || rates.rate_22k         || 0) },
-        { label: '21K Gold',    value: rates.rate_21k,         trend: (rates.rate_21k         || 0) - (previousRates.rate_21k         || rates.rate_21k         || 0) },
-        { label: '18K Gold',    value: rates.rate_18k,         trend: (rates.rate_18k         || 0) - (previousRates.rate_18k         || rates.rate_18k         || 0) },
-        { label: 'Traditional', value: rates.rate_traditional, trend: (rates.rate_traditional || 0) - (previousRates.rate_traditional || rates.rate_traditional || 0) },
-    ];
+        ['22K Gold', 'rate_22k'],
+        ['21K Gold', 'rate_21k'],
+        ['18K Gold', 'rate_18k'],
+        ['Traditional', 'rate_traditional'],
+    ].map(([label, key]) => ({
+        label,
+        value: Number(rates[key]),
+        status: rates.status,
+        trend: previousRates?.[key] != null
+            ? Math.round((Number(rates[key]) - Number(previousRates[key])) * 100) / 100
+            : null,
+    }));
 
     // Anime.js continuous linear marquee scroll
     useEffect(() => {
