@@ -1,8 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ProductGrid from '../components/product/ProductGrid';
 import { useProducts, useCategories } from '../hooks/useShopData';
-import { api } from '../services/api';
 import SEO from '../components/SEO';
 import PageTransition from '../components/PageTransition';
 import { ChevronDown } from 'lucide-react';
@@ -114,17 +113,9 @@ const ShopPage = () => {
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', md: { flexDirection: 'row' }, gap: '30px' }}>
+                    <div className="shop-results-layout">
                         {/* Sidebar / Filter Bar */}
-                        <div className="collection-filter-strip" style={{
-                            display: 'flex',
-                            gap: '10px',
-                            overflowX: 'auto',
-                            paddingBottom: '10px',
-                            borderBottom: '1px solid #222',
-                            marginBottom: '30px',
-                            flexWrap: 'wrap'
-                        }}>
+                        <div className="collection-filter-strip">
                             {categories.map(cat => {
                                 const catKey = cat.slug || String(cat.id);
                                 const lowerActive = (activeCategory || '').toLowerCase();
@@ -139,6 +130,7 @@ const ShopPage = () => {
                                     <button
                                         key={catKey}
                                         onClick={() => handleCategoryChange(catKey)}
+                                        aria-pressed={isActive}
                                         style={{
                                             padding: '8px 16px',
                                             borderRadius: '20px',
@@ -158,13 +150,9 @@ const ShopPage = () => {
                         </div>
 
                         {/* Grid */}
-                        <div style={{ flex: 1 }}>
+                        <div className="shop-results">
                             {isLoading ? (
-                                <div style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                                    gap: '30px'
-                                }}>
+                                <div className="product-grid" aria-label="Loading products">
                                     {[1, 2, 3, 4].map(i => (
                                         <div key={i} style={{
                                             backgroundColor: '#1a1a1a',

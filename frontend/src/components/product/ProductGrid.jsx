@@ -51,11 +51,7 @@ const ProductGrid = ({ products }) => {
     return (
         <div
             ref={gridRef}
-            style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                gap: '30px',
-            }}
+            className="product-grid"
         >
             {products.map(product => (
                 <div key={product.id} className="product-card-wrapper" style={{ willChange: 'transform, opacity' }}>
