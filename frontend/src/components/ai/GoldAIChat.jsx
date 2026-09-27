@@ -181,7 +181,7 @@ const GoldAIChat = () => {
               </span>
               {priceInsight?.rates?.['22K'] && (
                 <span style={{ fontSize: '11px', background: 'rgba(212,175,55,0.22)', color: '#d4af37', padding: '2px 8px', borderRadius: '999px', border: '1px solid rgba(212,175,55,0.35)', fontFamily: 'monospace', fontWeight: 600 }}>
-                  22K: ৳{priceInsight.rates['22K'].toLocaleString()}
+                  Store 22K: ৳{priceInsight.rates['22K'].toLocaleString()}
                 </span>
               )}
             </motion.div>
@@ -344,7 +344,7 @@ const GoldAIChat = () => {
                 }}
               >
                 <TrendingUp size={13} style={{ color: '#4ade80' }} />
-                <span>22K: <strong>৳{priceInsight.rates['22K']?.toLocaleString()}</strong></span>
+                <span>Store 22K: <strong>৳{priceInsight.rates['22K']?.toLocaleString()}</strong></span>
                 <span style={{ color: '#6b7280' }}>•</span>
                 <span>21K: <strong>৳{priceInsight.rates['21K']?.toLocaleString()}</strong></span>
                 <span style={{ color: '#6b7280' }}>•</span>

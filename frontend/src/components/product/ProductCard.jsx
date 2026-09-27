@@ -1,3 +1,4 @@
+import { canPurchase } from '../../utils/productAvailability.js';
 import React, { useRef, useState } from 'react';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { ShoppingBag, Eye, Sparkles } from 'lucide-react';
@@ -9,6 +10,7 @@ import { anime, SPRING_SNAPPY } from '../../animations';
 const FALLBACK_JEWELRY_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'%3E%3Crect width='600' height='600' fill='%23141416'/%3E%3Ccircle cx='300' cy='270' r='110' fill='none' stroke='%23d4af37' stroke-width='2' stroke-dasharray='6 6' opacity='0.3'/%3E%3Cpath d='M300 180 L380 240 L350 330 L250 330 L220 240 Z' fill='none' stroke='%23d4af37' stroke-width='3.5' stroke-linejoin='round'/%3E%3Cpath d='M300 205 L360 250 L300 320 L240 250 Z' fill='%23d4af37' fill-opacity='0.12' stroke='%23d4af37' stroke-width='1.5' stroke-linejoin='round'/%3E%3Ctext x='300' y='385' fill='%23d4af37' font-family='serif' font-size='20' font-weight='600' letter-spacing='4' text-anchor='middle'%3ESAHARA GOLD%3C/text%3E%3Ctext x='300' y='412' fill='%23888' font-family='sans-serif' font-size='11' letter-spacing='3' text-anchor='middle'%3ELUXURY CRAFTSMANSHIP%3C/text%3E%3C/svg%3E";
 
 const ProductCard = ({ product }) => {
+    const available = canPurchase(product);
     const { addToCart } = useCart();
     const ref = useRef(null);
     const [isHovered, setIsHovered] = useState(false);
@@ -45,6 +47,7 @@ const ProductCard = ({ product }) => {
     const handleAddToCart = (e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (!available) return;
 
         if (e.currentTarget) {
             anime({
@@ -58,7 +61,7 @@ const ProductCard = ({ product }) => {
         const cartItem = {
             id: product.id,
             name: product.name,
-            price: product.current_price || product.price,
+            price: product.current_price,
             image: product.image,
             weight: product.weight,
             purity: product.purity,
@@ -142,7 +145,7 @@ const ProductCard = ({ product }) => {
 
                         {/* Quick Action Overlay */}
                         <div className={`quick-action-overlay ${isHovered ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
-                            <button onClick={handleAddToCart} className="btn-icon-glass" title="Add to Cart">
+                            <button onClick={handleAddToCart} disabled={!available} aria-label={available ? 'Add to cart' : 'Unavailable'} className="btn-icon-glass" title="Add to Cart">
                                 <ShoppingBag size={18} />
                             </button>
                             <button className="btn-icon-glass" title="Quick View">
@@ -166,9 +169,9 @@ const ProductCard = ({ product }) => {
                                     {product.weight}g
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
-                                    <span style={{ fontSize: '11px', color: '#9f9aa0', display: 'block' }}>Current price</span>
+                                    <span style={{ fontSize: '11px', color: '#9f9aa0', display: 'block' }}>{product.in_stock ? 'Current price' : 'Out of stock'}</span>
                                     <span style={{ color: 'var(--color-gold-primary)', fontSize: '16px', fontWeight: 'bold' }}>
-                                        {formatPrice(product.current_price || product.price)}
+                                        {formatPrice(product.current_price)}
                                     </span>
                                 </div>
                             </div>

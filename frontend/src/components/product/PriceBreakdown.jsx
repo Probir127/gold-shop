@@ -1,8 +1,10 @@
+import { priceComponents } from '../../utils/productAvailability.js';
 import React from 'react';
 import { motion } from 'framer-motion';
 import { formatPrice } from '../../utils/formatters';
 
-const PriceBreakdown = ({ price, weight, purity }) => {
+const PriceBreakdown = ({ price, weight, purity, makingChargePerGram }) => {
+    const breakdown = priceComponents(price, weight, makingChargePerGram);
     return (
         <div className="price-breakdown-card">
             <h4 style={{ color: '#fff', fontWeight: 'bold', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -11,13 +13,11 @@ const PriceBreakdown = ({ price, weight, purity }) => {
             </h4>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <BreakdownItem
-                    label="Gold and craftsmanship"
-                    value={price}
-                    color="var(--color-gold-primary)"
-                    delay={0.1}
-                    subtext={`${purity} purity · ${weight}g · final listed price`}
-                />
+                {breakdown ? <>
+                    <BreakdownItem label="Gold value (store rate)" value={breakdown.gold} color="var(--color-gold-primary)" delay={0.1} subtext={`${purity} purity · ${weight}g`} />
+                    <BreakdownItem label="Making charge" value={breakdown.making} color="#b89954" delay={0.2} subtext={`${formatPrice(makingChargePerGram)}/g × ${weight}g`} />
+                </> : <BreakdownItem label="Gold and craftsmanship" value={price} color="var(--color-gold-primary)" delay={0.1} subtext={`${purity} purity · ${weight}g`} />}
+                <p style={{ color: '#aaa', fontSize: '12px' }}>Product prices use the store's published gold rate, which may differ from the international market estimate.</p>
             </div>
 
             <div style={{ borderTop: '1px solid #333', marginTop: '1.5rem', paddingTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -34,7 +34,7 @@ const BreakdownItem = ({ label, value, color, delay, subtext }) => (
             <span style={{ color: '#ccc' }}>{label}</span>
             <span style={{ color: '#fff', fontWeight: '500' }}>{formatPrice(value)}</span>
         </div>
-        <div style={{ hieght: '6px', width: '100%', backgroundColor: '#222', borderRadius: '10px', overflow: 'hidden', height: '6px' }}>
+        <div style={{ width: '100%', backgroundColor: '#222', borderRadius: '10px', overflow: 'hidden', height: '6px' }}>
             <motion.div
                 style={{ height: '100%', backgroundColor: color }}
                 initial={{ width: 0 }}

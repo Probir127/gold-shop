@@ -1,6 +1,7 @@
 import { APP_CONFIG } from './constants';
 
 export const formatPrice = (amount) => {
+    if (amount == null || amount === '' || !Number.isFinite(Number(amount))) return 'Price unavailable';
     return new Intl.NumberFormat('en-BD', APP_CONFIG.currencyParams).format(amount);
 };
 

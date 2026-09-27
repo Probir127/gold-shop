@@ -6,6 +6,8 @@ import { ShoppingBag, Star, Share2, ShieldCheck, Truck, RotateCcw, Award } from 
 import ProductGrid from '../components/product/ProductGrid';
 import { api } from '../services/api';
 import SEO from '../components/SEO';
+import toast from 'react-hot-toast';
+import { canPurchase } from '../utils/productAvailability.js';
 import ImageZoom from '../components/product/ImageZoom';
 import PriceBreakdown from '../components/product/PriceBreakdown';
 import { motion } from 'framer-motion';
@@ -19,22 +21,29 @@ const ProductPage = () => {
     const [activeImage, setActiveImage] = useState(null);
 
     useEffect(() => {
+        let cancelled = false;
         setLoading(true);
+        setProduct(null);
+        setRelatedProducts([]);
         setActiveImage(null);
         window.scrollTo(0, 0);
 
         api.getProduct(id).then(data => {
+            if (cancelled) return;
             setProduct(data);
             // Fetch related products (e.g., same category)
             api.getProducts(data.category_slug).then(allCats => {
                 const list = Array.isArray(allCats) ? allCats : (allCats?.results || []);
+                if (cancelled) return;
                 setRelatedProducts(list.filter(p => p.id !== data.id).slice(0, 4));
-            }).catch(() => setRelatedProducts([]));
+            }).catch(() => { if (!cancelled) setRelatedProducts([]); });
             setLoading(false);
         }).catch(err => {
+            if (cancelled) return;
             console.error("Failed to load product", err);
             setLoading(false);
         });
+        return () => { cancelled = true; };
     }, [id]);
 
     if (loading) {
@@ -45,7 +54,22 @@ const ProductPage = () => {
         return <div className="container" style={{ padding: '80px 0', textAlign: 'center', color: '#888' }}>Product not found.</div>;
     }
 
+    const available = canPurchase(product);
+    const handleShare = async () => {
+        try {
+            if (navigator.share) {
+                await navigator.share({ title: product.name, url: window.location.href });
+            } else {
+                await navigator.clipboard.writeText(window.location.href);
+                toast.success("Product link copied");
+            }
+        } catch (error) {
+            if (error.name !== "AbortError") toast.error("Unable to share. Copy the page URL instead.");
+        }
+    };
+
     const handleAddToCart = () => {
+        if (!available) return;
         const cartItem = {
             id: product.id,
             name: product.name,
@@ -63,7 +87,7 @@ const ProductPage = () => {
             <div className="container">
                 <SEO
                     title={product.name}
-                    description={`Buy ${product.name} - ${product.weight}g ${product.purity} Gold. Lifetime warranty.`}
+                    description={product.description || `${product.name} - ${product.weight}g ${product.purity} Gold.`}
                     image={product.image}
                 />
 
@@ -118,12 +142,12 @@ const ProductPage = () => {
                             {product.name}
                         </h1>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-                            <div style={{ display: 'flex', color: '#facc15' }}>
-                                {[...Array(5)].map((_, i) => <Star key={i} size={16} fill="currentColor" />)}
-                            </div>
-                            <span style={{ color: '#8f8b84', fontSize: '14px', borderLeft: '1px solid #333', paddingLeft: '16px' }}>Live catalog item</span>
-                        </div>
+                        {product.description?.trim() && (
+                            <section aria-label="Product description" style={{ margin: '20px 0 24px' }}>
+                                <h2 style={{ fontSize: '1rem', marginBottom: '10px' }}>Description</h2>
+                                <p style={{ color: '#ccc', lineHeight: 1.8, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{product.description}</p>
+                            </section>
+                        )}
 
                         <div style={{ backgroundColor: '#111', border: '1px solid #222', borderRadius: '12px', padding: '24px', marginBottom: '32px' }}>
                             <div style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', marginBottom: '8px' }}>
@@ -132,19 +156,20 @@ const ProductPage = () => {
                                     <span style={{ color: '#666', textDecoration: 'line-through', marginBottom: '4px' }}>{formatPrice(product.price)}</span>
                                 )}
                             </div>
-                            <p style={{ color: '#4ade80', fontSize: '14px', marginBottom: '16px' }}>In stock and ready to ship</p>
+                            <p style={{ color: available ? '#4ade80' : '#f3d58a', fontSize: '14px', marginBottom: '16px' }}>{!product.in_stock ? 'Out of stock' : available ? 'In stock' : 'Contact us for pricing'}</p>
 
                             {/* Action Buttons */}
                             <div style={{ display: 'flex', gap: '16px' }}>
                                 <button
                                     onClick={handleAddToCart}
+                                    disabled={!available}
                                     className="btn btn-primary"
                                     style={{ flex: 1, height: '48px', fontSize: '1.125rem' }}
                                 >
                                     <ShoppingBag size={20} style={{ marginRight: '8px' }} />
-                                    Add to Cart
+                                    {available ? 'Add to Cart' : !product.in_stock ? 'Out of Stock' : 'Price Unavailable'}
                                 </button>
-                                <button className="btn btn-outline" style={{ width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                                <button type="button" onClick={handleShare} aria-label="Share product" className="btn btn-outline" style={{ width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                                     <Share2 size={20} />
                                 </button>
                             </div>
@@ -164,6 +189,7 @@ const ProductPage = () => {
                                 price={product.current_price}
                                 weight={product.weight}
                                 purity={product.purity}
+                                makingChargePerGram={product.making_charge_per_gram}
                             />
                         </div>
 
@@ -181,8 +207,8 @@ const ProductPage = () => {
                             />
                             <TrustBadge
                                 icon={<RotateCcw size={24} style={{ color: 'var(--color-gold-primary)' }} />}
-                                title="Easy Returns"
-                                desc="7-day money back"
+                                title="7-day Exchange"
+                                desc="Original invoice & tag required"
                             />
                             <TrustBadge
                                 icon={<Award size={24} style={{ color: 'var(--color-gold-primary)' }} />}
