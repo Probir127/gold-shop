@@ -1,3 +1,4 @@
+import { useGoldRates } from '../../hooks/useShopData';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, X, Send, Sparkles, TrendingUp, Minimize2, ExternalLink, ShoppingBag, Eye } from 'lucide-react';
@@ -20,7 +21,8 @@ const GoldAIChat = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState(() => localStorage.getItem('sg_ai_session') || '');
-  const [priceInsight, setPriceInsight] = useState(null);
+  const { data: publishedRates } = useGoldRates();
+  const priceInsight = publishedRates ? { rates: { '22K': publishedRates.rate_22k, '21K': publishedRates.rate_21k, '18K': publishedRates.rate_18k } } : null;
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -33,19 +35,7 @@ const GoldAIChat = () => {
     }
   }, [messages, isOpen]);
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchInsight = async () => {
-      try {
-        const data = await api.getAIPriceInsight();
-        if (isMounted) setPriceInsight(data);
-      } catch (err) {
-        console.error('Failed to load gold insight:', err);
-      }
-    };
-    fetchInsight();
-    return () => { isMounted = false; };
-  }, []);
+
 
   const handleSend = async (textToSend) => {
     const text = textToSend || input;

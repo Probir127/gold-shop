@@ -1,7 +1,7 @@
 from django.utils.text import slugify
 from rest_framework import serializers
 from .models import Product, Category
-from rates.models import GoldRate
+from rates.pricing import effective_rate
 
 class CategorySerializer(serializers.ModelSerializer):
     slug = serializers.SlugField(required=False, allow_blank=True)
@@ -60,7 +60,7 @@ class ProductSerializer(serializers.ModelSerializer):
             rate_obj = self.context.get('gold_rate')
             if rate_obj is None:
                 # Fallback for standalone usage (e.g., order creation)
-                rate_obj = GoldRate.objects.order_by('-date', '-updated_at').first()
+                rate_obj = effective_rate()[0]
             if not rate_obj:
                 return None
 

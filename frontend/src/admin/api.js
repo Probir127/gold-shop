@@ -217,3 +217,6 @@ export const updateProductAdmin  = (id, data) => api.patch(`/products/${id}/`, d
 export const deleteProductAdmin  = (id) => api.delete(`/products/${id}/`)
 
 export default api
+
+export const getRateControl = () => api.get('/rates/control/');
+export const setRateControl = (mode) => api.patch('/rates/control/', { mode });

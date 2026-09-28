@@ -1,7 +1,8 @@
 from django.urls import path
-from .views import LatestGoldRateView, GoldRateCreateView, LiveGoldMarketView, SyncLiveGoldRateView
+from .views import LatestGoldRateView, GoldRateCreateView, LiveGoldMarketView, SyncLiveGoldRateView, RateControlView
 
 urlpatterns = [
+    path('rates/control/', RateControlView.as_view(), name='rate-control'),
     path('rates/latest/', LatestGoldRateView.as_view(), name='latest-rates'),
     path('rates/live-market/', LiveGoldMarketView.as_view(), name='live-gold-market'),
     path('rates/sync-live/', SyncLiveGoldRateView.as_view(), name='sync-live-gold-rate'),

@@ -42,8 +42,8 @@ const Header = () => {
             <div className="header-top-bar">
                 <div className="container header-top-inner">
                     <span className="gold-ticker">
-                        {rates?.status === 'success' ? 'MARKET ESTIMATE (22K):' : 'STORE GOLD RATE (22K):'} {rates?.rate_22k ? `৳${rates.rate_22k.toLocaleString()}/gm` : 'Loading...'}
-                        {rates?.status === 'success' && rates?.rate_22k && <span className="live-dot" style={{ display: 'inline-block', width: '6px', height: '6px', backgroundColor: '#4ade80', borderRadius: '50%', marginLeft: '6px', verticalAlign: 'middle' }}></span>}
+                        {rates?.pricing_mode === 'manual' ? 'MANUAL GOLD RATE (22K):' : rates?.is_stale ? 'LAST GOLD RATE (22K):' : 'LIVE GOLD RATE (22K):'} {rates?.rate_22k ? `৳${rates.rate_22k.toLocaleString()}/gm` : 'Loading...'}
+                        {rates?.pricing_mode === 'auto' && !rates?.is_stale && rates?.rate_22k && <span className="live-dot" style={{ display: 'inline-block', width: '6px', height: '6px', backgroundColor: '#4ade80', borderRadius: '50%', marginLeft: '6px', verticalAlign: 'middle' }}></span>}
                     </span>
                     <div className="contact-info">
                         <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>

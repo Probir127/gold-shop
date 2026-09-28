@@ -14,3 +14,12 @@ class GoldRate(models.Model):
 
     def __str__(self):
         return f"Rates for {self.date}"
+
+
+class RateControl(models.Model):
+    """Singleton for the store-wide pricing mode; shared by all web workers."""
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    mode = models.CharField(max_length=10, choices=[('auto', 'Automatic live'), ('manual', 'Manual')], default='auto')
+    last_attempt_at = models.DateTimeField(null=True, blank=True)
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.CharField(max_length=255, blank=True, default='')

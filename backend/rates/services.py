@@ -3,8 +3,6 @@ import json
 import http.client
 import urllib.request
 import logging
-from datetime import date
-from .models import GoldRate
 
 logger = logging.getLogger(__name__)
 
@@ -103,22 +101,6 @@ def fetch_live_gold_price():
     }
 
 def sync_live_rate_to_database():
-    """
-    Fetches live market data and updates today's GoldRate record.
-    Returns (gold_rate_obj, market_info)
-    """
-    market = fetch_live_gold_price()
-    if market.get('status') != 'success':
-        return None, market
-
-    today = date.today()
-    obj, created = GoldRate.objects.update_or_create(
-        date=today,
-        defaults={
-            'rate_22k': market['rate_22k'],
-            'rate_21k': market['rate_21k'],
-            'rate_18k': market['rate_18k'],
-            'rate_traditional': market['rate_traditional']
-        }
-    )
-    return obj, market
+    from .pricing import effective_rate
+    obj, config = effective_rate(force=True)
+    return obj, {'status': 'error' if config.last_error else 'success', 'message': config.last_error}

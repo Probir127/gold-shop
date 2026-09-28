@@ -49,6 +49,10 @@ class OrderSerializer(serializers.ModelSerializer):
         # Calculate totals
         subtotal = 0
         order_items = []
+        from rates.pricing import effective_rate
+        rate, _ = effective_rate()
+        if not rate:
+            raise serializers.ValidationError('Pricing is temporarily unavailable. Please try again later.')
 
         # We need to temporarily hold data to create items after order creation
         for item_data in items_data:
@@ -62,7 +66,7 @@ class OrderSerializer(serializers.ModelSerializer):
             
             # Assuming we can access the dynamic price helper from ProductSerializer or duplicate
             # Let's instantiate a serializer to get the price
-            p_ser = ProductSerializer(product)
+            p_ser = ProductSerializer(product, context={'gold_rate': rate})
             unit_price = p_ser.data['current_price']
             
             line_total = unit_price * quantity

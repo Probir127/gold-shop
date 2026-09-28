@@ -111,7 +111,6 @@ class AIRecommendView(APIView):
     """
     permission_classes = [permissions.AllowAny]
 
-    @method_decorator(cache_page(60 * 5))
     def get(self, request):
         budget = request.query_params.get('budget')
         purity = request.query_params.get('purity')
@@ -148,7 +147,6 @@ class AIPriceInsightView(APIView):
     """
     permission_classes = [permissions.AllowAny]
 
-    @method_decorator(cache_page(60 * 5))
     def get(self, request):
         rates = get_latest_rates_dict()
         insight = {

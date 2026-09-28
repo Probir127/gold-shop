@@ -70,7 +70,7 @@ const RateCell = ({ label, value, trend, status }) => {
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: trendColor, fontWeight: '600' }}>
                 {TrendIcon}
-                <span>{trend == null ? (status === 'success' ? 'LIVE' : 'SAVED RATE') : trend !== 0 ? (trend > 0 ? `+৳${trend}` : `-৳${Math.abs(trend)}`) : 'STABLE'}</span>
+                <span>{trend == null ? (status === 'manual' ? 'MANUAL' : status === 'auto' ? 'LIVE' : 'LAST SAVED') : trend !== 0 ? (trend > 0 ? `+৳${trend}` : `-৳${Math.abs(trend)}`) : 'STABLE'}</span>
             </div>
         </div>
     );
@@ -90,7 +90,7 @@ const GoldRateTicker = ({ rates, history = [] }) => {
     ].map(([label, key]) => ({
         label,
         value: Number(rates[key]),
-        status: rates.status,
+        status: rates.is_stale ? 'stale' : rates.pricing_mode,
         trend: previousRates?.[key] != null
             ? Math.round((Number(rates[key]) - Number(previousRates[key])) * 100) / 100
             : null,

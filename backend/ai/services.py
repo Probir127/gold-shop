@@ -6,21 +6,23 @@ import os
 import re
 import logging
 from django.conf import settings
-from rates.models import GoldRate
+from rates.pricing import effective_rate
 from products.models import Product
 from orders.models import Order
 
 logger = logging.getLogger(__name__)
 
 def get_latest_rates_dict():
-    latest_rate = GoldRate.objects.order_by('-date', '-updated_at').first()
+    latest_rate = effective_rate()[0]
     if latest_rate:
         return {
             '22K': float(latest_rate.rate_22k),
             '21K': float(latest_rate.rate_21k),
             '18K': float(latest_rate.rate_18k),
             'traditional': float(latest_rate.rate_traditional),
-            'date': str(latest_rate.date)
+            'date': str(latest_rate.date),
+            'pricing_mode': latest_rate.pricing_mode,
+            'is_stale': latest_rate.is_stale
         }
     return {'22K': None, '21K': None, '18K': None, 'traditional': None, 'date': None}
 

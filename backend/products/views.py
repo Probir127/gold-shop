@@ -8,7 +8,7 @@ from django.db.models.deletion import ProtectedError
 from django.db.models import Q
 from .models import Product, Category, ProductImage
 from .serializers import ProductSerializer, CategorySerializer
-from rates.models import GoldRate
+from rates.pricing import effective_rate
 from core.models import Tenant
 
 # ---------------------------------------------------------------------------
@@ -186,7 +186,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         # Cache on the request object so multiple calls within the same request
         # don't hit the DB more than once.
         if not hasattr(self.request, '_gold_rate_cache'):
-            self.request._gold_rate_cache = GoldRate.objects.order_by('-date', '-updated_at').first()
+            self.request._gold_rate_cache = effective_rate()[0]
         ctx['gold_rate'] = self.request._gold_rate_cache
         return ctx
 

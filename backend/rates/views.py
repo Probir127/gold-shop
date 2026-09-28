@@ -3,8 +3,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.core.cache import cache
 from .models import GoldRate
+from .pricing import effective_rate, publish_manual, store_today, control
 from .serializers import GoldRateSerializer
-from .services import fetch_live_gold_price, sync_live_rate_to_database
+from .services import fetch_live_gold_price
 from core.permissions import IsStaffForWrite
 
 
@@ -22,7 +23,7 @@ class LatestGoldRateView(generics.RetrieveAPIView):
         return super().get(request, *args, **kwargs)
 
     def get_object(self):
-        obj = self.get_queryset().first()
+        obj, _ = effective_rate()
         if not obj:
             from rest_framework.exceptions import NotFound
             raise NotFound('Gold rates are not available yet.')
@@ -35,22 +36,16 @@ class GoldRateCreateView(generics.ListCreateAPIView):
     permission_classes = [IsStaffForWrite]
 
     def create(self, request, *args, **kwargs):
+        from rest_framework.exceptions import ValidationError
         data = request.data.copy()
-        rate_date = data.get('date')
-        if rate_date:
-            instance = GoldRate.objects.filter(date=rate_date).first()
-            if instance:
-                serializer = self.get_serializer(instance, data=data, partial=True)
-                serializer.is_valid(raise_exception=True)
-                self.perform_update(serializer)
-                invalidate_rate_cache()
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            response = super().create(request, *args, **kwargs)
-            invalidate_rate_cache()
-            return response
-
-    def perform_update(self, serializer):
-        serializer.save()
+        data.setdefault('date', str(store_today()))
+        serializer = self.get_serializer(instance=GoldRate.objects.filter(date=store_today()).first(), data=data)
+        serializer.is_valid(raise_exception=True)
+        if serializer.validated_data['date'] != store_today():
+            raise ValidationError({'date': 'Publish current rates using today’s date in Bangladesh.'})
+        obj = publish_manual(serializer.validated_data)
+        invalidate_rate_cache()
+        return Response(self.get_serializer(obj).data, status=status.HTTP_200_OK)
 
 class LiveGoldMarketView(APIView):
     """
@@ -76,14 +71,30 @@ class SyncLiveGoldRateView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def post(self, request):
-        obj, info = sync_live_rate_to_database()
-        if not obj:
-            return Response({'error': 'Failed to sync with live market', 'details': info}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        obj, config = effective_rate(force=True)
+        if config.last_error or not obj:
+            return Response({'error': config.last_error}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         invalidate_rate_cache()
-        
-        serializer = GoldRateSerializer(obj)
-        return Response({
-            'message': 'Successfully synchronized live gold rate with store & AI bot.',
-            'rate': serializer.data,
-            'market': info
-        })
+        return Response({'message': 'Live rate published. Pricing mode unchanged.', 'rate': GoldRateSerializer(obj).data})
+
+
+class RateControlView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        config = control()
+        return Response(self.payload(config))
+
+    @staticmethod
+    def payload(config):
+        return {'mode': config.mode, 'last_synced_at': config.last_synced_at,
+                'last_error': config.last_error, 'refresh_seconds': 120}
+
+    def patch(self, request):
+        from rest_framework.exceptions import ValidationError
+        mode = request.data.get('mode')
+        if mode not in ('auto', 'manual'):
+            raise ValidationError({'mode': 'Choose auto or manual.'})
+        _, config = effective_rate(force=mode == 'auto', mode=mode)
+        invalidate_rate_cache()
+        return Response(self.payload(config))

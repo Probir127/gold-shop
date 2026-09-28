@@ -23,7 +23,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 const GoldRateChart = ({ history = [], currentRate, purity = '22K' }) => {
     const rateKey = purity === '22K' ? 'rate_22k' : purity === '21K' ? 'rate_21k' : 'rate_18k';
-    const data = history
+    const data = [...history].sort((a, b) => new Date(a.date) - new Date(b.date))
         .map(item => ({
             date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
             rate: Number(item[rateKey] || 0),

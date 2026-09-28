@@ -62,6 +62,15 @@ def get_conversation_history(client, tenant=None, query: str = None) -> list[dic
     else:
         system_prompt = "You are a helpful AI assistant."
 
+    if tenant and tenant.slug == 'sahara-gold':
+        from ai.services import get_latest_rates_dict
+        import json
+        system_prompt += (
+            "\nCurrent published gold rates in BDT per gram (authoritative; override old knowledge-base prices): "
+            + json.dumps(get_latest_rates_dict())
+            + "\nUse these rates for gold quotations. Add the product's saved making charge; never invent charges."
+        )
+
     messages = [{"role": "system", "content": system_prompt}]
 
     if older_count > 0:

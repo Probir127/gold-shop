@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useGoldRates, useGoldRateHistory, useLiveMarketRates } from '../hooks/useShopData';
+import { useGoldRates, useGoldRateHistory } from '../hooks/useShopData';
 import { Calculator, TrendingUp, Sparkles } from 'lucide-react';
 import { formatPrice } from '../utils/formatters';
 import SEO from '../components/SEO';
@@ -18,7 +18,7 @@ const GoldRatesPage = () => {
     } } = useGoldRates();
     const { data: rateHistory = [] } = useGoldRateHistory();
     // Live international market data — loads separately, non-blocking
-    const { data: liveMarket } = useLiveMarketRates();
+
 
     const [weight, setWeight] = useState('');
     const [purity, setPurity] = useState('22K');
@@ -34,7 +34,7 @@ const GoldRatesPage = () => {
             return;
         }
 
-        const activeRates = (liveMarket && liveMarket.rate_22k) ? liveMarket : goldRates;
+        const activeRates = goldRates;
         let rate = 0;
         if (purity === '24K') rate = activeRates.rate_24k || Math.round((activeRates.rate_22k || 0) / 0.916);
         else if (purity === '22K') rate = activeRates.rate_22k;
@@ -50,9 +50,9 @@ const GoldRatesPage = () => {
             total
         });
         setShowResult(true);
-    }, [weight, purity, makingCharge, goldRates, liveMarket]);
+    }, [weight, purity, makingCharge, goldRates]);
 
-    const activeRates = (liveMarket && liveMarket.rate_22k) ? liveMarket : goldRates;
+    const activeRates = goldRates;
 
     return (
         <div className="section gold-rates-page" style={{ paddingTop: '40px' }}>
@@ -69,12 +69,9 @@ const GoldRatesPage = () => {
                         <Sparkles size={24} className="text-gold" />
                     </div>
                     <p style={{ color: '#666', fontSize: '14px' }}>
-                        {liveMarket?.updated_at ? `Live Market Updated: ${liveMarket.updated_at}` : `Updated: ${new Date(activeRates.date || new Date()).toLocaleDateString('en-US', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                        })}`}
+                        {activeRates.pricing_mode === 'manual' ? 'Manual pricing' : activeRates.is_stale ? 'Last published rates — live feed unavailable' : 'Automatic live pricing'}
+                        {activeRates.updated_at && ` · Updated: ${new Date(activeRates.updated_at).toLocaleString()}`}
+
                     </p>
                 </div>
 
@@ -98,50 +95,26 @@ const GoldRatesPage = () => {
                     <div className="rates-table-glow" style={{ backgroundColor: '#111', padding: '30px', borderRadius: '8px', border: '1px solid #333' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '25px' }}>
                             <TrendingUp className="text-gold" />
-                            <h2 style={{ fontSize: '1.25rem', color: '#fff' }}>Live Market Rates (Per Gram)</h2>
-                            {liveMarket ? (
-                                <span style={{
-                                    marginLeft: 'auto', fontSize: '11px', fontWeight: 'bold',
-                                    color: '#4ade80', background: 'rgba(74,222,128,0.12)',
-                                    padding: '3px 8px', borderRadius: '20px',
-                                    border: '1px solid rgba(74,222,128,0.3)',
-                                    display: 'flex', alignItems: 'center', gap: '5px'
-                                }}>
-                                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80', display: 'inline-block' }} />
-                                    LIVE
-                                </span>
-                            ) : (
-                                <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#888' }}>Loading live rate…</span>
-                            )}
+                            <h2 style={{ fontSize: '1.25rem', color: '#fff' }}>Published Gold Rates (Per Gram)</h2>
+                            <span style={{ marginLeft: 'auto', fontSize: '12px' }}>{activeRates.pricing_mode === 'manual' ? 'MANUAL' : activeRates.is_stale ? 'LAST SAVED' : 'AUTO'}</span>
                         </div>
 
-                        {liveMarket ? (
+                        {activeRates.rate_22k ? (
                             <>
                                 {/* Live international rate (fetched from market) */}
-                                <div style={{
-                                    marginBottom: '18px', padding: '12px 15px',
-                                    background: 'rgba(74,222,128,0.05)',
-                                    borderRadius: '6px', border: '1px solid rgba(74,222,128,0.15)',
-                                    fontSize: '12px', color: '#888'
-                                }}>
-                                    International: <strong style={{ color: '#fff' }}>${liveMarket.price_usd_per_oz?.toLocaleString()}/troy oz</strong>
-                                    &nbsp;·&nbsp; USD/BDT: <strong style={{ color: '#fff' }}>{liveMarket.usd_to_bdt}</strong>
-                                    &nbsp;·&nbsp; Updated: <strong style={{ color: '#aaa' }}>{liveMarket.updated_at}</strong>
-                                </div>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', color: '#ddd' }}>
                                     <thead>
                                         <tr style={{ borderBottom: '1px solid #333', textAlign: 'left' }}>
                                             <th style={{ padding: '15px' }}>Purity</th>
-                                            <th style={{ padding: '15px' }}>Live Price (BDT/g)</th>
+                                            <th style={{ padding: '15px' }}>Price (BDT/g)</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {[
-                                            { label: '24 Karat (24K - Pure)', rate: liveMarket.rate_24k },
-                                            { label: '22 Karat (22K)', rate: liveMarket.rate_22k },
-                                            { label: '21 Karat (21K)', rate: liveMarket.rate_21k },
-                                            { label: '18 Karat (18K)', rate: liveMarket.rate_18k },
-                                            { label: 'Traditional', rate: liveMarket.rate_traditional },
+                                            { label: '22 Karat (22K)', rate: activeRates.rate_22k },
+                                            { label: '21 Karat (21K)', rate: activeRates.rate_21k },
+                                            { label: '18 Karat (18K)', rate: activeRates.rate_18k },
+                                            { label: 'Traditional', rate: activeRates.rate_traditional },
                                         ].map(({ label, rate }) => (
                                             <tr key={label} style={{ borderBottom: '1px solid #222' }}>
                                                 <td style={{ padding: '15px', fontWeight: 'bold' }}>{label}</td>
@@ -190,7 +163,7 @@ const GoldRatesPage = () => {
                                         fontSize: '14px'
                                     }}
                                 >
-                                    <option value="24K">24 Karat (99.9% Pure)</option>
+
                                     <option value="22K">22 Karat (91.6%)</option>
                                     <option value="21K">21 Karat (87.5%)</option>
                                     <option value="18K">18 Karat (75.0%)</option>

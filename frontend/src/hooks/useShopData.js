@@ -5,6 +5,7 @@ export const useProducts = (category) => {
     return useQuery({
         queryKey: ['products', category],
         queryFn: () => api.getProducts(category),
+        refetchInterval: 2 * 60 * 1000,
     });
 };
 
@@ -51,6 +52,7 @@ export const useGoldRateHistory = () => {
     return useQuery({
         queryKey: ['goldRateHistory'],
         queryFn: api.getGoldRatesHistory,
+        refetchInterval: 2 * 60 * 1000,
     });
 };
 

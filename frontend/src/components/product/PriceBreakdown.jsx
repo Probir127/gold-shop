@@ -17,7 +17,7 @@ const PriceBreakdown = ({ price, weight, purity, makingChargePerGram }) => {
                     <BreakdownItem label="Gold value (store rate)" value={breakdown.gold} color="var(--color-gold-primary)" delay={0.1} subtext={`${purity} purity · ${weight}g`} />
                     <BreakdownItem label="Making charge" value={breakdown.making} color="#b89954" delay={0.2} subtext={`${formatPrice(makingChargePerGram)}/g × ${weight}g`} />
                 </> : <BreakdownItem label="Gold and craftsmanship" value={price} color="var(--color-gold-primary)" delay={0.1} subtext={`${purity} purity · ${weight}g`} />}
-                <p style={{ color: '#aaa', fontSize: '12px' }}>Product prices use the store's published gold rate, which may differ from the international market estimate.</p>
+                <p style={{ color: '#aaa', fontSize: '12px' }}>Product prices use the same published gold rates shown throughout the shop, plus the making charge.</p>
             </div>
 
             <div style={{ borderTop: '1px solid #333', marginTop: '1.5rem', paddingTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

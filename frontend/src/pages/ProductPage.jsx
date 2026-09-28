@@ -1,3 +1,4 @@
+import { useGoldRates } from '../hooks/useShopData';
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
@@ -14,6 +15,7 @@ import { motion } from 'framer-motion';
 
 const ProductPage = () => {
     const { id } = useParams();
+    const { data: pricing } = useGoldRates();
     const { addToCart } = useCart();
     const [product, setProduct] = useState(null);
     const [relatedProducts, setRelatedProducts] = useState([]);
@@ -44,7 +46,7 @@ const ProductPage = () => {
             setLoading(false);
         });
         return () => { cancelled = true; };
-    }, [id]);
+    }, [id, pricing?.updated_at]);
 
     if (loading) {
         return <div className="container" style={{ padding: '80px 0', textAlign: 'center', color: '#888' }}>Loading exquisite details...</div>;

@@ -1,6 +1,6 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { fetchMarketRates, fetchRateJson } from './goldRates.js';
+import { fetchMarketRates, fetchRateJson, fetchPublishedRates } from './goldRates.js';
 
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
@@ -38,4 +38,20 @@ test('a stalled request is aborted so refreshes do not remain blocked', async ()
         signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
     });
     await assert.rejects(fetchRateJson('/stalled', 10), /aborted/);
+});
+
+
+test('published manual prices remain authoritative in the storefront', async () => {
+    globalThis.fetch = async url => {
+        assert.equal(url, '/api/rates/latest/');
+        return response({ rate_22k: 21000, pricing_mode: 'manual', is_stale: false });
+    };
+    assert.equal((await fetchPublishedRates('/api')).rate_22k, 21000);
+});
+
+test('published endpoint failure never bypasses manual mode with a market fallback', async () => {
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; throw new Error('offline'); };
+    await assert.rejects(fetchPublishedRates('/api'), /offline/);
+    assert.equal(calls, 1);
 });

@@ -1,4 +1,4 @@
-import { fetchMarketRates, fetchRateJson } from './goldRates.js';
+import { fetchMarketRates, fetchPublishedRates } from './goldRates.js';
 
 const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.VITE_BACKEND_URL ? `${import.meta.env.VITE_BACKEND_URL}/api` : '/api');
 
@@ -86,13 +86,8 @@ export const api = {
         return Array.isArray(data) ? data : (data.results || []);
     },
     getLatestRates: async () => {
-        // Prioritize live market rates so the entire store displays live rates
-        try {
-            const live = await api.getLiveMarketRates();
-            if (live && live.rate_22k) return live;
-        } catch (_) {}
-        const stored = await fetchRateJson(`${API_BASE}/rates/latest/`);
-        return { ...stored, status: 'stored', source: 'Saved store rate' };
+        // The server's selected pricing mode is authoritative, including manual overrides.
+        return fetchPublishedRates(API_BASE);
     },
     getLiveMarketRates: async () => fetchMarketRates(API_BASE),
     getGoldRates: async () => {

@@ -46,3 +46,6 @@ export async function fetchMarketRates(apiBase) {
         };
     }
 }
+
+// Never fall back to a different provider here: that would bypass manual pricing.
+export const fetchPublishedRates = apiBase => fetchRateJson(`${apiBase}/rates/latest/`);

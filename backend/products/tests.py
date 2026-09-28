@@ -13,6 +13,8 @@ from tempfile import TemporaryDirectory
 
 class ProductVisibilityTests(APITestCase):
 	def setUp(self):
+		from rates.models import RateControl
+		RateControl.objects.create(pk=1, mode='manual')
 		self.user = User.objects.create_user(username='shopowner', password='password123')
 		self.tenant_a = Tenant.objects.create(name='Tenant Alpha', slug='tenant-alpha', business_name='Alpha Jewels', owner=self.user)
 		self.tenant_b = Tenant.objects.create(name='Tenant Beta', slug='tenant-beta', business_name='Beta Jewels', owner=self.user)

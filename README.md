@@ -170,3 +170,25 @@ MIT — see [LICENSE](./LICENSE)
 ---
 
 *Built for Sahara Gold & Diamond · Bashundhara City Shopping Mall, Dhaka*
+## Automatic and manual gold pricing
+
+At `/admin/gold-rates`, the pricing controls apply to the entire storefront, product pricing, checkout, calculator, and AI:
+
+- **Enable Automatic Live** fetches and publishes a live rate immediately. Subsequent pricing requests refresh it when the last attempt is at least two minutes old. No open admin tab is required. Automatic mode is the default when no control record exists.
+- **Hold Current Rates / Manual** stops automatic publishing and retains the current rates.
+- **Publish Manual Rates & Pause Auto** saves all four entered rates for today's Bangladesh date and switches to manual mode. These prices stay active until the owner explicitly enables automatic mode again.
+- **Publish Live Rate Once** replaces the published rates with the current live feed without changing the mode.
+
+An unavailable live feed retains the last published prices and exposes a stale status. Historical order prices do not change. The existing Render build runs migration `rates.0004_ratecontrol` automatically. Rate-control writes require staff access.
+
+Refresh is request-driven, not a scheduled background job. Active storefront and admin views poll every two minutes; after an idle period, the next pricing request refreshes the rate. The database row lock coordinates workers and serializes manual writes with automatic publishing.
+
+Pricing regression checks:
+
+```sh
+cd backend
+python -m django test rates --settings=rates.test_settings
+python -m django makemigrations rates --check --dry-run --settings=rates.test_settings
+```
+
+The isolated test settings use SQLite and mock the external feed; they do not validate PostgreSQL lock behavior under concurrent load.

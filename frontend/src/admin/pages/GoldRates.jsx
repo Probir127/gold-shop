@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
-import { getGoldRatesHistory, getLatestGoldRate, updateGoldRate, getLiveGoldMarket, syncLiveGoldRate } from '../api';
+import { getGoldRatesHistory, getLatestGoldRate, updateGoldRate, getLiveGoldMarket, syncLiveGoldRate, getRateControl, setRateControl } from '../api';
 import toast from '../components/Toast';
 import { queryClient } from '../../queryClient';
 import { TrendingUp, RefreshCw, CheckCircle, Clock, AlertCircle, Sparkles, Globe, Zap, ArrowUpRight, DollarSign } from 'lucide-react';
@@ -14,9 +14,12 @@ const GoldRates = () => {
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
+  const [control, setControl] = useState(null);
+  const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dhaka', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+
   // Form state
   const [form, setForm] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: today(),
     rate_22k: '',
     rate_21k: '',
     rate_18k: '',
@@ -26,11 +29,10 @@ const GoldRates = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [histRes, latestRes] = await Promise.all([
-        getGoldRatesHistory(),
-        getLatestGoldRate()
-      ]);
+      const latestRes = await getLatestGoldRate();
+      const [histRes, controlRes] = await Promise.all([getGoldRatesHistory(), getRateControl()]);
 
+      setControl(controlRes.data);
       const historyData = histRes.data.results || histRes.data || [];
       setHistory(historyData);
 
@@ -39,7 +41,7 @@ const GoldRates = () => {
 
       if (latestData) {
         setForm({
-          date: new Date().toISOString().split('T')[0],
+          date: today(),
           rate_22k: latestData.rate_22k || '',
           rate_21k: latestData.rate_21k || '',
           rate_18k: latestData.rate_18k || '',
@@ -70,7 +72,32 @@ const GoldRates = () => {
   useEffect(() => {
     fetchData();
     fetchLiveMarket();
+    let active = true;
+    const timer = setInterval(async () => {
+      try {
+        const latestRes = await getLatestGoldRate();
+        const [controlRes, historyRes] = await Promise.all([getRateControl(), getGoldRatesHistory()]);
+        if (!active) return;
+        setLatest(latestRes.data);
+        setControl(controlRes.data);
+        setHistory(historyRes.data.results || historyRes.data || []);
+      } catch { /* Preserve the current display and any unsaved manual draft. */ }
+    }, 120000);
+    return () => { active = false; clearInterval(timer); };
   }, []);
+
+  const changeMode = async (mode) => {
+    setSyncing(true);
+    try {
+      const res = await setRateControl(mode);
+      setControl(res.data);
+      if (res.data.last_error) toast.error(res.data.last_error);
+      else toast.success(mode === 'auto' ? 'Automatic live pricing enabled everywhere.' : 'Manual pricing enabled. Current rates are held.');
+      await fetchData();
+      queryClient.invalidateQueries();
+    } catch { toast.error('Could not change pricing mode'); }
+    finally { setSyncing(false); }
+  };
 
   const handleSyncLive = async () => {
     setSyncing(true);
@@ -139,11 +166,11 @@ const GoldRates = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={handleSyncLive}
-              disabled={syncing}
+              disabled={syncing || saving}
               className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-lg shadow-amber-500/20 flex items-center gap-2 disabled:opacity-50"
             >
               <Zap size={16} className={syncing ? "animate-spin" : ""} />
-              {syncing ? 'Syncing Live API...' : 'Sync Live Market Rate'}
+              {syncing ? 'Syncing Live API...' : 'Publish Live Rate Once'}
             </button>
             <button
               onClick={() => { fetchData(); fetchLiveMarket(); }}
@@ -153,6 +180,18 @@ const GoldRates = () => {
             </button>
           </div>
         </div>
+
+        <section className="mb-8 p-5 rounded-xl border border-amber-500/30" aria-label="Pricing control">
+          <h2 className="text-lg font-bold">Pricing mode: {control?.mode === 'auto' ? 'Automatic live' : control?.mode === 'manual' ? 'Manual' : 'Loading…'}</h2>
+          <p className="text-sm text-slate-300 my-3">Automatic updates publish live rates across products, checkout, the calculator, and AI. Manual mode holds your prices until you resume automatic pricing. Publishing the form below pauses auto updates.</p>
+          <div className="flex gap-3">
+            <button type="button" disabled={syncing || saving || !control} onClick={() => changeMode('auto')} className="btn btn-primary">Enable Automatic Live</button>
+            <button type="button" disabled={syncing || saving || !control} onClick={() => changeMode('manual')} className="btn btn-outline">Hold Current Rates / Manual</button>
+          </div>
+          {control?.last_synced_at && <p className="text-sm mt-3">Last live sync: {new Date(control.last_synced_at).toLocaleString()}</p>}
+          {control?.last_error && <p role="alert" className="text-amber-400 mt-3">{control.last_error}</p>}
+          <p className="text-xs text-slate-400 mt-3">Auto refreshes when prices are requested, at most once every two minutes. Publish Live Rate Once updates prices immediately without changing the selected mode.</p>
+        </section>
 
         {/* Live International Market Banner */}
         {liveMarket && (
@@ -253,6 +292,7 @@ const GoldRates = () => {
                 <label className="block text-xs font-semibold text-slate-300 uppercase mb-1.5">Effective Date</label>
                 <input
                   type="date"
+                  min={today()} max={today()}
                   value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
                   required
@@ -310,10 +350,10 @@ const GoldRates = () => {
 
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || syncing}
                 className="w-full py-3 mt-4 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#aa8c2c] text-black font-bold text-sm hover:brightness-110 transition shadow-lg disabled:opacity-50"
               >
-                {saving ? 'Publishing Rates...' : 'Publish Official Rates'}
+                {saving ? 'Publishing Rates...' : 'Publish Manual Rates & Pause Auto'}
               </button>
             </form>
           </div>
