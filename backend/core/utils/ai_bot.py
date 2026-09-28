@@ -5,7 +5,6 @@ Generates replies using tenant-specific prompts, knowledge base, and LLM config.
 """
 import time
 import logging
-from huggingface_hub import InferenceClient
 from django.conf import settings
 from django.utils import timezone
 from ..models import Conversation, BotConfig
@@ -36,7 +35,8 @@ def _get_hf_client(tenant=None):
     if tenant and tenant.llm_model_name:
         model_name = tenant.llm_model_name
 
-    return InferenceClient(model_name, token=api_key)
+    from huggingface_hub import InferenceClient
+    return InferenceClient(model_name, token=api_key, timeout=20)
 
 
 def get_conversation_history(client, tenant=None, query: str = None) -> list[dict]:
@@ -47,6 +47,8 @@ def get_conversation_history(client, tenant=None, query: str = None) -> list[dic
         .order_by('-timestamp')[:RECENT_MSG_COUNT]
     )
     recent = list(reversed(list(recent_qs)))
+    if recent and recent[-1].direction == 'inbound' and recent[-1].message_text == query:
+        recent.pop()  # The caller appends the current question once after the history.
 
     total_count  = Conversation.objects.filter(client=client).count()
     older_count  = max(0, total_count - RECENT_MSG_COUNT)
@@ -106,7 +108,7 @@ def _handle_handoff(client, reason: str) -> str:
     return HANDOFF_REPLY
 
 
-def generate_reply(client, user_message: str, tenant=None, channel: str = 'whatsapp') -> dict:
+def generate_reply(client, user_message: str, tenant=None, channel: str = 'whatsapp', request=None) -> dict:
     """
     Main entry point. Returns a dict with:
       - reply (str): the message to send
@@ -126,6 +128,14 @@ def generate_reply(client, user_message: str, tenant=None, channel: str = 'whats
     if intent == 'human_agent':
         reply = _handle_handoff(client, 'Customer requested human agent')
         return _make_result(reply, intent, sentiment, start_ms, was_escalated=True)
+
+    # Store facts are read on every question, even when the external AI is unavailable.
+    from .shop_answers import answer_shop_question
+    facts = answer_shop_question(user_message, tenant, request=request)
+    if facts:
+        result = _make_result(facts['reply'], 'pricing' if not facts['products'] else 'products', sentiment, start_ms)
+        result.update(facts)
+        return result
 
     # ── Step 3: Quick replies — no LLM needed ─────────────
     quick = get_quick_reply(intent, tenant=tenant)

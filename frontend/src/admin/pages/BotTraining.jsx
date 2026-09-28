@@ -3,7 +3,7 @@ import Sidebar from '../components/Sidebar';
 import api, { 
   getBotConfig, updateBotConfig, 
   getKnowledgeSources, createKnowledgeSource, deleteKnowledgeSource, syncKnowledgeSource,
-  getMe, registerTelegramWebhook
+  getMe, registerTelegramWebhook, testBotMessage
 } from '../api';
 import toast from '../components/Toast';
 import { Brain, Save, RefreshCw, Info, MessageCircle, Database, Globe, Trash2, Plus, AlertCircle, CheckCircle2, Clock, Copy, ExternalLink, ShieldCheck, Palette, Layout, Users, Mail, UserPlus, Shield, Send, Instagram, Facebook, Sparkles, Check, Smartphone } from 'lucide-react';
@@ -62,18 +62,20 @@ const BotTraining = () => {
     try {
       const tenantSlug = localStorage.getItem('tenant_slug');
       
-      const [configRes, sourcesRes, meRes, membersRes] = await Promise.all([
+      const [configRes, sourcesRes, meRes, membersRes] = await Promise.allSettled([
         getBotConfig(),
         getKnowledgeSources(),
         getMe(),
         api.get('/team/members/')
       ]);
       
-      setData(configRes.data);
-      setSources(sourcesRes.data.results || sourcesRes.data);
-      setMembers(membersRes.data);
+      if (configRes.status === 'rejected') throw configRes.reason;
+      setData(configRes.value.data);
+      if (sourcesRes.status === 'fulfilled') setSources(sourcesRes.value.data.results || sourcesRes.value.data);
+      else toast.error('Knowledge sources could not be loaded. Refresh to retry.');
+      if (membersRes.status === 'fulfilled') setMembers(membersRes.value.data);
       
-      const membership = (meRes.data.memberships || []).find(m => m.tenant_slug === tenantSlug);
+      const membership = (meRes.status === 'fulfilled' ? meRes.value.data.memberships || [] : []).find(m => m.tenant_slug === tenantSlug);
       if (membership) setUserRole(membership.role);
       
     } catch (e) {
@@ -84,6 +86,19 @@ const BotTraining = () => {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  const processingSources = sources.some(source => ['processing', 'syncing'].includes(source.status));
+  useEffect(() => {
+    if (!processingSources) return;
+    let cancelled = false;
+    const timer = setInterval(async () => {
+      try {
+        const res = await getKnowledgeSources();
+        if (!cancelled) setSources(res.data.results || res.data);
+      } catch { /* Keep the current status and retry on the next poll. */ }
+    }, 4000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [processingSources]);
 
   const updateTenant = (field, value) => {
     setData(prev => ({
@@ -154,7 +169,7 @@ const BotTraining = () => {
       await syncKnowledgeSource(id);
       const res = await getKnowledgeSources();
       setSources(res.data.results || res.data);
-      toast.success('Sync completed! AI context updated.');
+      toast.success('Sync started. The source status will update when processing finishes.');
     } catch (e) {
       toast.error('Sync failed. Please check the URL.');
     } finally {
@@ -234,30 +249,35 @@ const BotTraining = () => {
     );
   };
 
-  if (loading || !data) {
+  if (loading) {
     return <TrainingSkeleton />;
   }
 
-  const handleSendPreviewMessage = (text) => {
-    if (!text.trim()) return;
+  if (!data) return (
+    <div className="flex bg-[#09090b] min-h-screen text-slate-300">
+      <Sidebar />
+      <main className="flex-1 p-8"><p>AI settings could not be loaded.</p>
+        <button onClick={fetchData} className="mt-4 text-amber-400">Retry</button>
+      </main>
+    </div>
+  );
+
+  const handleSendPreviewMessage = async (text) => {
+    if (!text.trim() || previewTyping) return;
     const userMsg = { id: Date.now(), text: text, sender: 'user' };
     setPreviewMessages(prev => [...prev, userMsg]);
     setPreviewInput('');
     setPreviewTyping(true);
 
-    setTimeout(() => {
+    try {
+      const res = await testBotMessage(text.trim());
+      if (!res.data.reply) throw new Error('Empty bot reply');
+      setPreviewMessages(prev => [...prev, { id: Date.now() + 1, text: res.data.reply, sender: 'bot' }]);
+    } catch {
+      setPreviewMessages(prev => [...prev, { id: Date.now() + 1, text: 'Unable to reach the assistant. Please try again.', sender: 'bot' }]);
+    } finally {
       setPreviewTyping(false);
-      let replyText = "That sounds awesome! I can help you automate workflows, query documents, or configure integrations. 😊";
-      const lower = text.toLowerCase();
-      if (lower.includes('price') || lower.includes('cost') || lower.includes('billing')) {
-        replyText = "Our multi-tenant SaaS tiers start at just $19/mo for the Starter plan, scaling up to dedicated Enterprise solutions. 💳";
-      } else if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey')) {
-        replyText = "Hello! I am your brand's dedicated AI assistant, loaded with custom business identity and RAG context. How can I help you today? 🌟";
-      } else if (lower.includes('features') || lower.includes('capabilities') || lower.includes('what can you do')) {
-        replyText = "I support multi-channel integrations (WhatsApp, Telegram, Messenger, Instagram), semantic RAG matching, live agent handoff, and automatic invoice drafting! 🤖";
-      }
-      setPreviewMessages(prev => [...prev, { id: Date.now() + 1, text: replyText, sender: 'bot' }]);
-    }, 1500);
+    }
   };
 
   const { tenant, bot_config } = data;
@@ -266,6 +286,7 @@ const BotTraining = () => {
   const getStatusIcon = (status) => {
     switch(status) {
       case 'ready':   return <CheckCircle2 size={16} className="text-green-400" />;
+      case 'processing':
       case 'syncing': return <RefreshCw size={16} className="text-blue-400 animate-spin" />;
       case 'failed':  return <AlertCircle size={16} className="text-red-400" />;
       default:        return <Clock size={16} className="text-slate-400" />;
@@ -848,11 +869,11 @@ const BotTraining = () => {
                     <div className="flex items-center gap-1">
                       <button 
                         onClick={() => handleSync(s.id)}
-                        disabled={syncingId === s.id || s.status === 'syncing'}
+                        disabled={syncingId === s.id || ['processing', 'syncing'].includes(s.status)}
                         className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all disabled:opacity-50"
                         title="Sync Now"
                       >
-                        <RefreshCw size={16} className={syncingId === s.id || s.status === 'syncing' ? 'animate-spin' : ''} />
+                        <RefreshCw size={16} className={syncingId === s.id || ['processing', 'syncing'].includes(s.status) ? 'animate-spin' : ''} />
                       </button>
                       <button 
                         onClick={() => handleDeleteSource(s.id)}

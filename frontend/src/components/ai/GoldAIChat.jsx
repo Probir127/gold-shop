@@ -1,3 +1,6 @@
+import { queryClient } from '../../queryClient';
+import { canPurchase } from '../../utils/productAvailability.js';
+import { formatPrice } from '../../utils/formatters';
 import { useGoldRates } from '../../hooks/useShopData';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -54,6 +57,8 @@ const GoldAIChat = () => {
 
     try {
       const data = await api.chatWithAI(text, sessionId);
+      if (data.rates) queryClient.setQueryData(['goldRates'], data.rates);
+      else queryClient.invalidateQueries({ queryKey: ['goldRates'] });
 
       if (data.visitor_id && !sessionId) {
         setSessionId(data.visitor_id);
@@ -435,7 +440,7 @@ const GoldAIChat = () => {
                               {prod.purity} • {prod.weight}g
                             </p>
                             <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#e5c100' }}>
-                              ৳{(prod.current_price || prod.price || 0).toLocaleString()}
+                              {formatPrice(prod.current_price)}
                             </span>
                           </div>
 
@@ -459,9 +464,11 @@ const GoldAIChat = () => {
                             </Link>
                             <button
                               onClick={() => {
-                                addToCart(prod);
+                                if (!canPurchase(prod)) return;
+                                addToCart({ ...prod, price: Number(prod.current_price), category: prod.category_name });
                                 setIsOpen(false);
                               }}
+                              disabled={!canPurchase(prod)}
                               title="Add Directly to Bag"
                               style={{
                                 padding: '6px 10px',

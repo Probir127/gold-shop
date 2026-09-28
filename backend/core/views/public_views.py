@@ -70,7 +70,7 @@ class PublicChatView(APIView):
 
         # Generate reply
         from ..utils.ai_bot import generate_reply
-        result = generate_reply(client, message, tenant=tenant, channel='web')
+        result = generate_reply(client, message, tenant=tenant, channel='web', request=request)
         
         # Record outbound
         Conversation.objects.create(
@@ -93,9 +93,13 @@ class PublicChatView(APIView):
             response_time_ms=result.get('response_time_ms', 0),
             was_fallback=result.get('was_fallback', False),
             was_escalated=result.get('was_escalated', False),
+            is_resolved=not (result.get('was_escalated', False) or result.get('was_fallback', False)),
         )
 
         return Response({
             'reply': result['reply'],
-            'visitor_id': visitor_id
+            'visitor_id': visitor_id,
+            'products': result.get('products', []),
+            'rates': result.get('rates'),
+            'was_fallback': result.get('was_fallback', False),
         })

@@ -20,7 +20,12 @@ class AIAnalyticsStatsView(APIView):
         if not tenant:
             return Response({'detail': 'No tenant context.'}, status=400)
 
-        days = int(request.query_params.get('days', 30))
+        try:
+            days = int(request.query_params.get('days', 30))
+            if not 1 <= days <= 365:
+                raise ValueError
+        except (TypeError, ValueError):
+            return Response({'detail': 'days must be an integer between 1 and 365.'}, status=400)
         since = timezone.now() - timedelta(days=days)
         now = timezone.now()
 
@@ -32,6 +37,7 @@ class AIAnalyticsStatsView(APIView):
             total=Count('id'),
             fallbacks=Count('id', filter=Q(was_fallback=True)),
             escalated=Count('id', filter=Q(was_escalated=True)),
+            success=Count('id', filter=Q(was_fallback=False, was_escalated=False)),
             resolved=Count('id', filter=Q(is_resolved=True)),
             avg_ms=Avg('response_time_ms'),
             pos=Count('id', filter=Q(sentiment='positive')),
@@ -188,7 +194,7 @@ class AIAnalyticsStatsView(APIView):
             'escalation_rate': round((escalated / total * 100), 1) if total else 0,
             'resolution_rate': round(((kpis['resolved'] or 0) / total * 100), 1) if total else 0,
             'avg_response_ms': avg_ms,
-            'success_count': total - fallbacks - escalated,
+            'success_count': kpis['success'] or 0,
 
             # Trends vs previous period
             'trend_interactions': round(((total - prev_total) / prev_total * 100), 1),

@@ -111,7 +111,7 @@ export const sendMessage      = (clientId, text, channel = 'whatsapp') =>
 // ── Bot ──────────────────────────────────────────────────────
 export const toggleBot           = (clientId) => api.post(`/clients/${clientId}/toggle-bot/`)
 export const getBotTestHistory   = ()         => api.get('/bot-test/')
-export const testBotMessage      = (text)     => api.post('/bot-test/', { message: text })
+export const testBotMessage      = (text)     => api.post('/bot-test/', { message: text }, { timeout: 30000 })
 export const clearBotTestHistory = ()         => api.post('/bot-test/clear/')
 
 // ── Invoices ─────────────────────────────────────────────────

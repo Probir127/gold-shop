@@ -64,7 +64,7 @@ class BotTestView(APIView):
         )
 
         # Generate AI response using tenant context
-        result = generate_reply(client, message_text, tenant=tenant, channel='web')
+        result = generate_reply(client, message_text, tenant=tenant, channel='web', request=request)
         reply_text = result['reply']
 
         # Save AI message
@@ -88,11 +88,13 @@ class BotTestView(APIView):
             response_time_ms=result.get('response_time_ms', 150),
             was_fallback=result.get('was_fallback', False),
             was_escalated=result.get('was_escalated', False),
-            is_resolved=not result.get('was_escalated', False),
+            is_resolved=not (result.get('was_escalated', False) or result.get('was_fallback', False)),
         )
 
         return Response({
             'reply':          reply_text,
+            'products': result.get('products', []),
+            'rates': result.get('rates'),
             'intent':         result['intent'],
             'was_fallback':   result['was_fallback'],
             'was_escalated':  result['was_escalated'],

@@ -1,3 +1,4 @@
+import { postPublicChat } from './chat.js';
 import { fetchMarketRates, fetchPublishedRates } from './goldRates.js';
 
 const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.VITE_BACKEND_URL ? `${import.meta.env.VITE_BACKEND_URL}/api` : '/api');
@@ -228,13 +229,7 @@ export const api = {
     // AI Services
     chatWithAI: async (message, sessionId) => {
         const tenantSlug = import.meta.env.VITE_TENANT_SLUG || 'sahara-gold';
-        const res = await nf(`${API_BASE}/public/chat/${tenantSlug}/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, visitor_id: sessionId })
-        });
-        if (!res.ok) throw new Error('AI chat failed');
-        return res.json();
+        return postPublicChat(API_BASE, tenantSlug, message, sessionId);
     },
     getAIPriceInsight: async () => {
         const res = await nf(`${API_BASE}/ai/price-insight/`);
