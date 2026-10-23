@@ -3,121 +3,23 @@ import { useCart } from '../context/CartContext';
 import CartItem from '../components/cart/CartItem';
 import { formatPrice } from '../utils/formatters';
 import { Link } from 'react-router-dom';
-import { ShoppingBag, ArrowRight, Lock, LogIn } from 'lucide-react';
+import { ShoppingBag, ArrowRight } from 'lucide-react';
+import CollectionHeading from '../components/CollectionHeading';
+import SEO from '../components/SEO';
 
-const CartPage = () => {
+export default function CartPage() {
     const { cart, cartTotal, clearCart } = useCart();
     const customer = (() => { try { return JSON.parse(localStorage.getItem('sahara_customer') || 'null'); } catch { return null; } })();
-    const subTotal = cartTotal;
-    const total = subTotal;
-
-    if (cart.length === 0) {
-        return (
-            <div className="section cart-page" style={{ textAlign: 'center', padding: '100px 0' }}>
-                <div className="container">
-                    <div style={{ marginBottom: '20px', color: '#333' }}>
-                        <ShoppingBag size={60} />
-                    </div>
-                    <h2 style={{ fontSize: '24px', color: '#fff', marginBottom: '10px' }}>Your Cart is Empty</h2>
-                    <p style={{ color: '#888', marginBottom: '30px' }}>Looks like you haven't added any items yet.</p>
-                    <Link to="/shop" className="btn btn-primary">
-                        Start Shopping
-                    </Link>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="section cart-page">
-            <div className="container">
-                <h1 className="section-title">Shopping Cart</h1>
-
-                <div className="cart-grid">
-                    {/* Cart Items List */}
-                    <div className="cart-list-container">
-                        {/* Header */}
-                        <div style={{
-                            padding: '15px 20px',
-                            borderBottom: '1px solid #333',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            backgroundColor: '#1a1a1a'
-                        }}>
-                            <span style={{ fontWeight: 'bold', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px', color: '#888' }}>Product Details</span>
-                            <button
-                                onClick={clearCart}
-                                style={{ background: 'none', border: 'none', color: '#666', fontSize: '12px', cursor: 'pointer', transition: 'color 0.2s' }}
-                                onMouseEnter={(e) => e.target.style.color = '#fff'}
-                                onMouseLeave={(e) => e.target.style.color = '#666'}
-                            >
-                                Clear Cart
-                            </button>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            {cart.map(item => (
-                                <CartItem key={item.id} item={item} />
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Order Summary */}
-                    <div>
-                        <div className="cart-summary-card">
-                            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#fff', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
-                                Order Summary
-                            </h3>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#ccc' }}>
-                                    <span>Subtotal ({cart.length} items)</span>
-                                    <span>{formatPrice(subTotal)}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#22c55e' }}>
-                                    <span>Shipping</span>
-                                    <span>Free</span>
-                                </div>
-                            </div>
-
-                            <div style={{ borderTop: '1px solid #333', paddingTop: '15px', marginBottom: '20px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                    <span style={{ fontSize: '16px', fontWeight: '600', color: '#fff' }}>Total Amount</span>
-                                    <span style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--color-gold-primary)' }}>{formatPrice(total)}</span>
-                                </div>
-                                <div style={{ fontSize: '11px', color: '#666', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#0a0a0a', padding: '8px', borderRadius: '4px' }}>
-                                    <Lock size={12} /> Price locked until checkout completion
-                                </div>
-                            </div>
-
-                            {customer ? (
-                                <Link to="/checkout" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', height: '50px' }}>
-                                    Proceed to Checkout <ArrowRight size={18} style={{ marginLeft: '10px' }} />
-                                </Link>
-                            ) : (
-                                <>
-                                    <Link to="/login?next=/checkout" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', height: '50px' }}>
-                                        <LogIn size={18} style={{ marginRight: '8px' }} /> Sign In to Checkout
-                                    </Link>
-                                    <p style={{ textAlign: 'center', fontSize: '12px', color: '#666', marginTop: '10px' }}>
-                                        New customer?{' '}
-                                        <Link to="/login?next=/checkout" style={{ color: '#d4af37', textDecoration: 'none' }}>Create an account</Link>{' '}to continue.
-                                    </p>
-                                </>
-                            )}
-
-                            <div style={{ marginTop: '20px', textAlign: 'center' }}>
-                                <p style={{ fontSize: '12px', color: '#555', lineHeight: '1.6' }}>
-                                    Secure Payment Processing • 100% Purity Guarantee • Insured Shipping • Lifetime Warranty
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+    return <div className="section cart-page">
+        <SEO title="Your Shopping Bag" description="Review your chosen New Sahara Gold and Diamond jewellery before checkout." />
+        <CollectionHeading eyebrow="Chosen by you" title="Your shopping bag"><p>A little closer to something precious.</p></CollectionHeading>
+        <div className="container">
+            {!cart.length ? <div className="maison-empty"><ShoppingBag size={36} strokeWidth={1}/><h2>A new story awaits.</h2><p>Your bag is empty. Explore the collection to find a piece that feels like you.</p><Link to="/shop" className="maison-button">Explore the collection <ArrowRight size={16}/></Link></div> :
+            <div className="bag-layout">
+                <section aria-label="Bag items"><div className="bag-list-heading"><span>{count} {count === 1 ? 'piece' : 'pieces'}</span><button className="text-link" onClick={clearCart}>Clear bag</button></div>{cart.map(item => <CartItem key={item.id} item={item}/>)}<Link className="text-link" to="/shop">Continue exploring <ArrowRight size={16}/></Link></section>
+                <aside className="bag-summary"><p className="eyebrow">The details</p><h2>Order summary</h2><div className="summary-line"><span>Items ({count})</span><span>{formatPrice(cartTotal)}</span></div><p className="bag-price-note">Your final item prices are calculated when you place the order using the published store rates.</p><div className="summary-line summary-total"><span>Estimated total</span><strong>{formatPrice(cartTotal)}</strong></div><Link to={customer ? '/checkout' : '/login?next=/checkout'} className="maison-button solid">{customer ? 'Continue to checkout' : 'Sign in to checkout'}<ArrowRight size={16}/></Link><p className="bag-price-note">Questions about delivery or your selection? <Link to="/contact">Speak with our team.</Link></p><Link to="/refund-policy" className="text-link">Returns & exchanges</Link></aside>
+            </div>}
         </div>
-    );
-};
-
-export default CartPage;
+    </div>;
+}

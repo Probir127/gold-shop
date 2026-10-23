@@ -4,6 +4,7 @@ import Header from './Header';
 import Footer from './Footer';
 import CartDrawer from '../cart/CartDrawer';
 import GoldAIChat from '../ai/GoldAIChat';
+import '../../atelier.css';
 
 const Layout = ({ children }) => {
     const location = useLocation();
@@ -21,9 +22,9 @@ const Layout = ({ children }) => {
     }
 
     return (
-        <div className="app-layout">
+        <div className={`app-layout maison ${location.pathname === '/' ? 'maison-home-layout' : 'maison-inner-layout'}`}>
             <Header />
-            <main className="main-content">
+            <main id="storefront-main" className="sf-main">
                 {children}
             </main>
             <Footer />

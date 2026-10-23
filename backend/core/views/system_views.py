@@ -60,25 +60,29 @@ class SystemHealthView(APIView):
             'engine': connection.settings_dict.get('ENGINE', '').split('.')[-1],
         }
 
-        # ── SMTP ping (connection only — no email sent) ────────────────
+        # Configuration is distinct from provider acceptance and inbox delivery.
+        provider = 'resend' if getattr(settings, 'RESEND_API_KEY', '') else 'smtp'
         smtp_ok = False
         smtp_error = None
-        try:
-            conn = get_connection()
-            conn.open()
-            conn.close()
-            smtp_ok = True
-        except Exception as exc:
-            smtp_error = str(exc)
-            logger.info('SMTP health check failed: %s', exc)
-
+        configured = bool(getattr(settings, 'RESEND_API_KEY', '')) if provider == 'resend' else bool(
+            getattr(settings, 'EMAIL_HOST', '') and getattr(settings, 'EMAIL_HOST_USER', '')
+            and getattr(settings, 'EMAIL_HOST_PASSWORD', '')
+        )
+        if provider == 'smtp' and configured:
+            try:
+                from django.core.mail.backends.smtp import EmailBackend
+                with EmailBackend(timeout=5) as conn:
+                    smtp_ok = conn.connection is not None
+            except Exception as exc:
+                smtp_error = 'SMTP connection failed. Check the server configuration.'
+                logger.info('SMTP health check failed (%s).', type(exc).__name__)
         health['smtp'] = {
-            'ok': smtp_ok,
-            'host': settings.EMAIL_HOST,
-            'port': settings.EMAIL_PORT,
-            'user': settings.EMAIL_HOST_USER,
-            'configured': bool(settings.EMAIL_HOST_PASSWORD),
+            'ok': smtp_ok, 'provider': provider, 'configured': configured,
+            'host': getattr(settings, 'EMAIL_HOST', '') if provider == 'smtp' else 'api.resend.com',
+            'port': getattr(settings, 'EMAIL_PORT', None) if provider == 'smtp' else 443,
             'error': smtp_error,
+            'status': 'connected' if smtp_ok else ('configured_unverified' if configured else 'unconfigured'),
+            'delivery_verified': False,
         }
 
         # ── Cache check ────────────────────────────────────────────────
@@ -103,6 +107,6 @@ class SystemHealthView(APIView):
         }
 
         # ── Overall status ─────────────────────────────────────────────
-        health['overall'] = 'healthy' if (db_ok and smtp_ok) else ('degraded' if db_ok else 'critical')
+        health['overall'] = 'healthy' if (db_ok and smtp_ok) else ('needs_verification' if db_ok and configured and provider == 'resend' else ('degraded' if db_ok else 'critical'))
 
         return Response(health)

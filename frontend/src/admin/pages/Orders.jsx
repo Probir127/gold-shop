@@ -38,7 +38,7 @@ const Orders = () => {
         order_status: newStatus,
         send_whatsapp: true
       });
-      toast.success(`Order #${orderId} marked as ${newStatus}. WhatsApp dispatched!`);
+      toast.success(`Order #${orderId} marked as ${newStatus}.`);
       fetchOrders();
       if (selectedOrder?.order_id === orderId) {
         setSelectedOrder(prev => ({
@@ -48,7 +48,7 @@ const Orders = () => {
         }));
       }
     } catch (err) {
-      toast.error('Failed to update status');
+      toast.error(err.response?.data?.detail || 'Failed to update status');
     } finally {
       setUpdating(false);
     }
@@ -57,17 +57,17 @@ const Orders = () => {
   const handlePaymentStatusChange = async (orderId, newPaymentStatus) => {
     setUpdating(true);
     try {
-      await updateOrderStatus(orderId, {
+      const response = await updateOrderStatus(orderId, {
         payment_status: newPaymentStatus,
         send_whatsapp: false
       });
       toast.success(`Order #${orderId} payment marked as ${newPaymentStatus}!`);
       fetchOrders();
       if (selectedOrder?.order_id === orderId) {
-        setSelectedOrder(prev => ({ ...prev, payment_status: newPaymentStatus }));
+        setSelectedOrder(prev => ({ ...prev, ...response.data }));
       }
     } catch (err) {
-      toast.error('Failed to update payment status');
+      toast.error(err.response?.data?.detail || 'Failed to update payment status');
     } finally {
       setUpdating(false);
     }
@@ -146,7 +146,8 @@ const Orders = () => {
           title="Click to change payment status"
         >
           <option value="pending" className="bg-[#18181b] text-amber-400">Pending</option>
-          <option value="paid" className="bg-[#18181b] text-emerald-400">Paid</option>
+          <option value="awaiting_payment" className="bg-[#18181b] text-amber-400">Awaiting payment verification</option>
+          <option value="paid" className="bg-[#18181b] text-emerald-400">Approve payment (verified)</option>
           <option value="refunded" className="bg-[#18181b] text-purple-400">Refunded</option>
           <option value="failed" className="bg-[#18181b] text-rose-400">Failed</option>
         </select>
@@ -163,7 +164,7 @@ const Orders = () => {
         <div className="flex items-center justify-between mb-8 pb-6 border-b border-white/5">
           <div>
             <div className="flex items-center gap-2 text-[#d4af37] text-xs font-semibold uppercase tracking-wider mb-1">
-              <ShoppingBag size={14} /> Sahara Gold E-Commerce
+              <ShoppingBag size={14} /> New Sahara Gold and Diamond E-Commerce
             </div>
             <h1 className="text-2xl font-bold text-white tracking-tight">Order Management</h1>
             <p className="text-slate-400 text-sm">Real-time jewelry order pipeline & automated WhatsApp dispatch</p>

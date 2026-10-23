@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 
 /**
- * Sahara Gold — Luxury Gold Dust & Constellation Canvas
+ * New Sahara Gold and Diamond — Luxury Gold Dust & Constellation Canvas
  * High-performance 60fps golden ember/dust engine with cursor magnetic swirl.
  */
 const GoldParticles = () => {

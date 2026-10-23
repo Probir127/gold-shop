@@ -21,15 +21,16 @@ export const CartProvider = ({ children }) => {
     }, [cart]);
 
     // Stable callbacks — won't cause re-renders in consumer components
-    const addToCart = useCallback((product) => {
+    const addToCart = useCallback((product, quantity = 1) => {
+        const requested = Number.isInteger(quantity) ? Math.min(100, Math.max(1, quantity)) : 1;
         setCart(prev => {
             const existing = prev.find(item => item.id === product.id);
             if (existing) {
                 return prev.map(item =>
-                    item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+                    item.id === product.id ? { ...item, quantity: Math.min(100, item.quantity + requested) } : item
                 );
             }
-            return [...prev, { ...product, quantity: 1, addedAt: new Date().toISOString() }];
+            return [...prev, { ...product, quantity: requested, addedAt: new Date().toISOString() }];
         });
         setIsCartOpen(true); // Auto open cart on add
     }, []);
@@ -41,7 +42,7 @@ export const CartProvider = ({ children }) => {
     const updateQuantity = useCallback((productId, delta) => {
         setCart(prev => prev.map(item => {
             if (item.id === productId) {
-                const newQty = item.quantity + delta;
+                const newQty = Math.min(100, item.quantity + delta);
                 return newQty > 0 ? { ...item, quantity: newQty } : item;
             }
             return item;

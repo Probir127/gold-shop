@@ -2529,3 +2529,5 @@ body {
 @media (max-width: 480px) {
   .brand-mark-copy { display: none; }
 }
+
+.brand-mark .brand-supplied-logo { width:176px; height:auto; object-fit:contain; filter:brightness(0) saturate(100%) invert(87%) sepia(32%) saturate(516%) hue-rotate(347deg) brightness(103%) contrast(90%); }

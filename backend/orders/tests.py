@@ -5,6 +5,10 @@ from unittest.mock import patch
 
 
 class CustomerAuthTests(APITestCase):
+	def setUp(self):
+		from django.core.cache import cache
+		cache.clear()
+
 	@patch('orders.customer_auth.send_verification_code')
 	def test_customer_can_register_and_login(self, send_code_mock):
 		send_code_mock.return_value = (True, 'Delivered')
@@ -83,6 +87,10 @@ class CustomerAuthTests(APITestCase):
 	def test_customer_resend_verification_code(self, send_code_mock):
 		send_code_mock.return_value = (True, 'Delivered')
 		user = User.objects.create_user(username='01799887766', email='resend@example.com', password='password123', is_active=False)
+		from .models import CustomerEmailVerification
+		from django.utils import timezone
+		from datetime import timedelta
+		CustomerEmailVerification.objects.create(user=user, code_hash='expired-code', expires_at=timezone.now() - timedelta(minutes=1))
 		res = self.client.post('/api/customer/auth/resend-code/', {'email': 'resend@example.com'}, format='json')
 		self.assertEqual(res.status_code, status.HTTP_200_OK)
 		self.assertTrue(send_code_mock.called)

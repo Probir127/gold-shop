@@ -1,131 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { CheckCircle, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { formatPrice } from '../utils/formatters';
 import { api } from '../services/api';
-
-const OrderSuccessPage = () => {
-    const location = useLocation();
-    const query = new URLSearchParams(location.search);
-    const queryOrderId = query.get('id');
-    const [order, setOrder] = useState(location.state || null);
-    const orderId = order?.orderId || order?.order_id || queryOrderId || 'UNKNOWN';
-    const total = order?.total || 0;
-
-    useEffect(() => {
-        if (!queryOrderId || order?.total) return;
-
-        let active = true;
-        api.getOrder(queryOrderId)
-            .then((data) => {
-                if (active) setOrder(data);
-            })
-            .catch(() => {
-                if (active) setOrder({ orderId: queryOrderId, total: 0 });
-            });
-
-        return () => {
-            active = false;
-        };
-    }, [queryOrderId, order]);
-
-    return (
-        <div className="section result-page" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div className="container" style={{ textAlign: 'center', maxWidth: '600px' }}>
-                <div style={{ marginBottom: '30px' }}>
-                    <CheckCircle size={80} style={{ color: '#22c55e', margin: '0 auto' }} />
-                </div>
-
-                <h1 className="section-title" style={{ marginBottom: '10px' }}>Order Confirmed!</h1>
-                <p style={{ color: '#888', fontSize: '1.2rem', marginBottom: '30px' }}>
-                    Thank you for choosing Sahara Gold. Your order has been placed successfully.
-                </p>
-
-                <div style={{ backgroundColor: '#111', padding: '30px', borderRadius: '8px', border: '1px solid #222', marginBottom: '40px' }}>
-                    <p style={{ color: '#ccc', marginBottom: '10px' }}>Order ID</p>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--color-gold-primary)', letterSpacing: '2px', marginBottom: '20px' }}>
-                        {orderId}
-                    </div>
-
-                    <div style={{ borderTop: '1px solid #333', paddingTop: '20px' }}>
-                        <p style={{ color: '#ccc', fontSize: '14px' }}>
-                            Order Total: <span style={{ color: '#fff', fontWeight: 'bold' }}>{formatPrice(total)}</span>
-                        </p>
-                        <p style={{ color: '#ccc', fontSize: '14px', marginTop: '10px' }}>
-                            We will contact you shortly to confirm your delivery details.
-                        </p>
-                    </div>
-
-                    {orderId && orderId !== 'UNKNOWN' && (() => {
-                        const rawUrl = order?.customer_invoice_url || order?.customerInvoiceUrl || '';
-                        const backend = import.meta.env.VITE_BACKEND_URL || '';
-                        const invUrl = rawUrl && !rawUrl.startsWith('http') && backend && !backend.startsWith('http://localhost')
-                            ? `${backend.replace(/\/+$/, '')}${rawUrl}`
-                            : (rawUrl || `/api/orders/${orderId}/invoice/?copy=customer`);
-                        const pdfUrl = backend && !backend.startsWith('http://localhost')
-                            ? `${backend.replace(/\/+$/, '')}/api/orders/${orderId}/pdf/`
-                            : `/api/orders/${orderId}/pdf/`;
-
-                        return (
-                            <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px dashed #333' }}>
-                                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                                    <a 
-                                        href={invUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="btn btn-primary"
-                                        style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            padding: '12px 20px',
-                                            fontSize: '13px',
-                                            fontWeight: '700',
-                                            textDecoration: 'none',
-                                            background: 'linear-gradient(135deg, #d4af37, #b8860b)',
-                                            color: '#000',
-                                            borderRadius: '8px',
-                                            boxShadow: '0 4px 15px rgba(212, 175, 55, 0.35)'
-                                        }}
-                                    >
-                                        📄 View Official Hallmark Invoice
-                                    </a>
-                                    <a
-                                        href={pdfUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="btn btn-outline"
-                                        style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            padding: '12px 18px',
-                                            fontSize: '13px',
-                                            borderRadius: '8px',
-                                        }}
-                                    >
-                                        📥 Download PDF
-                                    </a>
-                                </div>
-                                <p style={{ color: '#777', fontSize: '12px', marginTop: '12px' }}>
-                                    An official certified PDF invoice with 100% BSTI Hallmark Gold Authenticity Certificate has also been dispatched to your email via secure SMTP.
-                                </p>
-                            </div>
-                        );
-                    })()}
-                </div>
-
-                <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <Link to="/" className="btn btn-outline">
-                        Continue Shopping
-                    </Link>
-                    <Link to="/track-order" className="btn btn-outline">
-                        Track Order Status
-                    </Link>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-export default OrderSuccessPage;
+import SEO from '../components/SEO';
+import { usePaymentConfiguration } from '../hooks/usePaymentConfiguration';
+import './support-v2.css';
+export default function OrderSuccessPage(){
+  const {data: paymentConfig} = usePaymentConfiguration();
+  const location=useLocation();const id=new URLSearchParams(location.search).get('id');
+  const [order,setOrder]=useState(location.state||null);const [loading,setLoading]=useState(!!id&&!location.state);const [error,setError]=useState('');
+  useEffect(()=>{if(!id||location.state)return;let active=true;setLoading(true);api.getOrder(id).then(data=>{if(active)setOrder(data);}).catch(()=>{if(active)setError('Sign in or use order tracking to securely view this order.');}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[id,location.state]);
+  const orderId=order?.orderId||order?.order_id;const rawInvoice=order?.customer_invoice_url||order?.customerInvoiceUrl;
+  const backend=import.meta.env.VITE_BACKEND_URL||'';const invoice=rawInvoice?.startsWith('/')?`${backend.replace(/\/$/,'')}${rawInvoice}`:rawInvoice;
+  return <section className="sv2"><SEO title="Your Order" description="Your New Sahara Gold and Diamond order details." noindex/><div className="sv2-result"><img className="sv2-result-emblem" src="/brand/new-sahara-logo.png" alt=""/><span className="sv2-eyebrow">Thank you for choosing New Sahara Gold and Diamond</span><h1>{loading?'One moment.':orderId?(order?.payment_method === 'manual' && order?.payment_status !== 'paid' ? 'Awaiting payment approval.' : 'Order received.'):'Your order journey.'}</h1><p>{loading?'Retrieving your order details…':error|| (orderId?'Your order has been received. Keep your reference below for updates and any questions.':'Sign in to see your orders, or track a purchase using your order reference.')}</p>{orderId&&<div className="sv2-result-record"><span>Order reference</span><strong>{orderId}</strong>{order.total!=null&&<p>{formatPrice(order.total)}</p>}{invoice&&<a className="sv2-text-link" href={invoice} target="_blank" rel="noreferrer">View your invoice <ArrowRight size={16}/></a>}</div>}{order?.payment_method === 'manual' && order?.payment_status !== 'paid' && <div><p>Your order is pending. Call us for the merchant payment details and quote your order reference. Only our admin can confirm it after verifying payment.</p>{paymentConfig && <><p>{paymentConfig.instructions}</p>{paymentConfig.merchant_number && <p>Merchant number: {paymentConfig.merchant_number}</p>}<a href={`tel:${paymentConfig.contact_phone}`}>Call {paymentConfig.contact_phone}</a></>}</div>}<div className="sv2-result-actions"><Link to="/track-order" className="sv2-button">Track your order <ArrowRight size={16}/></Link><Link to="/account" className="sv2-text-link">Your account <ArrowRight size={16}/></Link><Link to="/shop" className="sv2-text-link">Continue exploring</Link></div></div></section>;
+}

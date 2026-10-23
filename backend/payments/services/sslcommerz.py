@@ -7,15 +7,13 @@ class SslCommerzGateway:
     Supports bKash, Nagad, Visa, Mastercard, etc.
     """
     
-    def __init__(self):
-        self.store_id = getattr(settings, 'SSLCOMMERZ_STORE_ID', 'testbox')
-        self.store_pass = getattr(settings, 'SSLCOMMERZ_STORE_PASS', 'qwerty')
-        self.is_sandbox = getattr(settings, 'SSLCOMMERZ_IS_SANDBOX', True)
-        self.sslcz = SSLCOMMERZ({
-            'store_id': self.store_id,
-            'store_pass': self.store_pass,
-            'issandbox': self.is_sandbox
-        })
+    @property
+    def sslcz(self):
+        from core.payment_config import gateway_credentials
+        credentials = gateway_credentials()
+        if not credentials:
+            raise ValueError('Online payments are not enabled.')
+        return SSLCOMMERZ({'store_id': credentials[0], 'store_pass': credentials[1], 'issandbox': False})
 
     def create_session(self, order, callback_url_success, callback_url_fail, callback_url_cancel):
         """

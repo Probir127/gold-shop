@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from '../components/Sidebar';
+import StorefrontEditor from '../components/StorefrontEditor';
+import PaymentSettings from '../components/PaymentSettings';
 import toast from '../components/Toast';
 import {
   Settings, Server, Mail, Database, Zap, RefreshCw,
@@ -237,6 +239,8 @@ const SettingsPage = () => {
           </button>
         </div>
 
+        <PaymentSettings />
+        <StorefrontEditor />
         {/* Overall Status Banner */}
         <div className={`mb-8 flex items-center gap-3 px-6 py-4 rounded-2xl border text-sm font-bold animate-in fade-in duration-500 ${statusBadge.color}`}>
           <Activity size={18} />

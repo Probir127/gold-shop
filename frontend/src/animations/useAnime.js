@@ -1,5 +1,5 @@
 /**
- * Sahara Gold — useAnime
+ * New Sahara Gold and Diamond — useAnime
  * Memory-safe React hook wrapping Anime.js.
  * Automatically pauses + removes animation on component unmount.
  *

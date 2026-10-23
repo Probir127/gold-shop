@@ -1,0 +1,33 @@
+.maison .sf-footer { padding-top:28px; }
+.sf-service-panel { display:grid; grid-template-columns:1fr 1fr 1fr; gap:32px; padding:38px 30px; border:1px solid #fffaf0; border-radius:10px; background:#fff8ec38; }
+.sf-service-item { display:grid; grid-template-columns:48px minmax(0,1fr); gap:18px; }
+.sf-service-icon { width:48px; height:48px; border:1px solid #a9906e; border-radius:50%; display:grid; place-items:center; color:#614b32; }
+.maison .sf-service-item .eyebrow { margin:0 0 8px; font-size:9px; color:#655038; }
+.maison .sf-service-item h2 { font:italic 400 clamp(25px,2.2vw,34px)/1.15 'Cormorant Garamond',Georgia,serif; letter-spacing:-.02em; color:#3b2d20; margin:0 0 12px; white-space:pre-line; }
+.sf-service-item p:not(.eyebrow) { max-width:280px; font-size:11px; color:#594632; margin:0 0 15px; }
+.sf-service-phone { display:block; font-size:13px; letter-spacing:.1em; margin-top:18px; }
+.sf-service-link { display:inline-flex; gap:10px; align-items:center; font-size:10px; margin-top:12px; }
+.sf-service-link:hover,.sf-service-phone:hover { text-decoration:underline; text-underline-offset:4px; }
+.sf-service-item .maison-button { font-size:9px; min-height:40px; padding:10px 17px; margin-top:5px; color:#443522; }
+.sf-service-item .maison-button:hover { color:#fff8ec; }
+.sf-service-signature { border-left:1px solid #c6b498; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; text-align:center; padding:10px 20px; }
+.sf-service-signature .sf-logo { flex-direction:column; gap:12px; }
+.sf-service-signature .sf-logo img { width:46px; height:46px; }
+.sf-service-signature .sf-logo>span { font-size:23px; letter-spacing:.26em; }
+.sf-service-signature p { font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:#665039; max-width:230px; }
+.maison .sf-footer-columns { grid-template-columns:1fr 1fr 1fr; gap:40px; padding:30px 0; }
+.maison .sf-footer-columns nav,.maison .sf-footer-visit { gap:9px; }
+.maison .sf-footer-columns h2 { margin-bottom:9px; }
+@media(max-width:900px) {
+  .sf-service-panel { grid-template-columns:1fr 1fr; gap:28px; }
+  .sf-service-signature { grid-column:1/-1; flex-direction:row; border-left:0; border-top:1px solid #c6b498; padding-top:24px; gap:40px; }
+  .sf-service-signature .sf-logo { flex-direction:row; }
+}
+@media(max-width:600px) {
+  .sf-service-panel { grid-template-columns:1fr; padding:25px 20px; }
+  .sf-service-item { gap:15px; }
+  .sf-service-item+.sf-service-item { border-top:1px solid #c6b498; padding-top:25px; }
+  .sf-service-signature { flex-direction:column; gap:15px; padding-inline:0; }
+  .maison .sf-footer-columns { grid-template-columns:1fr 1fr; gap:28px 20px; }
+  .maison .sf-footer-visit { grid-column:1/-1; }
+}

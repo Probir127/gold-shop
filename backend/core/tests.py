@@ -1,4 +1,5 @@
 from __future__ import annotations
+from unittest.mock import patch
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.contrib.auth.models import User
@@ -69,7 +70,7 @@ class InvoiceAccessTests(APITestCase):
 		self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 	def test_public_contact_enquiry_sends_store_email(self):
-		with self.settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend'):
+		with patch('core.views.contact_views.send_email_resilient', return_value=(True, 'Accepted')) as sender:
 			response = self.client.post('/api/contact/enquiry/', {
 				'name': 'Test Visitor',
 				'mobile': '01700000000',
@@ -78,13 +79,15 @@ class InvoiceAccessTests(APITestCase):
 			}, format='json')
 
 		self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+		sender.assert_called_once()
 
 	def test_email_resilient_rejects_unconfigured_smtp_identity(self):
 		with self.settings(
 			EMAIL_HOST='',
 			EMAIL_HOST_USER='',
 			EMAIL_HOST_PASSWORD='',
-			DEFAULT_FROM_EMAIL='',
+			DEFAULT_FROM_EMAIL='invoices@example.com',
+			RESEND_API_KEY='',
 		):
 			ok, msg = __import__('core.utils.mailer', fromlist=['send_email_resilient']).send_email_resilient(
 				subject='Test',
@@ -95,18 +98,16 @@ class InvoiceAccessTests(APITestCase):
 		self.assertFalse(ok)
 		self.assertIn('SMTP is not configured', msg)
 
-	def test_email_resilient_rejects_fixed_gmail_sender_identity(self):
+	def test_email_resilient_uses_configured_sender_identity(self):
 		with self.settings(
-			EMAIL_HOST='smtp.gmail.com',
-			EMAIL_HOST_USER='store@gmail.com',
-			EMAIL_HOST_PASSWORD='app-password',
-			DEFAULT_FROM_EMAIL='Sahara Gold <store@gmail.com>',
-		):
+			EMAIL_HOST='smtp.example.com', EMAIL_HOST_USER='sender',
+			EMAIL_HOST_PASSWORD='test-only', EMAIL_PORT=465,
+			EMAIL_USE_SSL=True, EMAIL_USE_TLS=False, RESEND_API_KEY='',
+			DEFAULT_FROM_EMAIL='Sahara Gold <invoices@example.com>',
+		), patch('core.utils.mailer.EmailBackend'), patch('core.utils.mailer.EmailMultiAlternatives') as mail:
+			mail.return_value.send.return_value = 1
 			ok, msg = __import__('core.utils.mailer', fromlist=['send_email_resilient']).send_email_resilient(
-				subject='Test',
-				body='Body',
-				to_emails='customer@example.com',
+				subject='Test', body='Body', to_emails='customer@example.com',
 			)
-
-		self.assertFalse(ok)
-		self.assertIn('fixed Gmail mailbox', msg)
+		self.assertTrue(ok)
+		self.assertEqual(mail.call_args.kwargs['from_email'], 'Sahara Gold <invoices@example.com>')

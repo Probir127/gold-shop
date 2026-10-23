@@ -1,5 +1,5 @@
 /**
- * Sahara Gold — Kinetic Motion Primitives
+ * New Sahara Gold and Diamond — Kinetic Motion Primitives
  * High-performance Anime.js primitives for luxury jewelry UI.
  */
 import anime from 'animejs';

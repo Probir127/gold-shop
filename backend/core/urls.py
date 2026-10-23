@@ -4,7 +4,11 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .views import auth_views, client_views, conversation_views
 from .views import invoice_views, dashboard_views, whatsapp_views, service_views, bot_test_views, analytics_views, bot_config_views, reset_views, knowledge_views, team_views, public_views, telegram_views, instagram_views, messenger_views, ai_analytics_views, contact_views, smtp_views, system_views
 
+from .payment_config import PublicPaymentConfigurationView, AdminPaymentConfigurationView
+
 urlpatterns = [
+    path('checkout/config/', PublicPaymentConfigurationView.as_view()),
+    path('checkout/admin-config/', AdminPaymentConfigurationView.as_view()),
     # Public (Widget)
     path('public/config/<slug:tenant_slug>/', public_views.PublicBotConfigView.as_view()),
     path('public/chat/<slug:tenant_slug>/',   public_views.PublicChatView.as_view()),
@@ -81,3 +85,6 @@ urlpatterns = [
     # System Health
     path('system/health/',   system_views.SystemHealthView.as_view(), name='system-health'),
 ]
+
+from .storefront import StorefrontContentView
+urlpatterns += [path('storefront/content/', StorefrontContentView.as_view())]

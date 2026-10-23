@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import BasePermission
 from django.shortcuts import render
+from django.db import transaction
 from .models import Order
 from .serializers import OrderSerializer
 from core.utils.invoice_access import validate_invoice_access_token
@@ -50,8 +51,8 @@ class OrderAccessPermission(BasePermission):
             return False
         return bool(
             user.is_staff
-            or user.email.lower() == obj.customer_email.lower()
-            or normalize_phone(user.username) == normalize_phone(obj.customer_phone)
+            or (bool(user.email.strip()) and user.email.lower() == obj.customer_email.lower())
+            or (bool(normalize_phone(user.username)) and normalize_phone(user.username) == normalize_phone(obj.customer_phone))
         )
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -127,6 +128,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAdminUser])
+    @transaction.atomic
     def update_status(self, request, order_id=None):
         """
         Admin update order status + trigger WhatsApp notification.
@@ -134,9 +136,27 @@ class OrderViewSet(viewsets.ModelViewSet):
         Body: { "order_status": "shipped", "send_whatsapp": true }
         """
         order = self.get_object()
+        order = Order.objects.select_for_update().get(pk=order.pk)
+        previous_status = (order.order_status, order.payment_status)
         new_status = request.data.get('order_status')
         new_payment = request.data.get('payment_status')
         send_wa = request.data.get('send_whatsapp', True)
+
+        for field, value in [('order_status', new_status), ('payment_status', new_payment)]:
+            if value is not None and value not in dict(Order._meta.get_field(field).choices):
+                return Response({field: 'Invalid status.'}, status=400)
+        if not isinstance(send_wa, bool):
+            return Response({'send_whatsapp': 'Expected a boolean.'}, status=400)
+
+        if order.payment_method == 'manual':
+            effective_payment = new_payment or order.payment_status
+            effective_status = new_status or order.order_status
+            if new_payment == 'paid' and order.order_status == 'pending' and not new_status:
+                new_status = effective_status = 'confirmed'
+            if effective_status in ('confirmed', 'processing', 'shipped', 'delivered') and effective_payment != 'paid':
+                return Response({'detail': 'Verify and approve merchant payment before confirming this order.'}, status=400)
+            if new_payment == 'paid' and order.order_status == 'cancelled':
+                return Response({'detail': 'Cancelled orders cannot be approved for payment.'}, status=400)
 
         if new_status:
             order.order_status = new_status
@@ -149,6 +169,18 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.payment_status = new_payment
 
         order.save()
+
+        if previous_status != (order.order_status, order.payment_status):
+            from core.utils.notifications import notify_store_owner
+            subject = f'[Store order update] Order #{order.order_id}'
+            body = (f'Order #{order.order_id}\nCustomer: {order.customer_name}\n'
+                    f'Order status: {order.get_order_status_display()}\n'
+                    f'Payment: {order.get_payment_status_display()}\n'
+                    f'Total: BDT {order.total:,.2f}')
+            # Do not announce an approval that later rolls back.
+            transaction.on_commit(
+                lambda: notify_store_owner(subject=subject, body=body), robust=True,
+            )
 
         # Synchronize payment status with core Invoice
         # Invoice.STATUS_CHOICES: draft | sent | paid | overdue
@@ -166,7 +198,10 @@ class OrderViewSet(viewsets.ModelViewSet):
                 mapped = status_map.get(order.payment_status)
                 if mapped and inv.status != mapped:
                     inv.status = mapped
-                    inv.save(update_fields=['status'])
+                    # Regenerate the document on its next download/send so it
+                    # reflects the approved payment rather than cached terms.
+                    inv.pdf_path = ''
+                    inv.save(update_fields=['status', 'pdf_path'])
         except Exception as inv_err:
             logger.warning(f"Could not synchronize Invoice status for order {order.order_id}: {inv_err}")
 
@@ -181,12 +216,12 @@ class OrderViewSet(viewsets.ModelViewSet):
                     clean_phone = clean_phone[1:]
                 
                 msg = (
-                    f"✨ Sahara Gold Order Update\n\n"
+                    f"✨ New Sahara Gold and Diamond Order Update\n\n"
                     f"Dear {order.customer_name},\n"
                     f"Your order #{order.order_id} is now: {order.get_order_status_display().upper()}!\n"
                     f"Total: ৳{order.total:,.0f}\n"
                     f"Delivery to: {order.shipping_address}, {order.city}\n\n"
-                    f"Thank you for choosing Sahara Gold. If you have any inquiries, reply directly to this message."
+                    f"Thank you for choosing New Sahara Gold and Diamond. If you have any inquiries, reply directly to this message."
                 )
                 send_text_message(clean_phone, msg)
             except Exception as e:

@@ -1,0 +1,51 @@
+/* Sahara motion: quiet entrances, tactile controls, no scroll hijacking. */
+:root { --sahara-ease: cubic-bezier(.22,1,.36,1); }
+@keyframes sahara-page-enter {
+  from { opacity: .82; translate: 0 8px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes sahara-photograph {
+  from { opacity: .65; scale: 1.025; }
+  to { opacity: 1; scale: 1; }
+}
+@keyframes sahara-loading { from { opacity: .5; } to { opacity: 1; } }
+@keyframes sahara-panel {
+  from { opacity: .7; translate: 0 10px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sahara-page-loader { animation: sahara-loading 900ms ease-in-out infinite alternate; }
+  .sahara-page-transition { animation: sahara-page-enter 320ms var(--sahara-ease); }
+  .pv2-gallery-main img { animation: sahara-photograph 480ms var(--sahara-ease); }
+  .account-form, .pv2-checkout-form form, [role="alert"], [role="status"] {
+    animation: sahara-panel 260ms var(--sahara-ease);
+  }
+  .maison :is(button, input, textarea, select), .admin-root :is(button, input, textarea, select) {
+    transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, color 180ms ease;
+  }
+  :is(.maison-button, .pv2-primary, .account-primary, .sv2-button) {
+    transition: background-color 220ms ease, color 220ms ease, box-shadow 220ms ease, translate 220ms var(--sahara-ease);
+  }
+  :is(.maison-button, .pv2-primary, .account-primary, .sv2-button):active:not(:disabled) { translate: 0 1px; }
+  .maison a svg, .maison button svg { transition: transform 240ms var(--sahara-ease); }
+  .pv2-thumbnails button { transition: opacity 200ms ease, border-color 200ms ease; }
+  .pv2-thumbnails button[aria-pressed="false"] { opacity: .65; }
+  .pv2-thumbnails button:hover, .pv2-thumbnails button:focus-visible { opacity: 1; }
+  .sf-mobile-menu, .sf-search-inner, .pv2-drawer[open] { animation: sahara-panel 260ms var(--sahara-ease); }
+  .admin-root tbody tr { transition: background-color 160ms ease; }
+  .admin-root tbody tr:hover { background-color: rgb(212 175 55 / .045); }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .maison-product-image > img { transition: transform 700ms var(--sahara-ease); }
+  .maison-product:hover .maison-product-image > img { transform: scale(1.035); }
+  :is(.maison-button, .sv2-text-link, .pv2-primary):hover svg:last-child { transform: translateX(3px); }
+  :is(.maison-button, .pv2-primary, .account-primary):hover:not(:disabled) { box-shadow: 0 5px 18px rgb(65 43 22 / .1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sahara-page-transition, .sahara-page-transition *, .sahara-page-transition *::before,
+  .sahara-page-transition *::after, .maison button, .maison a {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

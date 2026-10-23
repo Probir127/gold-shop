@@ -1,4 +1,5 @@
 from __future__ import annotations
+from core.branding import public_brand_text
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions
@@ -15,13 +16,13 @@ class PublicBotConfigView(APIView):
         try:
             tenant = Tenant.objects.get(slug=tenant_slug, is_active=True)
             return Response({
-                'business_name': tenant.business_name,
+                'business_name': public_brand_text(tenant.business_name),
                 'primary_color': tenant.widget_color,
                 'widget_enabled': tenant.web_widget_enabled,
                 'widget_position': tenant.widget_position,
                 'tagline': tenant.tagline,
                 'logo_url': tenant.logo.url if tenant.logo else None,
-                'bot_name': tenant.business_name + ' AI',
+                'bot_name': public_brand_text(tenant.business_name) + ' AI',
                 'initial_message': 'Hello! How can I help you today?'
             })
         except Tenant.DoesNotExist:

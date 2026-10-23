@@ -31,6 +31,21 @@ class PricingControlTests(TestCase):
         self.staff = get_user_model().objects.create_user(username='owner', is_staff=True)
         self.saved = GoldRate.objects.create(date=store_today(), rate_22k=20000, rate_21k=19000, rate_18k=16000, rate_traditional=13000)
 
+    def test_current_rate_reads_do_not_write_to_database(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        config = RateControl.objects.create(pk=1, mode='manual')
+        for mode in ('manual', 'auto'):
+            config.mode = mode
+            config.last_attempt_at = config.last_synced_at = timezone.now()
+            config.save()
+            with self.subTest(mode=mode), CaptureQueriesContext(connection) as queries:
+                obj, result = effective_rate()
+                self.assertEqual(obj.rate_22k, self.saved.rate_22k)
+                self.assertEqual(result.mode, mode)
+            writes = [q['sql'] for q in queries if q['sql'].lstrip().upper().startswith(('UPDATE', 'INSERT', 'DELETE'))]
+            self.assertEqual(writes, [])
+
     @patch('rates.pricing.fetch_live_gold_price', return_value=MARKET)
     def test_auto_publishes_once_per_interval(self, provider):
         obj, config = effective_rate()

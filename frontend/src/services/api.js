@@ -1,4 +1,5 @@
 import { postPublicChat } from './chat.js';
+import { safeApiUrl } from './safeApiUrl.js';
 import { fetchMarketRates, fetchPublishedRates } from './goldRates.js';
 
 const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.VITE_BACKEND_URL ? `${import.meta.env.VITE_BACKEND_URL}/api` : '/api');
@@ -16,6 +17,7 @@ const refreshCustomerToken = async () => {
         if (!res.ok) throw new Error('Customer session expired');
         const data = await res.json();
         localStorage.setItem('customer_access_token', data.access);
+        if (data.refresh) localStorage.setItem('customer_refresh_token', data.refresh);
         return true;
     }).catch(() => {
         localStorage.removeItem('customer_access_token');
@@ -30,6 +32,7 @@ const refreshCustomerToken = async () => {
 
 // Helper for fetch with ngrok bypass
 const nf = async (url, options = {}) => {
+    url = safeApiUrl(url, API_BASE, window.location.origin);
     const headers = {
         ...options.headers,
         'ngrok-skip-browser-warning': 'true'
@@ -49,6 +52,11 @@ const nf = async (url, options = {}) => {
 };
 
 export const api = {
+    getPaymentConfiguration: async () => {
+        const response = await fetch(`${API_BASE}/checkout/config/`, {cache:'no-store'});
+        if (!response.ok) throw new Error('Payment options could not be loaded.');
+        return response.json();
+    },
     getProducts: async (category) => {
         let url = `${API_BASE}/products/`;
         if (category && category !== 'all') {
@@ -60,7 +68,10 @@ export const api = {
         if (Array.isArray(data)) return data;
         const products = [...(data.results || [])];
         let next = data.next;
+        const visited = new Set();
         while (next) {
+            if (visited.has(next) || visited.size >= 100) throw new Error('Invalid product pagination');
+            visited.add(next);
             const page = await nf(next);
             if (!page.ok) throw new Error('Failed to fetch more products');
             const result = await page.json();

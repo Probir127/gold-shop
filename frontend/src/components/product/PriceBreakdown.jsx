@@ -7,9 +7,9 @@ const PriceBreakdown = ({ price, weight, purity, makingChargePerGram }) => {
     const breakdown = priceComponents(price, weight, makingChargePerGram);
     return (
         <div className="price-breakdown-card">
-            <h4 style={{ color: '#fff', fontWeight: 'bold', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h4 style={{ color: 'var(--ink)', fontWeight: 'bold', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ width: '4px', height: '16px', backgroundColor: 'var(--color-gold-primary)', display: 'block', borderRadius: '4px' }}></span>
-                Price Breakdown
+                Price details
             </h4>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -17,12 +17,12 @@ const PriceBreakdown = ({ price, weight, purity, makingChargePerGram }) => {
                     <BreakdownItem label="Gold value (store rate)" value={breakdown.gold} color="var(--color-gold-primary)" delay={0.1} subtext={`${purity} purity · ${weight}g`} />
                     <BreakdownItem label="Making charge" value={breakdown.making} color="#b89954" delay={0.2} subtext={`${formatPrice(makingChargePerGram)}/g × ${weight}g`} />
                 </> : <BreakdownItem label="Gold and craftsmanship" value={price} color="var(--color-gold-primary)" delay={0.1} subtext={`${purity} purity · ${weight}g`} />}
-                <p style={{ color: '#aaa', fontSize: '12px' }}>Product prices use the same published gold rates shown throughout the shop, plus the making charge.</p>
+                <p style={{ color: 'var(--muted)', fontSize: '12px' }}>Product prices use the same published gold rates shown throughout the shop, plus the making charge.</p>
             </div>
 
-            <div style={{ borderTop: '1px solid #333', marginTop: '1.5rem', paddingTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#888', fontSize: '14px' }}>Total Price</span>
-                <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#fff' }}>{formatPrice(price)}</span>
+            <div style={{ borderTop: '1px solid var(--line)', marginTop: '1.5rem', paddingTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'var(--muted)', fontSize: '14px' }}>Total Price</span>
+                <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--ink)' }}>{formatPrice(price)}</span>
             </div>
         </div>
     );
@@ -31,10 +31,10 @@ const PriceBreakdown = ({ price, weight, purity, makingChargePerGram }) => {
 const BreakdownItem = ({ label, value, color, delay, subtext }) => (
     <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '4px' }}>
-            <span style={{ color: '#ccc' }}>{label}</span>
-            <span style={{ color: '#fff', fontWeight: '500' }}>{formatPrice(value)}</span>
+            <span style={{ color: 'var(--muted)' }}>{label}</span>
+            <span style={{ color: 'var(--ink)', fontWeight: '500' }}>{formatPrice(value)}</span>
         </div>
-        <div style={{ width: '100%', backgroundColor: '#222', borderRadius: '10px', overflow: 'hidden', height: '6px' }}>
+        <div style={{ width: '100%', backgroundColor: '#ded2c1', borderRadius: '10px', overflow: 'hidden', height: '6px' }}>
             <motion.div
                 style={{ height: '100%', backgroundColor: color }}
                 initial={{ width: 0 }}
@@ -42,7 +42,7 @@ const BreakdownItem = ({ label, value, color, delay, subtext }) => (
                 transition={{ duration: 1, delay, ease: "easeOut" }}
             />
         </div>
-        <p style={{ fontSize: '10px', color: '#666', marginTop: '4px', margin: 0 }}>{subtext}</p>
+        <p style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '4px', margin: 0 }}>{subtext}</p>
     </div>
 );
 

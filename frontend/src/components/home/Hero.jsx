@@ -7,7 +7,7 @@ import { anime, GOLD_EASE_OUT, SPRING_LUXURY, magneticHover, resetMagnetic, pref
 
 const Hero = ({ data }) => {
     const defaultHero = {
-        eyebrow: "Sahara Gold & Diamond · Dhaka",
+        eyebrow: "New Sahara Gold and Diamond · Dhaka",
         title: "Exquisite Handcrafted Gold",
         subtitle: "Centuries of timeless Bengali craftsmanship forged into modern heirloom masterpieces.",
         cta_text: "Shop Collection",
@@ -206,7 +206,7 @@ const Hero = ({ data }) => {
             <div
                 className="hero-bg-zoom"
                 role="img"
-                aria-label="Sahara Gold luxury jewelry showcase"
+                aria-label="New Sahara Gold and Diamond luxury jewelry showcase"
                 style={{
                     position: 'absolute',
                     top: 0,
@@ -266,7 +266,7 @@ const Hero = ({ data }) => {
                         <div className="hero-eyebrow-container" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', borderRadius: '999px', background: 'rgba(212, 175, 55, 0.08)', border: '1px solid rgba(212, 175, 55, 0.3)', marginBottom: '1.5rem', opacity: 0 }}>
                             <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#d4af37', boxShadow: '0 0 10px #d4af37', display: 'inline-block' }}></span>
                             <span style={{ fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2.5px', color: '#f3d58a', fontFamily: 'var(--font-heading)' }}>
-                                {heroContent.eyebrow || 'Sahara Gold & Diamond · Dhaka'}
+                                {heroContent.eyebrow || 'New Sahara Gold and Diamond · Dhaka'}
                             </span>
                         </div>
 

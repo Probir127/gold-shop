@@ -1,4 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
+import { createStorefrontSync } from './services/storefrontSync.js';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -11,3 +12,6 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+export const storefrontSync = createStorefrontSync(queryClient, typeof window === 'undefined' ? null : window);
+if (import.meta.hot) import.meta.hot.dispose(() => storefrontSync.dispose());

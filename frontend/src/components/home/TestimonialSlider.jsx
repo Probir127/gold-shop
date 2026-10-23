@@ -6,7 +6,7 @@ const testimonials = [
     {
         name: "Farhana Ahmed",
         role: "Bridal Customer",
-        text: "The craftsmanship at Sahara Gold is unparalleled. They created a custom wedding set for me that exceeded all expectations. The detail and purity are truly world-class.",
+        text: "The craftsmanship at New Sahara Gold and Diamond is unparalleled. They created a custom wedding set for me that exceeded all expectations. The detail and purity are truly world-class.",
         rating: 5
     },
     {

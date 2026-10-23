@@ -1,5 +1,5 @@
 /**
- * Sahara Gold — useStaggerReveal
+ * New Sahara Gold and Diamond — useStaggerReveal
  * Staggered entrance animation for lists, grids, and text lines.
  * Animates children of a container element on intersection.
  *

@@ -60,3 +60,6 @@ htmlcov/
 .coverage
 .pytest_cache/
 node_modules
+
+# Isolated local testing: database, credentials and captured mail
+.local-testing/

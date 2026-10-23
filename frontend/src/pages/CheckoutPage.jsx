@@ -1,17 +1,22 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { validateShipping as shippingError } from '../utils/formValidation';
 import { useCart } from '../context/CartContext';
 import { formatPrice } from '../utils/formatters';
-import { useNavigate, Navigate } from 'react-router-dom';
-import { Lock, Truck, CreditCard, ArrowRight, ArrowLeft, ShieldCheck, UserCheck } from 'lucide-react';
+import { useNavigate, Navigate, Link } from 'react-router-dom';
+import { Lock, ArrowRight, ArrowLeft, Check } from 'lucide-react';
 import { api } from '../services/api';
 import toast from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
-import CheckoutStepper from '../components/checkout/CheckoutStepper';
+import './purchase-v2.css';
+import SEO from '../components/SEO';
+import { usePaymentConfiguration } from '../hooks/usePaymentConfiguration';
 
 const CheckoutPage = () => {
     const { cart, cartTotal, clearCart } = useCart();
     const navigate = useNavigate();
+    const {data: paymentConfig, isError: paymentConfigError} = usePaymentConfiguration();
+    const pendingOrder = useRef(null);
+    const submitLock = useRef(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [currentStep, setCurrentStep] = useState(2);
 
@@ -27,7 +32,7 @@ const CheckoutPage = () => {
         customer_email: customer?.email || '',
         address: '',
         city: 'Dhaka',
-        paymentMethod: 'cod'
+        paymentMethod: 'manual'
     });
 
     // Redirect if not logged in
@@ -40,17 +45,18 @@ const CheckoutPage = () => {
     const total = subTotal;
 
     if (cart.length === 0) {
-        navigate('/cart');
-        return null;
+        return <Navigate to="/cart" replace />;
     }
 
     const handleChange = (e) => {
+        if (pendingOrder.current) { toast.error('This order is already created. Contact us to change its details.'); return; }
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
     const validateShipping = () => {
-        if (!formData.customer_name || !formData.customer_phone || !formData.address) {
-            toast.error("Please fill in all required fields.");
+        const error = shippingError(formData);
+        if (error) {
+            toast.error(error);
             return false;
         }
         return true;
@@ -63,6 +69,13 @@ const CheckoutPage = () => {
         }
     };
 
+    useEffect(() => { if (paymentConfig && !paymentConfig.ssl_enabled) setFormData(previous => ({...previous, paymentMethod:'manual'})); }, [paymentConfig]);
+
+    const selectPayment = (paymentMethod) => {
+        if (pendingOrder.current) { toast.error('Retry payment for the existing order, or contact us to change it.'); return; }
+        setFormData({ ...formData, paymentMethod });
+    };
+
     const prevStep = () => {
         setCurrentStep(prev => prev - 1);
         window.scrollTo(0, 0);
@@ -70,16 +83,18 @@ const CheckoutPage = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (submitLock.current || !validateShipping()) return;
+        submitLock.current = true;
         setIsSubmitting(true);
 
         try {
             // Step 1: Create order
             const items = cart.map(item => ({
                 product_id: Number(item.id),
-                quantity: Math.max(1, Number(item.quantity) || 1),
+                quantity: Number(item.quantity),
             }));
 
-            if (items.some(item => !Number.isInteger(item.product_id) || item.product_id <= 0)) {
+            if (items.some(item => !Number.isInteger(item.product_id) || item.product_id <= 0 || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 100)) {
                 throw new Error('Your cart contains an invalid product. Please remove it and add the product again.');
             }
 
@@ -93,7 +108,8 @@ const CheckoutPage = () => {
                 items: items
             };
 
-            const response = await api.createOrder(orderData);
+            const response = pendingOrder.current || await api.createOrder(orderData);
+            pendingOrder.current = response;
 
             // Step 2: Handle payment
             if (formData.paymentMethod === 'bkash') {
@@ -103,13 +119,15 @@ const CheckoutPage = () => {
 
                     if (paymentResult.success && paymentResult.gateway_url) {
                         // Redirect to SSLCommerz
-                        window.location.href = paymentResult.gateway_url;
+                        const gateway = new URL(paymentResult.gateway_url);
+                        if (gateway.protocol !== 'https:' || !(gateway.hostname === 'sslcommerz.com' || gateway.hostname.endsWith('.sslcommerz.com'))) throw new Error('Untrusted payment gateway');
+                        window.location.href = gateway.href;
                         return;
                     } else {
                         throw new Error('Invalid payment response');
                     }
                 } catch (err) {
-                    toast.error('Payment initiation failed. Please try again.');
+                    toast.error(`Order ${response.order_id} was created, but payment could not start. Retry payment here without creating another order.`);
                     // clearCart();
                     // navigate('/order-success', { state: { orderId: response.order_id, total: response.total, status: 'payment_failed' } });
                     return;
@@ -122,259 +140,54 @@ const CheckoutPage = () => {
                 orderId: response.order_id,
                 total: response.total,
                 customerInvoiceUrl: response.customer_invoice_url,
+                payment_method: response.payment_method,
+                payment_status: response.payment_status,
+                order_status: response.order_status,
             } });
         } catch (error) {
             console.error("Order failed", error);
             toast.error(error.message || "Failed to place order. Please try again.");
         } finally {
+            submitLock.current = false;
             setIsSubmitting(false);
         }
     };
 
-    const stepVariants = {
-        hidden: { opacity: 0, x: 50 },
-        visible: { opacity: 1, x: 0, transition: { duration: 0.5 } },
-        exit: { opacity: 0, x: -50, transition: { duration: 0.5 } }
-    };
-
     return (
-        <div className="section checkout-page min-h-screen pt-12">
-            <div className="container">
-                <h1 className="section-title text-center mb-10">Secure Checkout</h1>
-                {/* Verified account banner */}
-                <div style={{
-                    display: 'flex', alignItems: 'center', gap: '10px',
-                    background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.25)',
-                    borderRadius: '10px', padding: '10px 18px', marginBottom: '24px',
-                    fontSize: '13px', color: '#4ade80',
-                }}>
-                    <UserCheck size={16} />
-                    <span>Checking out as <strong>{customer.name}</strong> ({customer.phone})</span>
-                </div>
-                <CheckoutStepper currentStep={currentStep} />
-
-                <div className="checkout-grid">
-
-                    {/* LEFT COLUMN: STEPS */}
-                    <div style={{ width: '100%' }}>
-                        <AnimatePresence mode="wait">
-                            {currentStep === 2 && (
-                                <motion.div
-                                    key="step2"
-                                    variants={stepVariants}
-                                    initial="hidden"
-                                    animate="visible"
-                                    exit="exit"
-                                    className="checkout-card"
-                                >
-                                    <div style={{ position: 'absolute', top: '10px', right: '10px', opacity: 0.05, pointerEvents: 'none' }}>
-                                        <Truck size={120} />
-                                    </div>
-
-                                    <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#fff', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                        <span style={{ width: '2rem', height: '2rem', borderRadius: '50%', backgroundColor: 'var(--color-gold-primary)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px' }}>2</span>
-                                        Shipping Information
-                                    </h3>
-
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
-                                        <div style={{ gridColumn: '1 / -1' }}>
-                                            <label className="input-label">Full Name *</label>
-                                            <input
-                                                name="customer_name"
-                                                value={formData.customer_name}
-                                                onChange={handleChange}
-                                                className="input-premium"
-                                                placeholder="Enter your name"
-                                                required
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="input-label">Phone Number *</label>
-                                            <input
-                                                name="customer_phone"
-                                                value={formData.customer_phone}
-                                                onChange={handleChange}
-                                                className="input-premium"
-                                                placeholder="+880..."
-                                                required
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="input-label">Email (Optional)</label>
-                                            <input
-                                                name="customer_email"
-                                                value={formData.customer_email}
-                                                onChange={handleChange}
-                                                className="input-premium"
-                                                placeholder="receipts@example.com"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="input-label">City *</label>
-                                            <select
-                                                name="city"
-                                                value={formData.city}
-                                                onChange={handleChange}
-                                                className="input-premium"
-                                            >
-                                                <option value="Dhaka">Dhaka</option>
-                                                <option value="Chittagong">Chittagong</option>
-                                                <option value="Sylhet">Sylhet</option>
-                                                <option value="Rajshahi">Rajshahi</option>
-                                                <option value="Khulna">Khulna</option>
-                                                <option value="Barisal">Barisal</option>
-                                                <option value="Rangpur">Rangpur</option>
-                                                <option value="Mymensingh">Mymensingh</option>
-                                            </select>
-                                        </div>
-                                        <div style={{ gridColumn: '1 / -1' }}>
-                                            <label className="input-label">Detailed Address *</label>
-                                            <textarea
-                                                name="address"
-                                                value={formData.address}
-                                                onChange={handleChange}
-                                                rows="3"
-                                                className="input-premium"
-                                                style={{ resize: 'none' }}
-                                                placeholder="House #, Road #, Area..."
-                                                required
-                                            ></textarea>
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '2rem' }}>
-                                        <button
-                                            onClick={nextStep}
-                                            className="btn btn-primary"
-                                            style={{ padding: '0 2rem' }}
-                                        >
-                                            Continue to Payment <ArrowRight size={18} style={{ marginLeft: '0.5rem' }} />
-                                        </button>
-                                    </div>
-                                </motion.div>
-                            )}
-
-                            {currentStep === 3 && (
-                                <motion.div
-                                    key="step3"
-                                    variants={stepVariants}
-                                    initial="hidden"
-                                    animate="visible"
-                                    exit="exit"
-                                    className="checkout-card"
-                                >
-                                    <div style={{ position: 'absolute', top: '10px', right: '10px', opacity: 0.05, pointerEvents: 'none' }}>
-                                        <CreditCard size={120} />
-                                    </div>
-
-                                    <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#fff', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                        <span style={{ width: '2rem', height: '2rem', borderRadius: '50%', backgroundColor: 'var(--color-gold-primary)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px' }}>3</span>
-                                        Payment Method
-                                    </h3>
-
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
-                                        <div
-                                            className={`radio-option ${formData.paymentMethod === 'cod' ? 'selected' : ''}`}
-                                            onClick={() => setFormData({ ...formData, paymentMethod: 'cod' })}
-                                        >
-                                            <div className="radio-circle"></div>
-                                            <div style={{ backgroundColor: '#222', padding: '0.5rem', borderRadius: '4px', color: 'var(--color-gold-primary)' }}>
-                                                <Truck size={24} />
-                                            </div>
-                                            <div>
-                                                <div style={{ fontWeight: 'bold', color: '#fff' }}>Cash on Delivery</div>
-                                                <div style={{ fontSize: '0.875rem', color: '#888' }}>Pay securely when you receive your order</div>
-                                            </div>
-                                        </div>
-
-                                        <div
-                                            className={`radio-option ${formData.paymentMethod === 'bkash' ? 'selected' : ''}`}
-                                            onClick={() => setFormData({ ...formData, paymentMethod: 'bkash' })}
-                                        >
-                                            <div className="radio-circle"></div>
-                                            <div style={{ backgroundColor: '#222', padding: '0.5rem', borderRadius: '4px', color: '#4ade80' }}>
-                                                <ShieldCheck size={24} />
-                                            </div>
-                                            <div>
-                                                <div style={{ fontWeight: 'bold', color: '#fff' }}>Online Payment (SSLCommerz)</div>
-                                                <div style={{ fontSize: '0.875rem', color: '#888' }}>bKash, Nagad, Visa, Mastercard</div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #222' }}>
-                                        <button
-                                            onClick={prevStep}
-                                            style={{ background: 'none', border: 'none', color: '#888', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
-                                            onMouseEnter={(e) => e.target.style.color = '#fff'}
-                                            onMouseLeave={(e) => e.target.style.color = '#888'}
-                                        >
-                                            <ArrowLeft size={18} /> Back to Shipping
-                                        </button>
-                                        <button
-                                            onClick={handleSubmit}
-                                            disabled={isSubmitting}
-                                            className="btn btn-primary"
-                                            style={{ padding: '0 2rem', opacity: isSubmitting ? 0.7 : 1 }}
-                                        >
-                                            {isSubmitting ? 'Processing...' : (
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                    <Lock size={16} /> Confirm Order
-                                                </span>
-                                            )}
-                                        </button>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-
-                    {/* RIGHT COLUMN: SUMMARY */}
-                    <div className="summary-sticky">
-                        <div className="checkout-card" style={{ padding: '1.5rem' }}>
-                            <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#fff', marginBottom: '1.5rem', borderBottom: '1px solid #333', paddingBottom: '1rem' }}>Order Summary</h3>
-
-                            <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', maxHeight: '300px', overflowY: 'auto', paddingRight: '0.5rem' }}>
-                                {cart.map(item => (
-                                    <div key={item.id} style={{ display: 'flex', gap: '0.75rem' }}>
-                                        <div style={{ position: 'relative', width: '3rem', height: '3rem', flexShrink: 0 }}>
-                                            <img src={item.image} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }} />
-                                            <span style={{ position: 'absolute', top: '-0.5rem', right: '-0.5rem', backgroundColor: '#333', color: '#fff', fontSize: '10px', width: '1.25rem', height: '1.25rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #111' }}>
-                                                {item.quantity}
-                                            </span>
-                                        </div>
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <p style={{ fontSize: '0.875rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</p>
-                                            <p style={{ fontSize: '0.75rem', color: '#888' }}>{item.weight}g • {item.purity}</p>
-                                        </div>
-                                        <span style={{ fontSize: '0.875rem', fontWeight: '500', color: '#fff' }}>{formatPrice(item.price * item.quantity)}</span>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderTop: '1px solid #333', paddingTop: '1rem', fontSize: '0.875rem', color: '#888' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>Subtotal</span>
-                                    <span>{formatPrice(subTotal)}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4ade80' }}>
-                                    <span>Shipping</span>
-                                    <span>Free</span>
-                                </div>
-                            </div>
-
-                            <div style={{ borderTop: '1px solid #222', marginTop: '1rem', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ color: '#888' }}>Total</span>
-                                <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--color-gold-primary)' }}>{formatPrice(total)}</span>
-                            </div>
-
-                            <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.75rem', color: '#555', backgroundColor: '#0a0a0a', padding: '0.75rem', borderRadius: '4px' }}>
-                                <Lock size={12} />
-                                SSL Encrypted & Secure Transaction
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <div className="pv2-checkout"><SEO title="Checkout" noindex />
+            <header className="pv2-checkout-heading"><Link to="/cart"><ArrowLeft size={16} /> Return to your bag</Link><p className="pv2-kicker">Made yours</p><h1>The final details.</h1><p>A few details, then a piece to make your own.</p></header>
+            <ol className="pv2-progress" aria-label="Checkout progress">{['Your bag', 'Delivery', 'Payment'].map((label, index) => <li key={label} data-current={currentStep === index + 1} data-complete={currentStep > index + 1} aria-current={currentStep === index + 1 ? 'step' : undefined}><span>{currentStep > index + 1 ? <Check size={14} /> : `0${index + 1}`}</span>{label}</li>)}</ol>
+            <div className="pv2-checkout-layout">
+                <main className="pv2-checkout-form">
+                    <div className="pv2-account-note"><Check size={16} /><span>Signed in as <strong>{customer.name}</strong><small>{customer.phone}</small></span></div>
+                    {currentStep === 2 ? <form onSubmit={event => { event.preventDefault(); nextStep(); }}>
+                        <div className="pv2-form-heading"><span>01</span><div><h2>Where shall we send it?</h2><p>Enter the contact and address details for this order.</p></div></div>
+                        <fieldset className="pv2-fields" disabled={!!pendingOrder.current}><legend className="pv2-sr-only">Delivery details</legend>
+                            <label className="pv2-field pv2-field-wide" htmlFor="checkout-name">Full name <span>Required</span><input id="checkout-name" name="customer_name" type="text" autoComplete="name" maxLength={150} value={formData.customer_name} onChange={handleChange} placeholder="Your full name" required /></label>
+                            <label className="pv2-field" htmlFor="checkout-phone">Phone number <span>Required</span><input id="checkout-phone" name="customer_phone" type="tel" autoComplete="tel" maxLength={20} value={formData.customer_phone} onChange={handleChange} placeholder="+880" required /></label>
+                            <label className="pv2-field" htmlFor="checkout-email">Email address <span>Optional</span><input id="checkout-email" name="customer_email" type="email" autoComplete="email" maxLength={254} value={formData.customer_email} onChange={handleChange} placeholder="For your receipt" /></label>
+                            <label className="pv2-field pv2-field-wide" htmlFor="checkout-address">Delivery address <span>Required</span><textarea id="checkout-address" name="address" autoComplete="street-address" maxLength={1000} minLength={10} value={formData.address} onChange={handleChange} rows={3} placeholder="House, road, area and any helpful directions" required /></label>
+                            <label className="pv2-field" htmlFor="checkout-city">City <span>Required</span><select id="checkout-city" name="city" autoComplete="address-level2" value={formData.city} onChange={handleChange}>{['Dhaka', 'Chittagong', 'Sylhet', 'Rajshahi', 'Khulna', 'Barisal', 'Rangpur', 'Mymensingh'].map(city => <option key={city} value={city}>{city}</option>)}</select></label>
+                        </fieldset>
+                        <div className="pv2-form-actions"><span>Next: choose how to pay</span><button type="submit" className="pv2-primary">Continue <ArrowRight size={17} /></button></div>
+                    </form> : <form onSubmit={handleSubmit}>
+                        <div className="pv2-form-heading"><span>02</span><div><h2>A little closer to yours.</h2><p>Review your delivery details and choose a payment method.</p></div></div>
+                        <section className="pv2-delivery-review" aria-label="Delivery details"><div><p className="pv2-kicker">Deliver to</p><strong>{formData.customer_name}</strong><p>{formData.address}, {formData.city}</p><p>{formData.customer_phone}</p></div><button type="button" onClick={prevStep}>Edit details</button></section>
+                        <fieldset className="pv2-payment-methods"><legend>How would you like to pay?</legend>
+                            <label data-selected={formData.paymentMethod === 'manual'}><input type="radio" name="payment-method" value="manual" checked={formData.paymentMethod === 'manual'} onChange={() => selectPayment('manual')} /><span><strong>Merchant payment — call the shop</strong><small>Pay using the merchant details provided by our team. Your order stays pending until admin verifies payment.</small></span></label>
+                            {paymentConfig?.ssl_enabled && <label data-selected={formData.paymentMethod === 'bkash'}><input type="radio" name="payment-method" value="bkash" checked={formData.paymentMethod === 'bkash'} onChange={() => selectPayment('bkash')} /><span><strong>Online payment</strong><small>Pay securely through SSLCommerz.</small></span></label>}
+                            {paymentConfig && <div><p>{paymentConfig.instructions}</p>{paymentConfig.merchant_number && <p>Merchant number: <strong>{paymentConfig.merchant_number}</strong></p>}<a className="sv2-text-link" href={`tel:${paymentConfig.contact_phone}`}>Call {paymentConfig.contact_phone}</a></div>}
+                            {paymentConfigError && <p role="alert">Payment instructions could not be loaded. Refresh before placing your order.</p>}
+                        </fieldset>
+                        <p className="pv2-checkout-terms">Please review our <Link to="/terms">terms</Link> and <Link to="/refund-policy">exchange policy</Link> before placing your order.</p>
+                        <div className="pv2-form-actions"><button type="button" className="pv2-back" onClick={prevStep}><ArrowLeft size={16} /> Delivery</button><button type="submit" className="pv2-primary" disabled={isSubmitting || !paymentConfig}><Lock size={15} />{isSubmitting ? 'Processing…' : pendingOrder.current ? 'Retry payment' : formData.paymentMethod === 'manual' ? 'Submit order for verification' : 'Continue to payment'}</button></div>
+                    </form>}
+                </main>
+                <aside className="pv2-order-summary" aria-label="Your selection"><div className="pv2-summary-heading"><p className="pv2-kicker">Your selection</p><span>{cart.reduce((sum, item) => sum + Number(item.quantity), 0)} pieces</span></div><h2>A new chapter.</h2>
+                    <ul className="pv2-summary-products">{cart.map(item => <li key={item.id}><Link to={`/product/${item.id}`}><img src={item.image} alt={item.name} /></Link><div><Link to={`/product/${item.id}`}>{item.name}</Link><p>{item.purity} · {item.weight} g</p><small>Quantity {item.quantity}</small><strong>{formatPrice(item.price * item.quantity)}</strong></div></li>)}</ul>
+                    <dl className="pv2-summary-totals"><div><dt>Subtotal</dt><dd>{formatPrice(subTotal)}</dd></div><div><dt>Delivery charge</dt><dd>Not added</dd></div><div className="pv2-summary-total"><dt>Estimated total</dt><dd>{formatPrice(total)}</dd></div></dl>
+                    <p className="pv2-summary-note">Prices are confirmed by the store when your order is submitted.</p><Link className="pv2-summary-help" to="/contact">Need a hand with your order? →</Link>
+                </aside>
             </div>
         </div>
     );

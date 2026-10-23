@@ -15,6 +15,9 @@ class SslCommerzInitView(APIView):
     permission_classes = [AllowAny]
     
     def post(self, request):
+        from core.payment_config import gateway_credentials
+        if not gateway_credentials():
+            return Response({'error': 'Online payment is not enabled. Please contact the shop for merchant payment.'}, status=503)
         order_id = request.data.get('order_id')
         access_token = request.data.get('access_token', '')
         
@@ -39,6 +42,8 @@ class SslCommerzInitView(APIView):
         if not token_valid and not owner_valid:
             return Response({'error': 'Order verification failed'}, status=403)
         
+        if order.payment_method != 'bkash' or order.order_status == 'cancelled':
+            return Response({'error': 'This order is not eligible for online payment.'}, status=400)
         if order.payment_status == 'paid':
             return Response({'error': 'Order already paid'}, status=400)
         
@@ -86,6 +91,8 @@ class SslCommerzSuccessView(APIView):
         
         try:
             order = Order.objects.get(order_id=tran_id)
+            if order.payment_method != 'bkash' or order.order_status == 'cancelled':
+                return redirect(f"{frontend_url}/payment-failed?reason=order_ineligible")
             validation = sslcommerz_gateway.validate_payment(data)
             if not validation or validation.get('status') != 'VALID':
                 return redirect(f"{frontend_url}/payment-failed?reason=unverified")

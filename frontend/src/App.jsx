@@ -2,11 +2,14 @@ import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import Layout from './components/layout/Layout';
+import PageTransition from './components/PageTransition';
+import './motion.css';
 import ErrorBoundary from './components/ErrorBoundary';
+import CookieConsent from './components/privacy/CookieConsent';
+const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage'));
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './queryClient';
 import { Toaster } from 'react-hot-toast';
-import { AnimatePresence, motion } from 'framer-motion';
 // Lazy load pages
 const HomePage = React.lazy(() => import('./pages/HomePage'));
 const ShopPage = React.lazy(() => import('./pages/ShopPage'));
@@ -60,14 +63,7 @@ const ProtectedAdminRoute = ({ children }) => {
 const AnimatedRoutes = () => {
   const location = useLocation();
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={location.pathname}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      >
+    <PageTransition key={location.pathname}>
         <Suspense fallback={<PageLoader />}>
           <Routes location={location}>
             {/* Customer Storefront Routes */}
@@ -101,10 +97,10 @@ const AnimatedRoutes = () => {
             <Route path="/admin/analytics" element={<ProtectedAdminRoute><AdminAnalytics /></ProtectedAdminRoute>} />
             <Route path="/admin/bot-training" element={<ProtectedAdminRoute><AdminBotTraining /></ProtectedAdminRoute>} />
             <Route path="/admin/settings" element={<ProtectedAdminRoute><AdminSettings /></ProtectedAdminRoute>} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Suspense>
-      </motion.div>
-    </AnimatePresence>
+    </PageTransition>
   );
 };
 
@@ -117,13 +113,11 @@ const PageLoader = () => (
     alignItems: 'center',
     color: 'var(--color-gold-primary)'
   }}>
-    <motion.div
-      animate={{ opacity: [0.4, 1, 0.4] }}
-      transition={{ repeat: Infinity, duration: 1.5 }}
+    <div className="sahara-page-loader"
       style={{ letterSpacing: '4px', textTransform: 'uppercase', fontSize: '14px', fontWeight: 'bold' }}
     >
-      Sahara Gold
-    </motion.div>
+      New Sahara Gold and Diamond
+    </div>
   </div>
 );
 
@@ -137,6 +131,7 @@ function App() {
               <AnimatedRoutes />
             </ErrorBoundary>
           </Layout>
+          <CookieConsent />
         </Router>
         <Toaster
           position="top-right"

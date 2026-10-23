@@ -32,7 +32,7 @@ def _split_csv(value: str) -> list[str]:
 SECRET_KEY = os.getenv('SECRET_KEY', 'dev-only-change-me-before-deployment')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+DEBUG = os.getenv('DEBUG', 'False' if os.getenv('RENDER') else 'True').lower() == 'true'
 
 ALLOWED_HOSTS = _split_csv(os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1'))
 
@@ -41,9 +41,6 @@ render_external_hostname = os.getenv('RENDER_EXTERNAL_HOSTNAME')
 if render_external_hostname and render_external_hostname not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(render_external_hostname)
 
-# Support wildcard onrender.com in allowed hosts if on Render
-if os.getenv('RENDER') and '.onrender.com' not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.append('.onrender.com')
 
 # Include custom storefront domains for live deploys (for example, https://www.shaharagold.org)
 for domain_name in [os.getenv('FRONTEND_URL', ''), os.getenv('SITE_URL', ''), os.getenv('APP_URL', '')]:
@@ -57,13 +54,7 @@ for domain_name in [os.getenv('FRONTEND_URL', ''), os.getenv('SITE_URL', ''), os
             if host.startswith('www.'):
                 ALLOWED_HOSTS.append(host[4:])
 
-CSRF_TRUSTED_ORIGINS = [
-    'https://*.ngrok-free.app',
-    'https://*.ngrok.io',
-    'https://pei-baddish-bruce.ngrok-free.dev',
-    'https://*.onrender.com',
-    'https://*.shaharagold.org',
-]
+CSRF_TRUSTED_ORIGINS = ['https://shaharagold.org', 'https://www.shaharagold.org']
 
 extra_csrf = [origin.strip() for origin in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if origin.strip()]
 CSRF_TRUSTED_ORIGINS.extend(extra_csrf)
@@ -91,7 +82,7 @@ if render_external_hostname:
         CSRF_TRUSTED_ORIGINS.append(render_origin)
 
 # Ngrok/Proxy Settings
-USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_HOST = False
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # CSRF_COOKIE_SECURE = True # Uncomment if you forced HTTPS
 # SESSION_COOKIE_SECURE = True # Uncomment if you forced HTTPS
@@ -110,6 +101,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Third party
     'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     # 'sslserver', # Removed as we are back to localhost HTTP
     # Local apps
@@ -171,7 +163,7 @@ if database_url:
     }
 else:
     if os.getenv('DATABASE_ENGINE', 'postgresql').lower() != 'postgresql':
-        raise RuntimeError('Sahara Gold requires PostgreSQL; SQLite is not supported.')
+        raise RuntimeError('New Sahara Gold and Diamond requires PostgreSQL; SQLite is not supported.')
 
     DATABASES = {
         'default': {
@@ -185,6 +177,10 @@ else:
         }
     }
 
+
+# DATABASE_URL must not bypass the PostgreSQL-only contract.
+if DATABASES['default']['ENGINE'] != 'django.db.backends.postgresql':
+    raise RuntimeError('New Sahara Gold and Diamond requires a PostgreSQL DATABASE_URL.')
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
@@ -257,16 +253,8 @@ CORS_ALLOWED_ORIGINS = _split_csv(os.getenv(
     'http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174',
 ))
 
-# Allow Render, custom store domains, and Ngrok origins for CORS
-CORS_ALLOWED_ORIGIN_REGEXES = [
-    r"^https://.*\.onrender\.com$",
-    r"^https://.*\.shaharagold\.org$",
-] if not DEBUG else [
-    r"^https://.*\.ngrok-free\.app$",
-    r"^https://.*\.ngrok\.io$",
-    r"^https://.*\.onrender\.com$",
-    r"^https://.*\.shaharagold\.org$",
-]
+# Only explicitly configured origins may make cross-origin API requests.
+CORS_ALLOWED_ORIGIN_REGEXES = []
 
 for domain_name in [os.getenv('FRONTEND_URL', ''), os.getenv('SITE_URL', ''), os.getenv('APP_URL', '')]:
     if not domain_name:
@@ -291,7 +279,7 @@ from datetime import timedelta
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'core.authentication.SafeJWTAuthentication',
-        'core.authentication.CsrfExemptSessionAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
@@ -338,11 +326,11 @@ BKASH_BASE_URL = os.getenv('BKASH_BASE_URL', 'https://tokenized.sandbox.bka.sh/v
 
 # JAZZMIN Settings (CMS)
 JAZZMIN_SETTINGS = {
-    "site_title": "Sahara Gold Admin",
-    "site_header": "Sahara Gold",
-    "site_brand": "Sahara Gold",
+    "site_title": "New Sahara Gold and Diamond Admin",
+    "site_header": "New Sahara Gold and Diamond",
+    "site_brand": "New Sahara Gold and Diamond",
     "welcome_sign": "Welcome back",
-    "copyright": "Sahara Gold Ltd",
+    "copyright": "New Sahara Gold and Diamond",
     "search_model": "products.Product",
     "show_ui_builder": True,
 }
@@ -359,8 +347,10 @@ EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'True').lower() == 'true'
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'False').lower() == 'true'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '').strip()
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '').strip()
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', '').strip()
+from core.branding import public_brand_text
+DEFAULT_FROM_EMAIL = public_brand_text(os.getenv('DEFAULT_FROM_EMAIL', '').strip())
 STORE_EMAIL = os.getenv('STORE_EMAIL', '').strip()
+ADMIN_NOTIFICATION_EMAIL = os.getenv('ADMIN_NOTIFICATION_EMAIL', 'saharagold19@gmail.com').strip()
 EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '25'))
 RESEND_API_KEY = os.getenv('RESEND_API_KEY', '').strip()
 RESEND_FROM_EMAIL = os.getenv('RESEND_FROM_EMAIL', DEFAULT_FROM_EMAIL).strip()
@@ -379,7 +369,7 @@ if EMAIL_BACKEND.endswith('smtp.EmailBackend'):
 # AI / LLM Configuration
 HUGGINGFACE_API_KEY = os.getenv('HUGGINGFACE_API_KEY', '')
 AI_MODEL = os.getenv('AI_MODEL', '')
-STORE_NAME = os.getenv('STORE_NAME', '')
+STORE_NAME = public_brand_text(os.getenv('STORE_NAME', 'New Sahara Gold and Diamond'))
 STORE_PHONE = os.getenv('STORE_PHONE', '')
 STORE_WHATSAPP = os.getenv('STORE_WHATSAPP', '')
 STORE_ADDRESS = os.getenv('STORE_ADDRESS', '')
@@ -389,14 +379,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 if not DEBUG:
     if not SECRET_KEY or len(SECRET_KEY) < 20 or SECRET_KEY == 'dev-only-change-me-before-deployment':
-        import secrets
-        SECRET_KEY = secrets.token_urlsafe(50)
+        raise RuntimeError('Production requires a stable SECRET_KEY of at least 20 characters.')
 
     if not ALLOWED_HOSTS:
-        ALLOWED_HOSTS = ['.onrender.com', 'localhost', '127.0.0.1']
+        raise RuntimeError('Production requires explicit ALLOWED_HOSTS.')
 
-    if not CORS_ALLOWED_ORIGINS and not CORS_ALLOWED_ORIGIN_REGEXES:
-        CORS_ALLOWED_ORIGIN_REGEXES = [r"^https://.*\.onrender\.com$"]
 
     if FRONTEND_URL and not FRONTEND_URL.startswith('https://') and not FRONTEND_URL.startswith('http://localhost'):
         import warnings
@@ -405,9 +392,6 @@ if not DEBUG:
     if BACKEND_URL and not BACKEND_URL.startswith('https://') and not BACKEND_URL.startswith('http://localhost') and not BACKEND_URL.startswith('http://127.0.0.1'):
         import warnings
         warnings.warn('Production BACKEND_URL should use HTTPS.')
-
-    if SSLCOMMERZ_IS_SANDBOX and os.getenv('ALLOW_SANDBOX_PAYMENTS', 'False').lower() != 'true':
-        raise RuntimeError('Production SSLCommerz must not use sandbox mode (set ALLOW_SANDBOX_PAYMENTS=True to override for testing).')
 
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
@@ -418,3 +402,5 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
 
+
+PAYMENT_ENCRYPTION_KEY = os.getenv('PAYMENT_ENCRYPTION_KEY', '')

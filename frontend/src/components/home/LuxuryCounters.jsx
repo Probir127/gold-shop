@@ -1,5 +1,5 @@
 /**
- * Sahara Gold — LuxuryCounters
+ * New Sahara Gold and Diamond — LuxuryCounters
  * Kinetic count-up via Anime.js (useCountUp) for in-view activation.
  */
 import React from 'react';

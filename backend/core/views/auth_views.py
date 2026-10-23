@@ -9,6 +9,8 @@ from django.contrib.auth.models import User
 from django.db.models import Q
 from ..serializers import UserSerializer, TenantMembershipSerializer
 from ..models import TenantMembership, Tenant
+from ..throttles import LoginThrottle
+from ..login_guard import login_key, check_login, failed_login, successful_login
 
 
 class AdminTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -21,7 +23,7 @@ class AdminTokenObtainPairSerializer(TokenObtainPairSerializer):
         raw_identifier = str(attrs.get('username') or attrs.get('email') or '').strip()
         password = str(attrs.get('password') or '')
 
-        if not raw_identifier or not password:
+        if not raw_identifier or not password or len(raw_identifier) > 254 or len(password) > 1024:
             raise exceptions.AuthenticationFailed('Username/email and password are required.')
 
         user = User.objects.filter(
@@ -32,12 +34,16 @@ class AdminTokenObtainPairSerializer(TokenObtainPairSerializer):
             normalized = raw_identifier.lower().replace(' ', '_').replace('-', '_')
             user = User.objects.filter(username__iexact=normalized).first()
 
+        guard_key = login_key(raw_identifier, user)
+        check_login(guard_key)
         if not user or not user.check_password(password):
+            failed_login(guard_key)
             raise exceptions.AuthenticationFailed('Invalid credentials. Please verify your username and password.')
 
         if not user.is_active:
-            raise exceptions.AuthenticationFailed('This user account is inactive.')
+            raise exceptions.AuthenticationFailed('Invalid credentials. Please verify your username and password.')
 
+        successful_login(guard_key)
         refresh = self.get_token(user)
         return {
             'refresh': str(refresh),
@@ -48,10 +54,12 @@ class AdminTokenObtainPairSerializer(TokenObtainPairSerializer):
 class LoginView(TokenObtainPairView):
     permission_classes = [AllowAny]
     serializer_class = AdminTokenObtainPairSerializer
+    throttle_classes = [LoginThrottle]
 
 
 class RefreshView(TokenRefreshView):
     permission_classes = [AllowAny]
+    throttle_classes = [LoginThrottle]
 
 
 class MeView(APIView):

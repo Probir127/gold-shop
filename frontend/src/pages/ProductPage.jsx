@@ -3,20 +3,19 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { formatPrice } from '../utils/formatters';
-import { ShoppingBag, Star, Share2, ShieldCheck, Truck, RotateCcw, Award } from 'lucide-react';
+import { ShoppingBag, Share2, ArrowUpRight, Plus, Minus, Layers, Scale, Coins, MapPin } from 'lucide-react';
 import ProductGrid from '../components/product/ProductGrid';
 import { api } from '../services/api';
 import SEO from '../components/SEO';
 import toast from 'react-hot-toast';
-import { canPurchase } from '../utils/productAvailability.js';
-import ImageZoom from '../components/product/ImageZoom';
-import PriceBreakdown from '../components/product/PriceBreakdown';
-import { motion } from 'framer-motion';
+import { canPurchase, priceComponents } from '../utils/productAvailability.js';
+import './purchase-v2.css';
 
 const ProductPage = () => {
     const { id } = useParams();
     const { data: pricing } = useGoldRates();
-    const { addToCart } = useCart();
+    const { addToCart, cart } = useCart();
+    const [quantity, setQuantity] = useState(1);
     const [product, setProduct] = useState(null);
     const [relatedProducts, setRelatedProducts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -28,6 +27,7 @@ const ProductPage = () => {
         setProduct(null);
         setRelatedProducts([]);
         setActiveImage(null);
+        setQuantity(1);
         window.scrollTo(0, 0);
 
         api.getProduct(id).then(data => {
@@ -49,14 +49,15 @@ const ProductPage = () => {
     }, [id, pricing?.updated_at]);
 
     if (loading) {
-        return <div className="container" style={{ padding: '80px 0', textAlign: 'center', color: '#888' }}>Loading exquisite details...</div>;
+        return <div className="pv2-state" role="status">Preparing your selection…</div>;
     }
 
     if (!product) {
-        return <div className="container" style={{ padding: '80px 0', textAlign: 'center', color: '#888' }}>Product not found.</div>;
+        return <div className="pv2-state"><h1>This piece is unavailable.</h1><Link to="/shop">Explore the collection →</Link></div>;
     }
 
-    const available = canPurchase(product);
+    const remaining = Math.max(0, 100 - (cart.find(item => item.id === product.id)?.quantity || 0));
+    const available = canPurchase(product) && remaining > 0;
     const handleShare = async () => {
         try {
             if (navigator.share) {
@@ -81,187 +82,48 @@ const ProductPage = () => {
             purity: product.purity,
             category: product.category_name
         };
-        addToCart(cartItem);
+        addToCart(cartItem, Math.min(quantity, remaining));
     };
 
+    const breakdown = priceComponents(product.current_price, product.weight, product.making_charge_per_gram);
+    const photos = [...new Set([product.image, ...(Array.isArray(product.images) ? product.images : [])].filter(Boolean))];
+
     return (
-        <div className="section product-page" style={{ paddingTop: '40px' }}>
-            <div className="container">
-                <SEO
-                    title={product.name}
-                    description={product.description || `${product.name} - ${product.weight}g ${product.purity} Gold.`}
-                    image={product.image}
-                />
+        <article className="pv2-product">
+            <SEO title={product.name} description={product.description || `${product.name} — ${product.weight}g ${product.purity} gold.`} image={product.image} />
+            <nav className="pv2-breadcrumb" aria-label="Breadcrumb"><Link to="/shop">The collection</Link><span>/</span><Link to={`/shop?cat=${product.category_slug || ''}`}>{product.category_name || 'Jewellery'}</Link><span>/</span><span>{product.name}</span></nav>
+            <div className="pv2-product-layout">
+                <section className={`pv2-gallery ${photos.length > 1 ? 'has-thumbnails' : 'single-photo'}`} aria-label="Product photographs">
+                    <div className="pv2-gallery-main">
+                        {photos.length ? <img key={activeImage || photos[0]} src={activeImage || photos[0]} alt={product.name} fetchPriority="high" /> : <p>Photography coming soon</p>}
+                        <span className="pv2-gallery-index">SAHARA / {String(product.id).padStart(4, '0')}</span>
+                    </div>
+                    {photos.length > 1 && <div className="pv2-thumbnails">{photos.map((photo, index) => <button type="button" key={photo} onClick={() => setActiveImage(photo)} aria-label={`View photograph ${index + 1}`} aria-pressed={(activeImage || photos[0]) === photo}><img src={photo} alt={`${product.name}, view ${index + 1}`} loading="lazy" /></button>)}</div>}
+                    <div className="pv2-image-caption"><span>The piece, in detail.</span>{photos.length > 0 && <a href={activeImage || photos[0]} target="_blank" rel="noopener noreferrer">View full photograph <ArrowUpRight size={14} /></a>}</div>
+                </section>
+                <section className="pv2-product-information">
+                    <p className="pv2-kicker">{product.category_name || 'The Sahara collection'} · {product.purity}</p>
+                    <h1>{product.name}</h1>
+                    {product.description?.trim() && <p className="pv2-description">{product.description}</p>}
+                    <dl className="pv2-specifications"><div><Layers size={21}/><dt>Purity</dt><dd>{product.purity}</dd></div><div><Scale size={21}/><dt>Weight</dt><dd>{product.weight} g</dd></div><div><Coins size={21}/><dt>Price / BDT</dt><dd>{formatPrice(product.current_price)}</dd></div></dl>
+                    {breakdown && <div className="pv2-making"><span>Making charges</span><strong>{formatPrice(breakdown.making)}</strong><small>Included in the displayed price</small></div>}
+                    <div className="pv2-purchase">
+                        <div className="pv2-price-line"><span>{formatPrice(product.current_price)}</span>{product.price > product.current_price && <del>{formatPrice(product.price)}</del>}</div>
+                        <p className="pv2-availability"><i data-available={available} />{!product.in_stock ? 'Currently unavailable' : available ? 'Available to order' : remaining === 0 ? 'Maximum bag quantity reached' : 'Please enquire for pricing'}</p>
+                        <div className="pv2-purchase-actions"><div className="pv2-quantity"><span>Quantity</span><div><button type="button" aria-label="Decrease quantity" disabled={quantity <= 1} onClick={() => setQuantity(value => Math.max(1, value - 1))}><Minus size={15}/></button><output aria-live="polite">{Math.min(quantity, remaining || 1)}</output><button type="button" aria-label="Increase quantity" disabled={quantity >= remaining || !available} onClick={() => setQuantity(value => Math.min(remaining, value + 1))}><Plus size={15}/></button></div></div><button className="pv2-primary" onClick={handleAddToCart} disabled={!available}><ShoppingBag size={17} />{available ? 'Add to your bag' : !product.in_stock ? 'Out of stock' : remaining === 0 ? 'Bag limit reached' : 'Price unavailable'}</button><button type="button" className="pv2-share" onClick={handleShare} aria-label="Share this piece"><Share2 size={19} /></button></div>
+                        <Link className="pv2-enquire" to="/contact"><MapPin size={17}/> Visit Sahara in Dhaka <ArrowUpRight size={16}/></Link><p className="pv2-reference">Reference SG-{String(product.id).padStart(4, '0')}</p>
+                    </div>
 
-                {/* Breadcrumb */}
-                <div style={{ marginBottom: '24px', fontSize: '14px', color: '#888', display: 'flex', alignItems: 'center' }}>
-                    <Link to="/" style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => e.target.style.color = 'var(--color-gold-primary)'} onMouseLeave={(e) => e.target.style.color = '#888'}>Home</Link>
-                    <span style={{ margin: '0 8px' }}>/</span>
-                    <Link to={`/shop?cat=${product.category_slug}`} style={{ textTransform: 'capitalize', transition: 'color 0.2s' }} onMouseEnter={(e) => e.target.style.color = 'var(--color-gold-primary)'} onMouseLeave={(e) => e.target.style.color = '#888'}>
-                        {product.category_name}
-                    </Link>
-                    <span style={{ margin: '0 8px' }}>/</span>
-                    <span style={{ color: 'var(--color-gold-primary)', fontWeight: '500' }}>{product.name}</span>
-                </div>
-
-                <div className="product-main-grid">
-                    {/* Left Column: Image & Zoom */}
-                    <motion.div
-                        initial={{ opacity: 0, x: -50 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.6 }}
-                        className="product-gallery-sticky"
-                    >
-                        <div style={{ border: '1px solid #222', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.5)', position: 'relative' }}>
-                            <ImageZoom key={activeImage || product.image || 'empty'} src={activeImage || product.image} alt={product.name} />
-
-                            {product.is_bestseller && (
-                                <span className="badge-gold-premium" style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 20 }}>
-                                    Bestseller
-                                </span>
-                            )}
-                        </div>
-
-                        {/* Product media — only render when multiple images exist */}
-                        {Array.isArray(product.images) && product.images.length > 1 && (
-                            <div className="custom-scrollbar" style={{ marginTop: '16px', display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '8px' }}>
-                                {product.images.map((img, idx) => (
-                                    <button key={img} type="button" onClick={() => setActiveImage(img)} aria-label={`View product photo ${idx + 1}`} aria-pressed={(activeImage || product.image) === img} style={{ width: '80px', height: '80px', borderRadius: '8px', border: (activeImage || product.image) === img ? '2px solid var(--color-gold-primary)' : '1px solid #333', overflow: 'hidden', flexShrink: 0, cursor: 'pointer', padding: 0, backgroundColor: 'transparent' }}>
-                                        <img src={img} alt={`${product.name} view ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </motion.div>
-
-                    {/* Right Column: Product Info */}
-                    <motion.div
-                        initial={{ opacity: 0, x: 50 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.6, delay: 0.2 }}
-                    >
-                        <h1 className="text-gradient-gold" style={{ fontSize: '2.5rem', marginBottom: '8px', lineHeight: '1.2' }}>
-                            {product.name}
-                        </h1>
-
-                        {product.description?.trim() && (
-                            <section aria-label="Product description" style={{ margin: '20px 0 24px' }}>
-                                <h2 style={{ fontSize: '1rem', marginBottom: '10px' }}>Description</h2>
-                                <p style={{ color: '#ccc', lineHeight: 1.8, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{product.description}</p>
-                            </section>
-                        )}
-
-                        <div style={{ backgroundColor: '#111', border: '1px solid #222', borderRadius: '12px', padding: '24px', marginBottom: '32px' }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', marginBottom: '8px' }}>
-                                <span style={{ fontSize: '2rem', fontWeight: 'bold', color: '#fff' }}>{formatPrice(product.current_price)}</span>
-                                {product.price > product.current_price && (
-                                    <span style={{ color: '#666', textDecoration: 'line-through', marginBottom: '4px' }}>{formatPrice(product.price)}</span>
-                                )}
-                            </div>
-                            <p style={{ color: available ? '#4ade80' : '#f3d58a', fontSize: '14px', marginBottom: '16px' }}>{!product.in_stock ? 'Out of stock' : available ? 'In stock' : 'Contact us for pricing'}</p>
-
-                            {/* Action Buttons */}
-                            <div style={{ display: 'flex', gap: '16px' }}>
-                                <button
-                                    onClick={handleAddToCart}
-                                    disabled={!available}
-                                    className="btn btn-primary"
-                                    style={{ flex: 1, height: '48px', fontSize: '1.125rem' }}
-                                >
-                                    <ShoppingBag size={20} style={{ marginRight: '8px' }} />
-                                    {available ? 'Add to Cart' : !product.in_stock ? 'Out of Stock' : 'Price Unavailable'}
-                                </button>
-                                <button type="button" onClick={handleShare} aria-label="Share product" className="btn btn-outline" style={{ width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-                                    <Share2 size={20} />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Product Specs */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
-                            <SpecItem label="Purity" value={`${product.purity} Hallmark`} icon={<Award size={18} style={{ color: 'var(--color-gold-primary)' }} />} />
-                            <SpecItem label="Weight" value={`${product.weight} grams`} icon={<RotateCcw size={18} style={{ color: 'var(--color-gold-primary)' }} />} />
-                            <SpecItem label="Collection" value={product.category_name || 'Jewelry'} icon={<Star size={18} style={{ color: 'var(--color-gold-primary)' }} />} />
-                            <SpecItem label="SKU" value={`SG-${product.id.toString().padStart(4, '0')}`} icon={<ShieldCheck size={18} style={{ color: 'var(--color-gold-primary)' }} />} />
-                        </div>
-
-                        {/* Price Breakdown Accordion */}
-                        <div style={{ marginBottom: '32px' }}>
-                            <PriceBreakdown
-                                price={product.current_price}
-                                weight={product.weight}
-                                purity={product.purity}
-                                makingChargePerGram={product.making_charge_per_gram}
-                            />
-                        </div>
-
-                        {/* Trust Badges */}
-                        <div className="trust-badge-container">
-                            <TrustBadge
-                                icon={<ShieldCheck size={24} style={{ color: 'var(--color-gold-primary)' }} />}
-                                title="Lifetime Warranty"
-                                desc="Free polish & repair"
-                            />
-                            <TrustBadge
-                                icon={<Truck size={24} style={{ color: 'var(--color-gold-primary)' }} />}
-                                title="Secure Shipping"
-                                desc="100% Insured"
-                            />
-                            <TrustBadge
-                                icon={<RotateCcw size={24} style={{ color: 'var(--color-gold-primary)' }} />}
-                                title="7-day Exchange"
-                                desc="Original invoice & tag required"
-                            />
-                            <TrustBadge
-                                icon={<Award size={24} style={{ color: 'var(--color-gold-primary)' }} />}
-                                title="Certified"
-                                desc="BIS Hallmark"
-                            />
-                        </div>
-                    </motion.div>
-                </div>
-
-                {/* Related Products */}
-                {relatedProducts.length > 0 && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 50 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        style={{ marginTop: '96px' }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }}>
-                            <div style={{ height: '1px', backgroundColor: '#333', flex: 1 }}></div>
-                            <h2 className="section-title" style={{ margin: 0 }}>You May Also Like</h2>
-                            <div style={{ height: '1px', backgroundColor: '#333', flex: 1 }}></div>
-                        </div>
-                        <ProductGrid products={relatedProducts} />
-                    </motion.div>
-                )}
+                    <div className="pv2-details">
+                        <details open><summary>Behind the price <Plus size={16} /></summary><div className="pv2-detail-body"><dl>{breakdown ? <><div><dt>Gold value</dt><dd>{formatPrice(breakdown.gold)}</dd></div><div><dt>Making charge</dt><dd>{formatPrice(breakdown.making)}</dd></div></> : <div><dt>Gold & craftsmanship</dt><dd>{formatPrice(product.current_price)}</dd></div>}</dl><p>Calculated using our published store rates. The final order price is confirmed when you place your order.</p><Link to="/gold-rates">Explore today's gold rates →</Link></div></details>
+                        <details><summary>Delivery & exchanges <Plus size={16} /></summary><div className="pv2-detail-body"><p>Contact our team to confirm delivery arrangements and any exchange conditions for your selected piece.</p><Link to="/refund-policy">Read our exchange policy →</Link></div></details>
+                        <details><summary>See it in person <Plus size={16} /></summary><div className="pv2-detail-body"><p>Discover your selection at New Sahara Gold and Diamond, Bashundhara City, Dhaka.</p><Link to="/contact">Plan your visit →</Link></div></details>
+                    </div>
+                </section>
             </div>
-        </div>
+            {relatedProducts.length > 0 && <section className="pv2-related"><div><p className="pv2-kicker">A conversation between pieces</p><h2>Beautiful together.</h2><Link to={`/shop?cat=${product.category_slug || ''}`}>Explore the collection <ArrowUpRight size={17} /></Link></div><ProductGrid products={relatedProducts} /></section>}
+        </article>
     );
 };
-
-const SpecItem = ({ label, value, icon }) => (
-    <div className="spec-item-glass">
-        <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {icon}
-        </div>
-        <div>
-            <span style={{ display: 'block', fontSize: '11px', color: '#666', textTransform: 'uppercase', letterSpacing: '1px' }}>{label}</span>
-            <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>{value}</span>
-        </div>
-    </div>
-);
-
-const TrustBadge = ({ icon, title, desc }) => (
-    <div className="trust-badge-card">
-        {icon}
-        <div>
-            <strong style={{ display: 'block', fontSize: '14px', color: '#fff', fontWeight: '600' }}>{title}</strong>
-            <span style={{ fontSize: '12px', color: '#666' }}>{desc}</span>
-        </div>
-    </div>
-);
 
 export default ProductPage;

@@ -1,5 +1,5 @@
 /**
- * Sahara Gold — Animations Barrel Export
+ * New Sahara Gold and Diamond — Animations Barrel Export
  * Central entry point for all animation primitives.
  */
 export { default as anime } from 'animejs';

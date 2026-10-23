@@ -130,3 +130,12 @@ class BotConfigAdmin(admin.ModelAdmin):
             'fields': ('updated_at',)
         }),
     )
+
+from .models import StorefrontContent
+@admin.register(StorefrontContent)
+class StorefrontContentAdmin(admin.ModelAdmin):
+    readonly_fields = ('updated_at',)
+    def has_add_permission(self, request):
+        return not StorefrontContent.objects.exists() and super().has_add_permission(request)
+    def has_delete_permission(self, request, obj=None):
+        return False

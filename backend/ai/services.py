@@ -1,5 +1,5 @@
 """
-AI Bot Service for Sahara Gold Storefront
+AI Bot Service for New Sahara Gold and Diamond Storefront
 Handles contextual gold calculations, catalog search, order tracking, and LLM completions.
 """
 import os
@@ -191,14 +191,14 @@ def generate_ai_response(history_messages, new_user_message):
     if matched_products:
         count = len(matched_products)
         reply = (
-            f"I matched {count} in-stock pieces from the current Sahara Gold catalog. "
+            f"I matched {count} in-stock pieces from the current New Sahara Gold and Diamond catalog. "
             f"Their live prices are shown below; open any item for its details or add it directly to your bag."
         )
         return reply, matched_products
 
     if any(w in low_msg for w in ['rate', 'price', 'দাম', 'কত', 'today', '22k', '21k', '18k']):
         return (
-            f"✨ Today's Official Sahara Gold Rates (per gram):\n\n"
+            f"✨ Today's Official New Sahara Gold and Diamond Rates (per gram):\n\n"
             f"• 22K Gold: ৳{display_rate(rates['22K'])}/gm (Best for bridal & traditional jewelry)\n"
             f"• 21K Gold: ৳{display_rate(rates['21K'])}/gm\n"
             f"• 18K Gold: ৳{display_rate(rates['18K'])}/gm (Best for diamond settings & modern daily wear)\n"
@@ -211,7 +211,7 @@ def generate_ai_response(history_messages, new_user_message):
         # If no specific matched products were found, fallback to general bestsellers
         featured = ProductSerializer(Product.objects.filter(in_stock=True)[:3], many=True).data
         return (
-            "💎 Sahara Gold Luxury Recommendations:\n\n"
+            "💎 New Sahara Gold and Diamond Luxury Recommendations:\n\n"
             "For weddings & bridal sets, we highly recommend our 22K Royal Heritage Collection, featuring handcrafted necklaces, chokers, and bangles.\n\n"
             "Here are some popular signature items from our collection:",
             featured
@@ -219,13 +219,13 @@ def generate_ai_response(history_messages, new_user_message):
 
     if any(w in low_msg for w in ['track', 'order', 'অর্ডার', 'status', 'delivery']):
         return (
-            f"📦 To track your Sahara Gold order, simply type your Order ID (e.g. SG-XXXXXX) right here, or visit our 'Track Order' page on the top navigation bar.\n\n"
+            f"📦 To track your New Sahara Gold and Diamond order, simply type your Order ID (e.g. SG-XXXXXX) right here, or visit our 'Track Order' page on the top navigation bar.\n\n"
             f"You can also contact our direct concierge at {settings.STORE_PHONE} (WhatsApp).",
             []
         )
 
     return (
-        f"Assalamu Alaikum! Welcome to Sahara Gold. I am your AI jewelry advisor.\n\n"
+        f"Assalamu Alaikum! Welcome to New Sahara Gold and Diamond. I am your AI jewelry advisor.\n\n"
         f"Today's 22K gold rate is ৳{display_rate(rates['22K'])}/gm. What kind of jewelry or budget are you looking for today?",
         []
     )

@@ -13,10 +13,11 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     setError('');
     setLoading(true);
     try {
-      const res = await apiLogin(username, password);
+      const res = await apiLogin(username.trim(), password);
       localStorage.setItem('access_token', res.data.access);
       localStorage.setItem('refresh_token', res.data.refresh);
       const me = await getMe();
@@ -42,11 +43,14 @@ const Login = () => {
       localStorage.setItem('tenant_slug', activeMembership.tenant_slug);
       navigate('/admin');
     } catch (err) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('is_staff');
       const serverMsg = err.response?.data?.detail;
       if (serverMsg) {
         setError(serverMsg);
       } else if (err.message === 'No tenant membership') {
-        setError('This account has no store access. Log in with admin or shara_gold credentials.');
+        setError('This account has no store access. Contact your store administrator.');
       } else {
         setError('Invalid credentials. Please verify your username/email and password.');
       }
@@ -95,7 +99,7 @@ const Login = () => {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="w-full bg-[#0c0c0e] border border-white/10 text-white rounded-xl pl-11 pr-4 py-3 text-sm focus:ring-1 focus:ring-[#d4af37] focus:border-[#d4af37] outline-none transition-all placeholder:text-slate-600"
-                    placeholder="admin or saharagold19@gmail.com"
+                    placeholder="Your username or email" aria-label="Username or email" maxLength={254}
                     autoComplete="username"
                     required
                   />
@@ -113,7 +117,7 @@ const Login = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-[#0c0c0e] border border-white/10 text-white rounded-xl pl-11 pr-4 py-3 text-sm focus:ring-1 focus:ring-[#d4af37] focus:border-[#d4af37] outline-none transition-all placeholder:text-slate-600"
-                    placeholder="••••••••"
+                    placeholder="••••••••" aria-label="Password" maxLength={128}
                     autoComplete="current-password"
                     required
                   />

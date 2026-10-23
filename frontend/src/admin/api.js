@@ -1,4 +1,6 @@
 import axios from 'axios'
+import { storefrontSync } from '../queryClient'
+import { isStorefrontMutation } from '../services/storefrontSync'
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || (import.meta.env.VITE_BACKEND_URL ? `${import.meta.env.VITE_BACKEND_URL}/api` : '/api'),
@@ -29,7 +31,10 @@ const processQueue = (error, token = null) => {
 }
 
 api.interceptors.response.use(
-    response => response,
+    response => {
+        if (isStorefrontMutation(response.config)) storefrontSync.publish()
+        return response
+    },
     async error => {
         const originalRequest = error.config || {}
 
@@ -63,6 +68,7 @@ api.interceptors.response.use(
                 )
                 const newAccessToken = res.data.access
                 localStorage.setItem('access_token', newAccessToken)
+                if (res.data.refresh) localStorage.setItem('refresh_token', res.data.refresh)
                 api.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`
                 processQueue(null, newAccessToken)
                 originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
@@ -118,7 +124,7 @@ export const clearBotTestHistory = ()         => api.post('/bot-test/clear/')
 export const getInvoices    = ()       => api.get('/invoices/')
 export const createInvoice  = (data)   => api.post('/invoices/', data)
 export const getInvoice     = (id)     => api.get(`/invoices/${id}/`)
-export const generatePDF    = (id)     => api.get(`/invoices/${id}/pdf/`)
+export const generatePDF    = (id)     => api.post(`/invoices/${id}/pdf/`)
 export const sendInvoice    = (id, data = {}) => api.post(`/invoices/${id}/send/`, data)
 export const markInvoicePaid = (id)    => api.post(`/invoices/${id}/mark-paid/`)
 export const openInvoiceHTML = async (id, copy = 'customer', signedUrl = '') => {
@@ -179,7 +185,7 @@ export const getSystemHealth = ()                       => api.get('/system/heal
 // ── Omnichannel (Phase 6) ─────────────────────────────────────
 export const registerTelegramWebhook = (slug, url) => api.post(`/webhooks/telegram/${slug}/register/`, { webhook_url: url })
 
-// ── Sahara Gold E-Commerce Operations ────────────────────────
+// ── New Sahara Gold and Diamond E-Commerce Operations ────────────────────────
 export const getOrders       = () => api.get('/orders/')
 export const updateOrderStatus = (orderId, data) => api.post(`/orders/${orderId}/update_status/`, data)
 export const sendOrderInvoiceEmail = (orderId, data = {}) => api.post(`/orders/${orderId}/send_invoice/`, data)

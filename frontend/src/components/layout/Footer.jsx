@@ -1,87 +1,24 @@
 import React from 'react';
-import { Facebook, Instagram, Phone, Mail, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { ArrowUpRight, ArrowRight, Phone, ShoppingBag } from 'lucide-react';
+import { useStorefrontContent } from '../../hooks/useStorefrontContent';
+import { useCategories } from '../../hooks/useShopData';
 import { STORE_INFO } from '../../utils/constants';
-import BrandMark from '../BrandMark';
-
-const Footer = () => {
-    return (
-        <footer className="site-footer">
-            <div className="container">
-                <div className="footer-grid">
-                    {/* Brand Column */}
-                    <div className="footer-brand">
-                        <BrandMark />
-                        <p>
-                            আস্থার প্রতীক - সবার জন্য.<br />
-                            Premium handcrafted gold and diamond jewelry. Hallmark certified & Lifetime warranty.
-                        </p>
-                        <div className="social-links">
-                            <a href={STORE_INFO.social.facebook} target="_blank" rel="noopener noreferrer" className="icon-btn" aria-label="Sahara Gold Facebook Page">
-                                <Facebook size={20} />
-                            </a>
-                            <a href={STORE_INFO.social.instagram} target="_blank" rel="noopener noreferrer" className="icon-btn" aria-label="Sahara Gold Instagram Page">
-                                <Instagram size={20} />
-                            </a>
-                        </div>
-                    </div>
-
-                    {/* Quick Links */}
-                    <div>
-                        <h4 className="footer-heading">Shop</h4>
-                        <ul className="footer-links">
-                            <li><Link to="/shop?cat=rings">Rings</Link></li>
-                            <li><Link to="/shop?cat=earrings">Earrings</Link></li>
-                            <li><Link to="/shop?cat=bangles">Bangles</Link></li>
-                            <li><Link to="/shop?cat=sets">Necklace Sets</Link></li>
-                        </ul>
-                    </div>
-
-                    {/* Customer Service */}
-                    <div>
-                        <h4 className="footer-heading">Support</h4>
-                        <ul className="footer-links">
-                            <li><Link to="/gold-rates">Today's Gold Rate</Link></li>
-                            <li><Link to="/about">About Us</Link></li>
-                            <li><Link to="/contact">Contact Us</Link></li>
-                            <li><Link to="/terms">Terms & Conditions</Link></li>
-                        </ul>
-                    </div>
-
-                    {/* Contact Info */}
-                    <div>
-                        <h4 className="footer-heading">Contact</h4>
-                        <ul className="footer-contact">
-                            <li style={{ display: 'flex', gap: '10px' }}>
-                                <MapPin size={18} className="contact-icon" />
-                                <span>{STORE_INFO.address}</span>
-                            </li>
-                            <li style={{ display: 'flex', gap: '10px' }}>
-                                <Phone size={18} className="contact-icon" />
-                                <span>{STORE_INFO.phone}</span>
-                            </li>
-                            <li style={{ display: 'flex', gap: '10px' }}>
-                                <Mail size={18} className="contact-icon" />
-                                <a href={`mailto:${STORE_INFO.email}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                                    <span>{STORE_INFO.email}</span>
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div className="footer-bottom">
-                    <p>&copy; {new Date().getFullYear()} Sahara Gold & Diamond. All rights reserved.</p>
-                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                        <Link to="/privacy">Privacy Policy</Link>
-                        <Link to="/refund-policy">Refund Policy</Link>
-                        <Link to="/terms">Terms of Service</Link>
-                        <Link to="/login" style={{ color: '#d4af37', fontWeight: 500 }}>My Account</Link>
-                    </div>
-                </div>
-            </div>
-        </footer>
-    );
-};
-
-export default Footer;
+import './footer-editorial.css';
+export default function Footer() {
+  const { data: content } = useStorefrontContent();
+  const { data: categories = [] } = useCategories();
+  return <footer className="sf-footer">
+    <div className="sf-service-panel">
+      <div className="sf-service-item"><span className="sf-service-icon"><Phone size={23} strokeWidth={1} aria-hidden="true" /></span><div><p className="eyebrow">Get in touch</p><h2>{content.footer_title}</h2><p>{content.footer_contact_description}</p><a className="sf-service-phone" href={`tel:${content.contact_phone}`}>{content.contact_phone}</a><Link className="sf-service-link" to="/contact">{content.footer_cta} <ArrowUpRight size={15} /></Link></div></div>
+      <div className="sf-service-item"><span className="sf-service-icon"><ShoppingBag size={23} strokeWidth={1} aria-hidden="true" /></span><div><p className="eyebrow">Shop online</p><h2>{content.footer_shop_title}</h2><p>{content.footer_shop_description}</p><Link className="maison-button" to="/shop">Shop collections <ArrowRight size={16} /></Link></div></div>
+      <div className="sf-service-signature"><Link className="sf-logo" to="/" aria-label="New Sahara Gold and Diamond home"><img className="sf-supplied-logo" src="/brand/new-sahara-logo.png" alt="New Sahara Gold and Diamond" width="192" height="128"/></Link><p>{content.footer_description}</p></div>
+    </div>
+    <div className="sf-footer-columns">
+      <nav aria-label="Explore collections"><h2>The collection</h2>{categories.map(({id,slug,name}) => <Link key={id} to={`/shop?cat=${encodeURIComponent(slug)}`}>{name}</Link>)}<Link to="/shop">All jewellery</Link></nav>
+      <nav aria-label="Customer care"><h2>At your service</h2><Link to="/account">My Sahara</Link><Link to="/track-order">Track an order</Link><Link to="/gold-rates">Gold rates</Link><Link to="/refund-policy">Returns & exchanges</Link><Link to="/contact">Speak with us</Link></nav>
+      <div className="sf-footer-visit"><h2>Find us in Dhaka</h2><address>{content.address}</address><a href={`tel:${content.contact_phone}`}>{content.contact_phone}</a><a href={`mailto:${content.contact_email}`}>{content.contact_email}</a><a href={STORE_INFO.social.facebook} target="_blank" rel="noreferrer">Follow our story <ArrowUpRight size={13}/></a></div>
+    </div>
+    <div className="sf-footer-bottom"><span>© {new Date().getFullYear()} New Sahara Gold and Diamond</span><div><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link><Link to="/about">Our story</Link></div><span>Made for your moments.</span></div>
+  </footer>;
+}

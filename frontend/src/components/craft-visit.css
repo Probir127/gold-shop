@@ -1,0 +1,48 @@
+/* Reference image 3: photographic craft panorama and three-part visit row. */
+.craft-story { position:relative; isolation:isolate; overflow:hidden; background:#eee0ca; color:#392d21; min-height:460px; }
+.craft-copy { position:relative; width:51%; padding:44px 3% 46px 8%; }
+.craft-star { display:block; color:#715735; font:32px/1 Georgia,serif; margin-bottom:12px; }
+.maison .craft-copy h2,.maison .visit-copy h2 { color:#392d21; font:italic 400 clamp(38px,3.5vw,58px)/1.04 'Cormorant Garamond',Georgia,serif; margin:12px 0 20px; text-wrap:balance; }
+.craft-description { font-size:13px; line-height:1.8; white-space:pre-line; max-width:490px; }
+.craft-visual { overflow:hidden; position:absolute; inset:0 0 0 39%; margin:0; z-index:-1; }
+.craft-visual:after { content:''; position:absolute; inset:0; background:linear-gradient(90deg,#eee0ca,transparent 30%); pointer-events:none; }
+.craft-visual img { width:100%; height:100%; object-fit:cover; object-position:68% center; }
+.craft-visual figcaption,.visit-visual figcaption { position:absolute; bottom:12px; right:14px; max-width:85%; background:#312417d9; color:#fffaf2; padding:7px 10px; font-size:10px; letter-spacing:.04em; z-index:1; }
+.craft-steps { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:22px; list-style:none; padding:0; margin:30px 0 0; }
+.craft-steps li { display:flex; align-items:center; flex-direction:column; position:relative; text-align:center; gap:12px; font-size:10px; line-height:1.65; letter-spacing:.08em; text-transform:uppercase; }
+.craft-step-icon { display:grid; place-items:center; width:52px; height:52px; border:1px solid #9b8466; border-radius:50%; }
+.craft-step-arrow { position:absolute; top:17px; right:-22px; color:#8a7050; }
+.visit-editorial { display:grid; grid-template-columns:1.5fr 1fr .65fr; gap:3%; padding:32px 5%; align-items:center; background:#f3e7d4; color:#392d21; border-top:1px solid #fff8ed; }
+.visit-visual { position:relative; margin:0; overflow:hidden; aspect-ratio:2.1; background:#dac7a9; }
+.visit-visual img { height:100%; width:100%; object-fit:cover; }
+.maison .visit-copy h2 { font-size:clamp(32px,2.9vw,46px); margin-bottom:14px; }
+.visit-copy>p:not(.eyebrow) { font-size:12px; line-height:1.8; margin-bottom:23px; }
+.visit-copy .maison-button { font-size:10px; min-height:46px; padding:12px 22px; color:#392d21; border-color:#9b8466; }
+.visit-copy .maison-button:hover { background:#6e5335; color:#fffaf2; }
+.visit-details { border-left:1px solid #c7b597; padding-left:22px; }
+.visit-details>div { display:flex; gap:15px; padding:18px 0; }
+.visit-details svg { flex-shrink:0; }
+.maison .visit-details h3 { font:500 10px/1.6 'Montserrat',sans-serif; letter-spacing:.1em; text-transform:uppercase; margin:0 0 10px; color:#392d21; }
+.visit-details address,.visit-details a { font-style:normal; font-size:12px; line-height:1.8; }
+.visit-details a { display:flex; align-items:center; gap:8px; }
+.visit-details a:hover { text-decoration:underline; text-underline-offset:4px; }
+@media(max-width:1100px) {
+  .craft-copy { width:58%; padding-left:5%; }
+  .visit-editorial { grid-template-columns:1fr 1fr; gap:28px; }
+  .visit-visual { aspect-ratio:1.5; }
+  .visit-details { grid-column:1/-1; border-left:0; border-top:1px solid #c7b597; display:grid; grid-template-columns:1fr 1fr; padding:0; }
+}
+@media(max-width:650px) {
+  .craft-story { display:flex; flex-direction:column; }
+  .craft-copy { width:100%; padding:32px 6%; order:0; }
+  .craft-visual { position:relative; inset:auto; order:1; height:260px; }
+  .craft-visual:after { background:linear-gradient(#eee0ca,transparent 24%); }
+  .craft-visual img { object-position:70% center; }
+  .craft-steps { gap:16px; }
+  .craft-steps li { font-size:9px; letter-spacing:.02em; }
+  .craft-step-arrow { right:-17px; width:15px; }
+  .visit-editorial { grid-template-columns:1fr; padding:30px 6%; }
+  .visit-visual { aspect-ratio:1.8; }
+  .visit-details { gap:20px; }
+  .visit-details>div { gap:10px; }
+}

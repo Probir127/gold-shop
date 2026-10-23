@@ -72,7 +72,7 @@ const Sidebar = () => {
   return (
     <div className="w-64 bg-[#0c0c0e] h-screen sticky top-0 flex flex-col px-4 py-6 border-r border-white/5 select-none shrink-0 overflow-y-auto">
       
-      {/* Sahara Gold Brand Identity */}
+      {/* New Sahara Gold and Diamond Brand Identity */}
       <div className="admin-brand-lockup px-2 mb-8">
         <BrandMark />
         <span className="admin-brand-caption">COMMAND CENTER</span>
@@ -83,7 +83,7 @@ const Sidebar = () => {
         <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#16161b] border border-white/5">
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
           <div className="overflow-hidden">
-            <p className="text-xs font-medium text-white truncate">{activeTenant?.tenant_name || 'Sahara Gold Storefront'}</p>
+            <p className="text-xs font-medium text-white truncate">{activeTenant?.tenant_name || 'New Sahara Gold and Diamond Storefront'}</p>
             <p className="text-[10px] text-slate-500 font-mono">{activeTenant?.role ? `${activeTenant.role.toUpperCase()} ACCESS` : 'PORT 8000 SYNC'}</p>
           </div>
         </div>

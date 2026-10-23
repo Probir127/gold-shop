@@ -35,10 +35,5 @@ class SafeJWTAuthentication(JWTAuthentication):
 
 
 class CsrfExemptSessionAuthentication(SessionAuthentication):
-    """
-    SessionAuthentication without enforcing CSRF, intended for SPA and API usage
-    where authentication is primarily Bearer JWT and CSRF cookies are not present.
-    """
-    def enforce_csrf(self, request):
-        return
-
+    """Compatibility import; session credentials must always enforce CSRF."""
+    pass

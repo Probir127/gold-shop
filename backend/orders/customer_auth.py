@@ -1,11 +1,14 @@
 from __future__ import annotations
+from core.login_guard import login_key, check_login, failed_login, successful_login
 import threading
 import secrets
 import logging
 from datetime import timedelta
 from django.contrib.auth.models import User
 from django.conf import settings
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
+from django.contrib.auth.password_validation import validate_password
+from core.throttles import LoginThrottle, VerificationThrottle
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
@@ -27,21 +30,30 @@ def issue_tokens(user):
     return {'access': str(refresh.access_token), 'refresh': str(refresh)}
 
 
+def verification_delivery(email):
+    captured = bool(getattr(settings, 'LOCAL_EMAIL_CAPTURE_DIR', None))
+    return {
+        'delivery_status': 'captured' if captured else 'accepted',
+        'message': ('Verification email saved locally; nothing was sent to your inbox.'
+                    if captured else f'Your verification email for {email} was accepted for delivery. Check your inbox or spam folder.'),
+    }
+
+
 def send_verification_code(user, code: str) -> tuple[bool, str]:
     """
     Sends the 6-digit email verification code using the unified resilient SMTP mailer.
     Tries Port 465 (SSL) first, then falls back to Port 587 (TLS).
     """
-    subject = 'Verify your Sahara Gold customer account'
+    subject = 'Verify your New Sahara Gold and Diamond customer account'
     body = (
         f'Dear {user.first_name or "Customer"},\n\n'
-        f'Your Sahara Gold verification code is: {code}\n\n'
+        f'Your New Sahara Gold and Diamond verification code is: {code}\n\n'
         'This code expires in 15 minutes. '
         'Enter this code on the verification screen to activate your account.\n\n'
         'If you did not request this account, please disregard this email.\n\n'
         'Showroom: Bashundhara City Shopping Mall, Level 7, Block-A Shop-19, Dhaka.\n'
         'Hotline / WhatsApp: 01799-281878\n\n'
-        'Regards,\nSahara Gold'
+        'Regards,\nNew Sahara Gold and Diamond'
     )
     html_message = None
     try:
@@ -62,14 +74,14 @@ def send_verification_code(user, code: str) -> tuple[bool, str]:
 def _send_welcome_email(user):
     """Dispatches a welcome email in background once account is officially verified."""
     try:
-        subject = 'Welcome to Sahara Gold!'
+        subject = 'Welcome to New Sahara Gold and Diamond!'
         body = (
             f'Dear {user.first_name or "Customer"},\n\n'
-            'Your Sahara Gold account has been verified and activated successfully.\n\n'
+            'Your New Sahara Gold and Diamond account has been verified and activated successfully.\n\n'
             'You can now track your orders, view hallmark certifications, and manage your fine jewelry purchases.\n\n'
             'Showroom: Bashundhara City Shopping Mall, Level 7, Block-A Shop-19, Dhaka.\n'
             'Hotline / WhatsApp: 01799-281878\n\n'
-            'Regards,\nSahara Gold & Diamond'
+            'Regards,\nNew Sahara Gold and Diamond'
         )
         html_message = None
         try:
@@ -92,6 +104,8 @@ class CustomerRegisterView(APIView):
     NO demo codes, NO fake verifications, NO bypass.
     """
     permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [VerificationThrottle]
 
     def post(self, request):
         name = str(request.data.get('name', '')).strip()
@@ -99,7 +113,7 @@ class CustomerRegisterView(APIView):
         phone = ''.join(c for c in str(request.data.get('phone', '')) if c.isdigit() or c == '+')
         password = str(request.data.get('password', ''))
 
-        if not name or not email or len(password) < 8:
+        if not name or len(name) > 150 or not email or len(email) > 150 or len(password) < 8 or len(password) > 128:
             return Response(
                 {'detail': 'Full name, valid email address, and a password of at least 8 characters are required.'},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -110,11 +124,20 @@ class CustomerRegisterView(APIView):
         except ValidationError:
             return Response({'detail': 'Please provide a valid email address.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        if phone and (len(phone) > 20 or not phone.lstrip('+').isdigit()):
+            return Response({'detail': 'Please provide a valid phone number.'}, status=400)
+        try:
+            validate_password(password, User(username=email, email=email, first_name=name))
+        except ValidationError as exc:
+            return Response({'detail': ' '.join(exc.messages)}, status=400)
+
         if not phone:
             phone = email
 
         existing = User.objects.filter(email__iexact=email).first()
         if existing:
+            if existing.is_staff or existing.is_superuser or not CustomerEmailVerification.objects.filter(user=existing).exists():
+                return Response({'detail': 'Unable to register this account. Please contact the showroom.'}, status=400)
             if existing.is_active:
                 return Response(
                     {'detail': 'An account already exists with this email address. Please sign in.'},
@@ -158,7 +181,7 @@ class CustomerRegisterView(APIView):
             logger.error("Verification email failed for %s: %s", email, mail_msg)
             return Response(
                 {
-                    'detail': f"Failed to deliver verification email: {mail_msg}. Please verify your email address and try again.",
+                    'detail': 'Unable to deliver the verification email. Please try again shortly.',
                     'email': email,
                     'verification_required': True,
                 },
@@ -169,7 +192,7 @@ class CustomerRegisterView(APIView):
             {
                 'verification_required': True,
                 'email': email,
-                'message': f"A 6-digit verification code has been sent to {email}. Please enter it to verify your account.",
+                **verification_delivery(email),
             },
             status=status.HTTP_201_CREATED,
         )
@@ -180,6 +203,8 @@ class CustomerResendVerificationView(APIView):
     Allows a customer to request a fresh verification code if the previous one expired or was not received.
     """
     permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [VerificationThrottle]
 
     def post(self, request):
         email = str(request.data.get('email', '')).strip().lower()
@@ -189,6 +214,9 @@ class CustomerResendVerificationView(APIView):
         user = User.objects.filter(email__iexact=email).first()
         if not user:
             return Response({'detail': 'No account found with this email address.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if user.is_staff or user.is_superuser or not CustomerEmailVerification.objects.filter(user=user).exists():
+            return Response({'detail': 'Verification request is invalid.'}, status=400)
 
         if user.is_active:
             return Response({'detail': 'This account is already verified and active. Please sign in.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -206,12 +234,12 @@ class CustomerResendVerificationView(APIView):
         ok, mail_msg = send_verification_code(user, code)
         if not ok:
             return Response(
-                {'detail': f"Unable to resend code: {mail_msg}. Please try again shortly."},
+                {'detail': 'Unable to resend code. Please try again shortly.'},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
         return Response(
-            {'message': f"A fresh 6-digit verification code has been sent to {email}."},
+            verification_delivery(email),
             status=status.HTTP_200_OK,
         )
 
@@ -222,7 +250,10 @@ class CustomerVerifyEmailView(APIView):
     Activates the user account upon successful verification.
     """
     permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [VerificationThrottle]
 
+    @transaction.atomic
     def post(self, request):
         email = str(request.data.get('email', '')).strip().lower()
         code = str(request.data.get('code', '')).strip()
@@ -231,10 +262,13 @@ class CustomerVerifyEmailView(APIView):
             return Response({'detail': 'Both email and 6-digit verification code are required.'}, status=status.HTTP_400_BAD_REQUEST)
 
         user = User.objects.filter(email__iexact=email).first()
-        verification = CustomerEmailVerification.objects.filter(user=user).first() if user else None
+        verification = CustomerEmailVerification.objects.select_for_update().filter(user=user).first() if user else None
 
         if not user or not verification:
             return Response({'detail': 'Verification request is invalid or does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if user.is_staff or user.is_superuser or not CustomerEmailVerification.objects.filter(user=user).exists():
+            return Response({'detail': 'Verification request is invalid.'}, status=400)
 
         if user.is_active:
             return Response({'detail': 'This account is already verified. Please sign in.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -256,8 +290,8 @@ class CustomerVerifyEmailView(APIView):
         user.save(update_fields=['is_active'])
         verification.delete()
 
-        # Send welcome email asynchronously
-        threading.Thread(target=_send_welcome_email, args=(user,), daemon=True).start()
+        # Send only after the activation transaction commits successfully.
+        transaction.on_commit(lambda: threading.Thread(target=_send_welcome_email, args=(user,), daemon=True).start())
 
         return Response({
             **issue_tokens(user),
@@ -266,7 +300,7 @@ class CustomerVerifyEmailView(APIView):
                 'phone': user.username,
                 'email': user.email,
             },
-            'message': 'Account verified successfully! Welcome to Sahara Gold.',
+            'message': 'Account verified successfully! Welcome to New Sahara Gold and Diamond.',
         })
 
 
@@ -275,6 +309,8 @@ class CustomerLoginView(APIView):
     Allows customers to sign in using their Email Address OR Phone Number.
     """
     permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [LoginThrottle]
 
     def post(self, request):
         identifier = str(
@@ -285,7 +321,7 @@ class CustomerLoginView(APIView):
         ).strip()
         password = str(request.data.get('password', ''))
 
-        if not identifier or not password:
+        if not identifier or not password or len(identifier) > 254 or len(password) > 1024:
             return Response(
                 {'detail': 'Email address (or phone) and password are required.'},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -296,18 +332,23 @@ class CustomerLoginView(APIView):
             user = User.objects.filter(username__iexact=identifier).first()
         if not user:
             clean_digits = ''.join(c for c in identifier if c.isdigit())
-            if clean_digits:
+            if len(clean_digits) >= 10 and all(c.isdigit() or c in '+ -()' for c in identifier):
                 user = User.objects.filter(username__endswith=clean_digits[-10:]).first()
 
+        guard_key = login_key(identifier, user)
+        check_login(guard_key)
+
         if not user:
+            failed_login(guard_key)
             return Response(
-                {'detail': 'No account found with this email or phone. Please click "Create Account" below.'},
-                status=status.HTTP_404_NOT_FOUND,
+                {'detail': 'Invalid email/phone or password.'},
+                status=status.HTTP_401_UNAUTHORIZED,
             )
 
         if not user.check_password(password):
+            failed_login(guard_key)
             return Response(
-                {'detail': 'Incorrect password. Please check your password and try again.'},
+                {'detail': 'Invalid email/phone or password.'},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
@@ -321,6 +362,7 @@ class CustomerLoginView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
+        successful_login(guard_key)
         return Response({
             **issue_tokens(user),
             'customer': {

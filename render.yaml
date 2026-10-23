@@ -1,4 +1,6 @@
 services:
+  # sahara-gold-cache already exists in this workspace and is referenced below.
+  # Keep its approved plan, persistence and network settings managed in Render.
   # ---------------------------------------------------------------------------
   # 1. Backend Web Service (Django + Gunicorn + PostgreSQL)
   # ---------------------------------------------------------------------------
@@ -18,6 +20,11 @@ services:
     envVars:
       - key: MEDIA_ROOT
         value: /var/data
+      - key: REDIS_URL
+        fromService:
+          name: sahara-gold-cache
+          type: keyvalue
+          property: connectionString
       - key: DEBUG
         value: "False"
       - key: PYTHON_VERSION
@@ -30,26 +37,21 @@ services:
         value: "saharagold19@gmail.com"
       - key: DJANGO_SUPERUSER_PASSWORD
         sync: false
-      - key: ALLOW_SANDBOX_PAYMENTS
-        value: "True"
-      - key: SSLCOMMERZ_IS_SANDBOX
-        value: "True"
-      - key: SSLCOMMERZ_STORE_ID
-        value: "testbox"
-      - key: SSLCOMMERZ_STORE_PASS
-        sync: false
+      # Online checkout is disabled until configured in Admin → Settings.
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_FROM_EMAIL
         value: "info@shaharagold.org"
       - key: DEFAULT_FROM_EMAIL
-        value: "Sahara Gold <info@shaharagold.org>"
+        value: "New Sahara Gold and Diamond <info@shaharagold.org>"
       - key: STORE_EMAIL
         value: "info@shaharagold.org"
+      - key: ADMIN_NOTIFICATION_EMAIL
+        value: "saharagold19@gmail.com"
       - key: USD_TO_BDT_RATE
         value: "122.5"
       - key: STORE_NAME
-        value: "Sahara Gold & Diamond"
+        value: "New Sahara Gold and Diamond"
       - key: STORE_PHONE
         value: "01799-281878"
       - key: STORE_WHATSAPP
@@ -73,7 +75,7 @@ services:
       - key: CORS_ALLOWED_ORIGINS
         value: "https://www.shaharagold.org,https://shaharagold.org,https://sahara-gold-frontend.onrender.com"
       - key: ALLOWED_HOSTS
-        value: ".onrender.com,localhost,127.0.0.1,www.shaharagold.org,shaharagold.org"
+        value: "sahara-gold-backend.onrender.com,www.shaharagold.org,shaharagold.org"
 
   # ---------------------------------------------------------------------------
   # 2. Frontend Static Site (React/Vite CDN)

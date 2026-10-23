@@ -3,8 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import ProductGrid from '../components/product/ProductGrid';
 import { useProducts, useCategories } from '../hooks/useShopData';
 import SEO from '../components/SEO';
-import PageTransition from '../components/PageTransition';
-import { ChevronDown } from 'lucide-react';
+import CollectionHeading from '../components/CollectionHeading';
+import { useStorefrontContent } from '../hooks/useStorefrontContent';
 
 const sortOptions = [
     { id: 'default', name: 'Default' },
@@ -16,6 +16,7 @@ const sortOptions = [
 ];
 
 const ShopPage = () => {
+    const { data: content } = useStorefrontContent();
     const [searchParams, setSearchParams] = useSearchParams();
     const activeCategory = searchParams.get('cat') || 'all';
     const [sortBy, setSortBy] = useState('default');
@@ -43,7 +44,7 @@ const ShopPage = () => {
         );
     }, [categories, activeCategory]);
 
-    const { data: products = [], isLoading } = useProducts(activeCategory);
+    const { data: products = [], isLoading, isError, refetch } = useProducts(activeCategory);
 
     const sortedProducts = useMemo(() => {
         if (!products.length) return products;
@@ -69,93 +70,33 @@ const ShopPage = () => {
     };
 
     return (
-        <PageTransition>
+        <>
             <div className="section shop-page">
                 <SEO
                     title={activeCategory === 'all' ? 'Shop All Collection' : `Shop ${activeCatObj?.name || 'Collection'}`}
                     description="Browse our exclusive gold and diamond jewelry collection."
                     url={activeCategory === 'all' ? '/shop' : `/shop?cat=${activeCategory}`}
                 />
+                <CollectionHeading eyebrow="The Sahara collection" title={activeCategory === 'all' ? content.shop_title : activeCatObj?.name || 'Collection'}><p>{content.shop_description}</p></CollectionHeading>
                 <div className="container">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', flexWrap: 'wrap', gap: '20px' }}>
-                        <h1 className="section-title" style={{ margin: 0, fontSize: '2rem' }}>
-                            {activeCatObj?.name || 'Collection'}
-                        </h1>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                            <div style={{ fontSize: '14px', color: '#888' }}>
-                                Showing {sortedProducts.length} results
-                            </div>
-                            <div className="shop-sort-control" style={{ position: 'relative' }}>
-                                <select
-                                    value={sortBy}
-                                    onChange={(e) => setSortBy(e.target.value)}
-                                    className="shop-sort-select"
-                                    style={{
-                                        padding: '10px 40px 10px 16px',
-                                        backgroundColor: '#1a1a1a',
-                                        border: '1px solid #333',
-                                        borderRadius: '8px',
-                                        color: '#fff',
-                                        fontSize: '13px',
-                                        cursor: 'pointer',
-                                        appearance: 'none',
-                                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
-                                        backgroundRepeat: 'no-repeat',
-                                        backgroundPosition: 'right 12px center'
-                                    }}
-                                >
-                                    {sortOptions.map(opt => (
-                                        <option key={opt.id} value={opt.id}>{opt.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="shop-results-layout">
-                        {/* Sidebar / Filter Bar */}
-                        <div className="collection-filter-strip">
+                    <div className="collection-toolbar">
+                        <nav className="collection-tabs" aria-label="Jewellery categories">
                             {categories.map(cat => {
-                                const catKey = cat.slug || String(cat.id);
-                                const lowerActive = (activeCategory || '').toLowerCase();
-                                const isActive = lowerActive === 'all'
-                                    ? (cat.slug === 'all' || cat.id === 'all')
-                                    : (
-                                        (cat.slug && cat.slug.toLowerCase() === lowerActive) ||
-                                        (cat.name && cat.name.toLowerCase() === lowerActive) ||
-                                        String(cat.id) === activeCategory
-                                    );
-                                return (
-                                    <button
-                                        key={catKey}
-                                        onClick={() => handleCategoryChange(catKey)}
-                                        aria-pressed={isActive}
-                                        style={{
-                                            padding: '8px 16px',
-                                            borderRadius: '20px',
-                                            border: `1px solid ${isActive ? 'var(--color-gold-primary)' : '#333'}`,
-                                            backgroundColor: isActive ? 'var(--color-gold-primary)' : 'transparent',
-                                            color: isActive ? '#000' : '#888',
-                                            cursor: 'pointer',
-                                            fontSize: '13px',
-                                            fontWeight: '500',
-                                            transition: 'all 0.3s'
-                                        }}
-                                    >
-                                        {cat.name}
-                                    </button>
-                                );
+                                const key = cat.slug || String(cat.id);
+                                return <button key={key} onClick={() => handleCategoryChange(key)} aria-pressed={activeCatObj?.id === cat.id}>{cat.name}</button>;
                             })}
-                        </div>
-
+                        </nav>
+                        <label className="collection-sort">Sort by <select value={sortBy} onChange={e => setSortBy(e.target.value)}>{sortOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}</select></label>
+                    </div>
+                    <p className="collection-count" role="status">{isLoading ? 'Finding your next favourite…' : `${sortedProducts.length} pieces to discover`}</p>
+                    <div className="shop-results-layout">
                         {/* Grid */}
                         <div className="shop-results">
                             {isLoading ? (
                                 <div className="product-grid" aria-label="Loading products">
                                     {[1, 2, 3, 4].map(i => (
                                         <div key={i} style={{
-                                            backgroundColor: '#1a1a1a',
+                                            backgroundColor: '#e8dfd2',
                                             borderRadius: '8px',
                                             height: '350px',
                                             animation: 'pulse 1.5s infinite'
@@ -163,13 +104,13 @@ const ShopPage = () => {
                                     ))}
                                 </div>
                             ) : (
-                                <ProductGrid products={sortedProducts} />
+                                isError ? <div className="maison-empty"><h2>The collection is taking a moment.</h2><p>We couldn’t load the pieces. Please try again.</p><button className="maison-button" onClick={() => refetch()}>Try again</button></div> : <ProductGrid products={sortedProducts} />
                             )}
                         </div>
                     </div>
                 </div>
             </div>
-        </PageTransition>
+        </>
     );
 };
 

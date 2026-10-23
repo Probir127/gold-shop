@@ -1,8 +1,9 @@
+from core.branding import public_brand_text
 import os
 import logging
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import generics, status, permissions
+from rest_framework import generics, status, permissions, serializers
 from django.shortcuts import get_object_or_404, render
 from django.http import FileResponse, Http404
 from django.utils import timezone
@@ -48,20 +49,17 @@ class GeneratePDFView(APIView):
     permission_classes = [IsTenantManagerOrStaff]
 
     def _generate(self, request, pk):
-        invoice = Invoice.objects.filter(pk=pk).first()
-        if not invoice:
-            return Response({'detail': 'Invoice not found.'}, status=404)
-        tenant = getattr(request, 'tenant', None) or invoice.tenant or Tenant.objects.filter(slug='sahara-gold').first() or Tenant.objects.first()
+        tenant = getattr(request, 'tenant', None)
+        if not tenant:
+            return Response({'detail': 'No tenant context.'}, status=403)
+        invoice = get_object_or_404(Invoice, pk=pk, tenant=tenant)
         try:
             invoice.pdf_path = generate_invoice_pdf(invoice)
             invoice.save(update_fields=['pdf_path'])
             return Response({'status': 'success', 'pdf_path': invoice.pdf_path})
         except Exception as e:
             logger.error("Failed to generate invoice PDF for %s: %s", invoice.invoice_number, e)
-            return Response({'detail': f'Error generating invoice PDF: {e}'}, status=500)
-
-    def get(self, request, pk):
-        return self._generate(request, pk)
+            return Response({'detail': 'Invoice PDF could not be generated.'}, status=500)
 
     def post(self, request, pk):
         return self._generate(request, pk)
@@ -70,20 +68,25 @@ class SendInvoiceView(APIView):
     permission_classes = [IsTenantManagerOrStaff]
 
     def post(self, request, pk):
-        invoice = Invoice.objects.filter(pk=pk).first()
-        if not invoice:
-            return Response({'detail': 'Invoice not found.'}, status=404)
+        tenant = getattr(request, 'tenant', None)
+        if not tenant:
+            return Response({'detail': 'No tenant context.'}, status=403)
+        invoice = get_object_or_404(Invoice, pk=pk, tenant=tenant)
 
-        tenant = getattr(request, 'tenant', None) or invoice.tenant or Tenant.objects.filter(slug='sahara-gold').first() or Tenant.objects.first()
 
-        # Step 1: Generate PDF if not already done or file missing
+        override_email = request.data.get('email', '')
+        if override_email:
+            override_email = serializers.EmailField().run_validation(override_email)
+
+        # Regenerate on dispatch so edited amounts and status cannot send an old PDF.
         try:
-            pdf_disk_path = os.path.join(settings.MEDIA_ROOT, invoice.pdf_path) if invoice.pdf_path else None
-            if not invoice.pdf_path or not pdf_disk_path or not os.path.exists(pdf_disk_path):
-                invoice.pdf_path = generate_invoice_pdf(invoice)
-                invoice.save(update_fields=['pdf_path'])
+            invoice.pdf_path = generate_invoice_pdf(invoice)
+            invoice.save(update_fields=['pdf_path'])
+            if not os.path.isfile(os.path.join(settings.MEDIA_ROOT, invoice.pdf_path)):
+                raise OSError('Generated invoice file is missing.')
         except Exception as pdf_err:
-            logger.error("Failed generating PDF for invoice %s: %s", invoice.invoice_number, pdf_err)
+            logger.error('Invoice PDF generation failed (%s).', type(pdf_err).__name__)
+            return Response({'detail': 'Invoice PDF could not be generated. No invoice was dispatched.'}, status=503)
 
         # Step 2: Build public URL for the PDF
         pdf_url = make_invoice_pdf_url(request, invoice)
@@ -91,27 +94,8 @@ class SendInvoiceView(APIView):
         # Step 3: Resolve customer email (from request payload, client, order, or registered account)
         email_sent = False
         email_error = None
-        client_email = str(request.data.get('email', '')).strip() or getattr(invoice.client, 'email', '') or ''
+        client_email = override_email or getattr(invoice.client, 'email', '') or ''
         
-        if not client_email:
-            # Fallback 1: lookup matching order
-            from orders.models import Order
-            order = None
-            if invoice.invoice_number.startswith('INV-ORD-'):
-                order_id = invoice.invoice_number.replace('INV-', '')
-                order = Order.objects.filter(order_id=order_id).first()
-            if not order and invoice.client and invoice.client.phone:
-                order = Order.objects.filter(customer_phone=invoice.client.phone).order_by('-created_at').first()
-            if order and order.customer_email:
-                client_email = order.customer_email
-
-        if not client_email and invoice.client and invoice.client.phone:
-            # Fallback 2: registered user account
-            from django.contrib.auth.models import User
-            usr = User.objects.filter(username=invoice.client.phone).first()
-            if usr and usr.email:
-                client_email = usr.email
-
         # Keep client record updated with detected email
         if client_email and invoice.client and not invoice.client.email:
             invoice.client.email = client_email
@@ -120,15 +104,15 @@ class SendInvoiceView(APIView):
         if client_email:
             from core.utils.mailer import send_email_resilient
             pdf_abs = os.path.join(settings.MEDIA_ROOT, invoice.pdf_path) if invoice.pdf_path else None
-            attachments = [pdf_abs] if (pdf_abs and os.path.exists(pdf_abs)) else None
+            attachments = [pdf_abs]
             client_name = invoice.client.name if invoice.client else "Valued Customer"
-            biz_name = tenant.business_name if (tenant and getattr(tenant, 'business_name', None)) else "Sahara Gold"
+            biz_name = public_brand_text(tenant.business_name) if (tenant and getattr(tenant, 'business_name', None)) else "New Sahara Gold and Diamond"
 
-            subject = f'Official Certified Invoice #{invoice.invoice_number} | {biz_name}'
+            subject = f'Invoice #{invoice.invoice_number} | {biz_name}'
             body = (
                 f'Dear {client_name},\n\n'
                 f'Thank you for choosing {biz_name}.\n'
-                f'Please find your official certified invoice #{invoice.invoice_number} attached as a PDF.\n\n'
+                f'Please find your invoice #{invoice.invoice_number} attached as a PDF.\n\n'
                 f'Invoice Summary:\n'
                 f'• Invoice Number: #{invoice.invoice_number}\n'
                 f'• Total Amount: {invoice.currency} {invoice.total_amount:,.2f}\n'
@@ -157,6 +141,14 @@ class SendInvoiceView(APIView):
                 html_message=html_message,
                 attachments=attachments
             )
+            from core.utils.notifications import notify_store_owner
+            notify_store_owner(
+                subject=f'[Store invoice copy] Invoice #{invoice.invoice_number}',
+                body=f'Invoice #{invoice.invoice_number}\nCustomer: {client_name}\n'
+                     f'Total: {invoice.currency} {invoice.total_amount:,.2f}\n'
+                     f'Customer email accepted: {ok}',
+                attachments=attachments,
+            )
             if ok:
                 email_sent = True
                 logger.info("Invoice email successfully sent to %s for invoice %s", client_email, invoice.invoice_number)
@@ -169,7 +161,7 @@ class SendInvoiceView(APIView):
         # Step 4: Send via WhatsApp (if credentials configured)
         wa_result = {}
         if invoice.client and invoice.client.phone and tenant:
-            caption = f'Hi! Here is your invoice {invoice.invoice_number} from {getattr(tenant, "business_name", "Sahara Gold")}. Total: {invoice.currency} {invoice.total_amount}.'
+            caption = f'Hi! Here is your invoice {invoice.invoice_number} from {public_brand_text(getattr(tenant, "business_name", "New Sahara Gold and Diamond"))}. Total: {invoice.currency} {invoice.total_amount}.'
             try:
                 wa_result = send_document(
                     to_phone=invoice.client.phone,
@@ -184,11 +176,12 @@ class SendInvoiceView(APIView):
 
         # Step 5: Update invoice status if dispatched
         if email_sent or (wa_result and not wa_result.get('error')):
-            invoice.status = 'sent'
+            if invoice.status != 'paid':
+                invoice.status = 'sent'
             invoice.sent_at = timezone.now()
             invoice.save(update_fields=['status', 'sent_at'])
             if invoice.client:
-                invoice.client.status = 'invoiced'
+                invoice.client.status = 'completed' if invoice.status == 'paid' else 'invoiced'
                 invoice.client.save(update_fields=['status'])
 
         return Response({
@@ -198,7 +191,7 @@ class SendInvoiceView(APIView):
             'email_error': email_error,
             'whatsapp_response': wa_result,
             'pdf_url': pdf_url
-        })
+        }, status=200 if email_sent or (wa_result and not wa_result.get('error')) else 502)
 
 
 class MarkInvoicePaidView(APIView):
@@ -288,9 +281,10 @@ class InvoiceHTMLView(APIView):
             for it in (invoice.items or []):
                 items.append({
                     'product_name': it.get('name') or it.get('service') or it.get('product_name') or 'Gold Jewelry Item',
-                    'weight': it.get('weight', '1.0'),
+                    'weight': it.get('weight', ''),
+                    'quantity': it.get('quantity', 1),
                     'price_at_purchase': it.get('price') or it.get('unit_price') or it.get('total') or 0,
-                    'product': {'purity': it.get('purity', '22K'), 'sku': it.get('sku', '')}
+                    'product': {'purity': it.get('purity', ''), 'sku': it.get('sku', '')}
                 })
 
         context = {
@@ -316,21 +310,33 @@ class InvoicePDFDownloadView(APIView):
                 token,
                 max_age=getattr(settings, 'INVOICE_LINK_MAX_AGE', 7 * 24 * 60 * 60),
             )
-        except signing.BadSignature as exc:
+        except (signing.BadSignature, ValueError) as exc:
             raise Http404 from exc
 
+        import uuid
+        try:
+            invoice_id = uuid.UUID(invoice_id)
+        except (ValueError, TypeError, AttributeError) as exc:
+            raise Http404 from exc
         invoice = get_object_or_404(Invoice, pk=invoice_id)
         if not invoice.pdf_path:
             invoice.pdf_path = generate_invoice_pdf(invoice)
             invoice.save(update_fields=['pdf_path'])
-        pdf_path = os.path.join(settings.MEDIA_ROOT, invoice.pdf_path)
+        from django.utils._os import safe_join
+        from django.core.exceptions import SuspiciousFileOperation
+        try:
+            pdf_path = safe_join(settings.MEDIA_ROOT, invoice.pdf_path)
+        except SuspiciousFileOperation as exc:
+            raise Http404 from exc
         if not os.path.isfile(pdf_path):
             raise Http404
-        return FileResponse(open(pdf_path, 'rb'), content_type='application/pdf')
+        response = FileResponse(open(pdf_path, 'rb'), content_type='application/pdf')
+        response['Cache-Control'] = 'private, no-store'
+        response['X-Robots-Tag'] = 'noindex, nofollow'
+        return response
 
 
 def make_invoice_pdf_url(request, invoice):
     from django.core import signing
     token = signing.TimestampSigner(salt='sahara-gold.invoice-pdf').sign(str(invoice.pk))
     return request.build_absolute_uri(f'/api/invoices/pdf/{token}/')
-

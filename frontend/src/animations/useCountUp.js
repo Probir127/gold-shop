@@ -1,5 +1,5 @@
 /**
- * Sahara Gold — useCountUp
+ * New Sahara Gold and Diamond — useCountUp
  * Anime.js kinetic rolling counter for gold prices, KPIs, and stats.
  * Animates a numeric value from 0 (or prev) to target with luxury spring feel.
  *

@@ -538,3 +538,30 @@ class BotConfig(models.Model):
 
     def __str__(self):
         return f'BotConfig — {self.tenant.slug}'
+
+
+class StorefrontContent(models.Model):
+    """Single-shop public content, edited by staff. No credentials or HTML."""
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    content = models.JSONField(default=dict, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        super().clean()
+        from .storefront import ContentSerializer
+        from django.core.exceptions import ValidationError
+        serializer = ContentSerializer(data=self.content)
+        if not serializer.is_valid():
+            raise ValidationError({'content': str(serializer.errors)})
+        self.content = serializer.validated_data
+        self.pk = 1
+
+class PaymentConfiguration(models.Model):
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    contact_phone = models.CharField(max_length=30, blank=True)
+    merchant_number = models.CharField(max_length=30, blank=True)
+    instructions = models.TextField(default='Call us to confirm the merchant payment number. Quote your order reference when paying. Your order is confirmed only after our team verifies payment.')
+    ssl_enabled = models.BooleanField(default=False)
+    ssl_store_id = models.CharField(max_length=150, blank=True)
+    ssl_secret_encrypted = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)

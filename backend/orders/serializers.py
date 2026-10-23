@@ -13,7 +13,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
     product_id = serializers.PrimaryKeyRelatedField(
         queryset=Product.objects.filter(in_stock=True), source='product', write_only=True
     )
-    quantity = serializers.IntegerField(min_value=1)
+    quantity = serializers.IntegerField(min_value=1, max_value=100)
 
     class Meta:
         model = OrderItem
@@ -21,14 +21,33 @@ class OrderItemSerializer(serializers.ModelSerializer):
         read_only_fields = ['product_name', 'weight', 'price_at_purchase']
 
 class OrderSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True, allow_empty=False)
+    items = OrderItemSerializer(many=True, allow_empty=False, max_length=100)
     customer_invoice_url = serializers.SerializerMethodField()
     customer_access_token = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
         fields = '__all__'
-        read_only_fields = ['order_id', 'total', 'subtotal', 'vat', 'order_status', 'payment_status', 'created_at', 'updated_at']
+        read_only_fields = ['order_id', 'total', 'subtotal', 'vat', 'order_status', 'payment_status', 'created_at', 'updated_at', 'bkash_payment_id', 'bkash_transaction_id']
+
+    def validate_payment_method(self, value):
+        from core.payment_config import gateway_credentials
+        if value == 'manual': return value
+        if value == 'bkash' and gateway_credentials(): return value
+        raise serializers.ValidationError('This payment method is currently unavailable. Choose merchant payment.')
+
+    def validate_customer_phone(self, value):
+        import re
+        value = re.sub(r'[\s()-]', '', value)
+        if not re.fullmatch(r'(?:\+?88)?01[3-9]\d{8}', value):
+            raise serializers.ValidationError('Enter a valid Bangladesh mobile number.')
+        return value
+
+    def validate_shipping_address(self, value):
+        value = value.strip()
+        if not 10 <= len(value) <= 2000:
+            raise serializers.ValidationError('Enter a delivery address between 10 and 2000 characters.')
+        return value
 
     def get_customer_invoice_url(self, obj):
         token = self.get_customer_access_token(obj)
@@ -83,6 +102,8 @@ class OrderSerializer(serializers.ModelSerializer):
         vat = 0
         total = subtotal
 
+        validated_data.setdefault('payment_method', 'manual')
+        validated_data['payment_status'] = 'awaiting_payment'
         order = Order.objects.create(subtotal=subtotal, vat=vat, total=total, **validated_data)
         
         for item in order_items:

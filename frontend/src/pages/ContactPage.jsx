@@ -1,126 +1,36 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { MapPin, Phone, Mail, Clock, Send } from 'lucide-react';
-import { STORE_INFO } from '../utils/constants';
+import { ArrowUpRight, ArrowRight } from 'lucide-react';
 import { api } from '../services/api';
+import { validateEnquiry } from '../utils/formValidation';
+import { useStorefrontContent } from '../hooks/useStorefrontContent';
+import SEO from '../components/SEO';
+import './support-v2.css';
 
-const ContactPage = () => {
-    const [form, setForm] = useState({ name: '', mobile: '', email: '', message: '' });
+export default function ContactPage() {
+    const { data: content } = useStorefrontContent();
+    const [form, setForm] = useState({ name: '', mobile: '', email: '', message: '', website: '' });
     const [status, setStatus] = useState({ type: '', message: '' });
     const [submitting, setSubmitting] = useState(false);
-
-    const handleSubmit = async (event) => {
+    const [showMap, setShowMap] = useState(false);
+    const update = event => setForm({ ...form, [event.target.name]: event.target.value });
+    async function handleSubmit(event) {
         event.preventDefault();
-        setStatus({ type: '', message: '' });
-        setSubmitting(true);
-        try {
-            const response = await api.sendContactEnquiry(form);
-            setStatus({ type: 'success', message: response.detail });
-            setForm({ name: '', mobile: '', email: '', message: '' });
-        } catch (error) {
-            setStatus({ type: 'error', message: error.message });
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    const mapQuery = encodeURIComponent(STORE_INFO.address);
-
-    return (
-        <div className="editorial-page contact-page" style={{ backgroundColor: '#000', color: '#fff', paddingTop: '100px', minHeight: '100vh' }}>
-            <div className="container">
-                <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    style={{ textAlign: 'center', marginBottom: '80px' }}
-                >
-                    <h1 style={{ fontSize: '3.5rem', fontFamily: 'var(--font-heading)', color: 'var(--color-gold-primary)', marginBottom: '20px' }}>Contact Us</h1>
-                    <div style={{ width: '80px', height: '2px', backgroundColor: 'var(--color-gold-primary)', margin: '0 auto 25px' }}></div>
-                    <p style={{ color: '#888', maxWidth: '600px', margin: '0 auto', fontSize: '1.1rem' }}>
-                        Experience the brilliance of Sahara Gold firsthand. Our experts are ready to assist you with your bespoke jewelry needs.
-                    </p>
-                </motion.div>
-
-                <section className="contact-map-section">
-                    <div>
-                        <p className="contact-map-kicker">Visit the showroom</p>
-                        <h2>Find us in Bashundhara City</h2>
-                        <p>{STORE_INFO.address}</p>
-                        <a href={`https://www.google.com/maps/search/?api=1&query=${mapQuery}`} target="_blank" rel="noreferrer" className="btn btn-outline">Open in Google Maps</a>
-                    </div>
-                    <iframe
-                        title="Sahara Gold showroom map"
-                        src={`https://www.google.com/maps?q=${mapQuery}&output=embed`}
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                    />
-                </section>
-
-                <div className="contact-main-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '60px', marginBottom: '100px' }}>
-
-                    {/* Contact Info */}
-                    <motion.div
-                        initial={{ opacity: 0, x: -30 }}
-                        whileInView={{ opacity: 1, x: 0 }}
-                        viewport={{ once: true }}
-                    >
-                        <h2 style={{ fontSize: '2rem', marginBottom: '40px', color: '#fff' }}>Get In Touch</h2>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-                            {[
-                                { icon: <MapPin />, label: 'Flagship Showroom', val: STORE_INFO.address },
-                                { icon: <Phone />, label: 'Mobile / WhatsApp', val: STORE_INFO.phone },
-                                { icon: <Mail />, label: 'Email Enquiries', val: STORE_INFO.email },
-                                { icon: <Clock />, label: 'Opening Hours', val: 'Wed - Mon: 11 AM - 9 PM (Tue Closed)', isSecondary: true },
-                            ].map((item, i) => (
-                                <div key={i} style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
-                                    <div style={{ padding: '12px', backgroundColor: 'rgba(212, 175, 55, 0.1)', color: 'var(--color-gold-primary)', borderRadius: '12px' }}>
-                                        {item.icon}
-                                    </div>
-                                    <div>
-                                        <h4 style={{ fontSize: '0.9rem', color: '#666', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>{item.label}</h4>
-                                        <p style={{ fontSize: '1.1rem', color: item.isSecondary ? '#ef4444' : '#fff' }}>{item.val}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </motion.div>
-
-                    {/* Contact Form */}
-                    <motion.div
-                        initial={{ opacity: 0, x: 30 }}
-                        whileInView={{ opacity: 1, x: 0 }}
-                        viewport={{ once: true }}
-                        style={{ padding: '40px', backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '24px', backdropFilter: 'blur(10px)' }}
-                    >
-                        <h2 style={{ fontSize: '1.8rem', color: '#fff', marginBottom: '30px' }}>Send An Enquiry</h2>
-                        <form onSubmit={handleSubmit}>
-                            <div style={{ marginBottom: '24px' }}>
-                                <input type="text" placeholder="Full Name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required style={{ width: '100%', padding: '16px', backgroundColor: '#000', border: '1px solid #222', color: '#fff', borderRadius: '12px', outline: 'none' }} />
-                            </div>
-                            <div style={{ marginBottom: '24px' }}>
-                                <input type="tel" placeholder="Mobile number" value={form.mobile} onChange={(event) => setForm({ ...form, mobile: event.target.value })} required style={{ width: '100%', padding: '16px', backgroundColor: '#000', border: '1px solid #222', color: '#fff', borderRadius: '12px', outline: 'none' }} />
-                            </div>
-                            <div style={{ marginBottom: '24px' }}>
-                                <input type="email" placeholder="Email address (optional)" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} style={{ width: '100%', padding: '16px', backgroundColor: '#000', border: '1px solid #222', color: '#fff', borderRadius: '12px', outline: 'none' }} />
-                            </div>
-                            <div style={{ marginBottom: '30px' }}>
-                                <textarea rows="4" placeholder="How can we help you?" value={form.message} onChange={(event) => setForm({ ...form, message: event.target.value })} required minLength={10} style={{ width: '100%', padding: '16px', backgroundColor: '#000', border: '1px solid #222', color: '#fff', borderRadius: '12px', outline: 'none', resize: 'none' }}></textarea>
-                            </div>
-                            {status.message && (
-                                <p className={`contact-form-status ${status.type}`} role="status">{status.message}</p>
-                            )}
-                            <button className="btn btn-primary" disabled={submitting} style={{ width: '100%', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                                {submitting ? 'Sending...' : 'Send Enquiry'} <Send size={18} />
-                            </button>
-                        </form>
-                    </motion.div>
-
-                </div>
-            </div>
-        </div>
-    );
-};
-
-export default ContactPage;
-
+        if (submitting) return;
+        const validation = validateEnquiry(form);
+        if (validation) { setStatus({ type: 'error', message: validation }); return; }
+        setStatus({ type: '', message: '' }); setSubmitting(true);
+        try { const response = await api.sendContactEnquiry(form); setStatus({ type: 'success', message: response.detail }); setForm({ name: '', mobile: '', email: '', message: '', website: '' }); }
+        catch (error) { setStatus({ type: 'error', message: error.message }); }
+        finally { setSubmitting(false); }
+    }
+    const mapQuery = encodeURIComponent(content.address);
+    return <div className="sv2 sv2-contact">
+        <SEO title="Contact & Visit" description="Speak with New Sahara Gold and Diamond or visit us at Bashundhara City, Dhaka." />
+        <header className="sv2-masthead"><span className="sv2-eyebrow">Sahara / Personal service</span><h1>{content.contact_title}</h1><p>{content.contact_description}</p></header>
+        <section className="sv2-contact-grid sv2-wrap">
+            <div className="sv2-contact-details"><span className="sv2-eyebrow">Let’s talk</span><h2>Here for you.</h2><a href={`tel:${content.contact_phone.replace(/[^+\d]/g, '')}`} className="sv2-contact-line"><span>Call the shop</span><strong>{content.contact_phone}</strong><ArrowUpRight size={20} /></a><a href={`mailto:${content.contact_email}`} className="sv2-contact-line"><span>Write to us</span><strong>{content.contact_email}</strong><ArrowUpRight size={20} /></a><div className="sv2-contact-address"><span className="sv2-eyebrow">Visit Sahara</span><p>{content.address}</p><a className="sv2-text-link" href={`https://www.google.com/maps/search/?api=1&query=${mapQuery}`} target="_blank" rel="noreferrer">Get directions <ArrowUpRight size={16} /></a></div></div>
+            <form className="sv2-form sv2-enquiry" onSubmit={handleSubmit}><span className="sv2-eyebrow">A note to our team</span><h2>How can we help?</h2><div aria-hidden="true" className="sv2-honeypot"><label>Website<input name="website" tabIndex={-1} autoComplete="off" value={form.website} onChange={update} /></label></div><div className="sv2-form-pair"><label>Your name<input name="name" autoComplete="name" value={form.name} onChange={update} minLength={2} maxLength={150} required /></label><label>Mobile number<input name="mobile" type="tel" autoComplete="tel" value={form.mobile} onChange={update} maxLength={20} required /></label></div><label>Email <small>(optional)</small><input name="email" type="email" autoComplete="email" value={form.email} onChange={update} maxLength={254} /></label><label>Your message<textarea name="message" value={form.message} onChange={update} rows={4} required minLength={10} maxLength={5000} placeholder="Tell us about the piece or question you have in mind." /></label>{status.message && <p className={`sv2-notice ${status.type}`} role="status">{status.message}</p>}<button className="sv2-button" disabled={submitting}>{submitting ? 'Sending your message…' : 'Send your enquiry'}<ArrowRight size={18} /></button><p className="sv2-fine">Please do not include passwords or payment card details.</p></form>
+        </section>
+        <section className="sv2-location sv2-wrap"><div><span className="sv2-eyebrow">Dhaka, Bangladesh</span><h2>Come a little closer.</h2><p>{content.address}</p></div>{showMap ? <iframe title="New Sahara Gold and Diamond location" src={`https://www.google.com/maps?q=${mapQuery}&output=embed`} loading="lazy" referrerPolicy="no-referrer" /> : <button className="sv2-map-trigger" onClick={() => setShowMap(true)}><span>Explore our location</span><ArrowUpRight size={28} /><small>Load map · connects to Google</small></button>}</section>
+    </div>;
+}

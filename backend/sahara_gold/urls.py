@@ -21,7 +21,7 @@ def spa_fallback(request):
         return render(request, 'index.html')
     return JsonResponse({
         'status': 'online',
-        'service': 'Sahara Gold Backend API',
+        'service': 'New Sahara Gold and Diamond Backend API',
         'endpoints': {
             'rates': '/api/rates/latest/',
             'products': '/api/products/',
@@ -31,9 +31,9 @@ def spa_fallback(request):
     })
 
 # Admin Config
-admin.site.site_header = "Sahara Gold Admin"
-admin.site.site_title = "Sahara Gold Portal"
-admin.site.index_title = "Welcome to Sahara Gold DB"
+admin.site.site_header = "New Sahara Gold and Diamond Admin"
+admin.site.site_title = "New Sahara Gold and Diamond Portal"
+admin.site.index_title = "Welcome to New Sahara Gold and Diamond DB"
 
 urlpatterns = [
     # Django Builtin Admin (Database Level)

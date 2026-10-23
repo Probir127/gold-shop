@@ -1,5 +1,5 @@
 /**
- * Sahara Gold — Luxury Easing Curves
+ * New Sahara Gold and Diamond — Luxury Easing Curves
  * Anime.js custom easing presets for a cinematic gold experience.
  */
 

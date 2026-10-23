@@ -1,17 +1,21 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
+import { useLocation } from 'react-router-dom';
+import { useStorefrontContent } from '../hooks/useStorefrontContent';
 
 const SEO = ({ title, description, image, url, noindex = false }) => {
-    const siteTitle = 'Sahara Gold & Diamond';
-    const siteName = 'Sahara Gold';
-    const siteDescription = 'Premium handcrafted gold and diamond jewelry in Bangladesh. Hallmark certified ensuring purity and quality.';
+    const { pathname } = useLocation();
+    const { data: content } = useStorefrontContent();
+    const siteTitle = 'New Sahara Gold and Diamond';
+    const siteName = 'New Sahara Gold and Diamond';
+    const siteDescription = content.seo_description;
     const siteUrl = (import.meta.env.VITE_SITE_URL || 'https://www.shaharagold.org').replace(/\/$/, '');
-    const siteImage = '/assets/images/logo.png';
+    const siteImage = content.social_image;
 
     const fullTitle = title ? `${title} | ${siteTitle}` : siteTitle;
     const finalDescription = description || siteDescription;
-    const finalImage = image ? (image.startsWith('http') ? image : `${siteUrl}${image.startsWith('/') ? image : `/${image}`}`) : `${siteUrl}${siteImage}`;
-    const finalUrl = url ? `${siteUrl}${url.startsWith('/') ? url : `/${url}`}` : `${siteUrl}/`;
+    const finalImage = image ? (image.startsWith('http') ? image : `${siteUrl}${image.startsWith('/') ? image : `/${image}`}`) : (siteImage.startsWith('https://') ? siteImage : `${siteUrl}${siteImage}`);
+    const finalUrl = url ? `${siteUrl}${url.startsWith('/') ? url : `/${url}`}` : `${siteUrl}${pathname}`;
 
     return (
         <Helmet>

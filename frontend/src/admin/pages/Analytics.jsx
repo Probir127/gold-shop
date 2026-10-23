@@ -278,7 +278,7 @@ const Analytics = () => {
                 <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Live Intelligence</span>
               </div>
               <h1 className="text-2xl font-black text-white tracking-tight">AI Analytics</h1>
-              <p className="text-xs text-slate-500 mt-1">Powered by Sahara Gold AI · Auto-refreshes every 30s</p>
+              <p className="text-xs text-slate-500 mt-1">Powered by New Sahara Gold and Diamond AI · Auto-refreshes every 30s</p>
             </div>
             <div className="flex items-center gap-2">
               <div className="relative">
@@ -734,7 +734,7 @@ const Analytics = () => {
 
           {/* ── Footer ─────────────────────────────────────────────── */}
           <p className="text-center text-[10px] text-slate-600 pb-4">
-            Analytics data for <strong className="text-slate-500">Sahara Gold & Diamond</strong> · Generated {data?.generated_at ? new Date(data.generated_at).toLocaleString() : '—'}
+            Analytics data for <strong className="text-slate-500">New Sahara Gold and Diamond</strong> · Generated {data?.generated_at ? new Date(data.generated_at).toLocaleString() : '—'}
           </p>
         </div>
       </main>

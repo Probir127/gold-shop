@@ -11,7 +11,7 @@ from core.permissions import IsStaffForWrite
 
 def invalidate_rate_cache():
     """Clear cached public responses after official rates change."""
-    cache.clear()
+    cache.delete('live_gold_market_cache')
 
 class LatestGoldRateView(generics.RetrieveAPIView):
     # Public: Single latest object — no server-side cache (React Query handles client caching)

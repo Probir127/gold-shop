@@ -392,7 +392,7 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* ── Sahara Gold E-Commerce KPI Strip ─────────────────── */}
+        {/* ── New Sahara Gold and Diamond E-Commerce KPI Strip ─────────────────── */}
         <div className="mb-10 animate-in fade-in slide-in-from-bottom-12 duration-700 delay-200">
           <div className="flex items-center gap-2 mb-4">
             <span className="w-2 h-2 rounded-full bg-[#d4af37] animate-pulse"></span>

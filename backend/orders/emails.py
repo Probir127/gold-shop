@@ -6,6 +6,7 @@ from django.conf import settings
 from django.db import connection
 from django.template.loader import render_to_string
 from core.utils.mailer import send_email_resilient
+from core.utils.notifications import notify_store_owner
 
 logger = logging.getLogger(__name__)
 
@@ -91,21 +92,21 @@ def send_order_invoice_now(order, recipient_email: str | None = None) -> tuple[b
     except Exception as e:
         logger.warning("Could not generate/attach PDF for order %s: %s", order.order_id, e)
 
-    cust_subject = f"Sahara Gold Invoice & Order Confirmation - #{order.order_id}"
+    cust_subject = f"New Sahara Gold and Diamond Invoice & Order Status - #{order.order_id}"
     cust_message = (
         f"Dear {order.customer_name},\n\n"
-        f"Thank you for choosing Sahara Gold (সাহারা গোল্ড).\n"
-        f"Your order #{order.order_id} has been placed and confirmed successfully.\n\n"
+        f"Thank you for choosing New Sahara Gold and Diamond (সাহারা গোল্ড).\n"
+        f"Your order #{order.order_id} has been received. Status: {order.get_order_status_display()}.\n\n"
         f"Order Summary:\n"
         f"• Order ID: #{order.order_id}\n"
         f"• Total Amount: ৳{order.total:,.0f} BDT\n"
         f"• Payment Method: {order.get_payment_method_display()} ({order.get_payment_status_display().upper()})\n"
         f"• Delivery Address: {order.shipping_address}, {order.city}\n\n"
-        f"📄 An official certified PDF Invoice & Hallmark Certificate is attached to this email.\n"
-        f"You can also view it online anytime at:\n{customer_inv_url}\n\n"
+        + ("An invoice PDF is attached to this email.\n" if pdf_full_path else "Your invoice is available at the secure link below.\n")
+        + f"You can also view it online anytime at:\n{customer_inv_url}\n\n"
         f"Showroom: Bashundhara City Shopping Mall, Level 7, Block-A Shop-19, Dhaka.\n"
         f"Hotline / WhatsApp: 01799-281878\n\n"
-        f"Regards,\nSahara Gold"
+        f"Regards,\nNew Sahara Gold and Diamond"
     )
 
     # Build HTML email
@@ -125,8 +126,11 @@ def send_order_invoice_now(order, recipient_email: str | None = None) -> tuple[b
             'order_total': order.total,
             'payment_method': order.get_payment_method_display(),
             'payment_status': order.get_payment_status_display(),
+            'order_status': order.get_order_status_display(),
+            'awaiting_approval': order.payment_method == 'manual' and order.payment_status != 'paid',
             'shipping_address': f"{order.shipping_address}, {order.city}",
             'invoice_url': customer_inv_url,
+            'pdf_attached': bool(pdf_full_path),
             'items': items_context,
         })
     except Exception as html_err:
@@ -138,6 +142,13 @@ def send_order_invoice_now(order, recipient_email: str | None = None) -> tuple[b
         body=cust_message,
         to_emails=[target_email],
         html_message=html_message,
+        attachments=attachments,
+    )
+    notify_store_owner(
+        subject=f'[Store invoice copy] Order #{order.order_id}',
+        body=f'Order #{order.order_id}\nCustomer: {order.customer_name}\n'
+             f'Payment: {order.get_payment_status_display()}\n'
+             f'Total: BDT {order.total:,.2f}\nCustomer email accepted: {ok}',
         attachments=attachments,
     )
 
@@ -174,15 +185,18 @@ def send_order_confirmation_email(order_or_id):
                 logger.warning("Order %s not found for email dispatch", order_or_id)
                 return
 
-            send_order_invoice_now(order)
+            try:
+                send_order_invoice_now(order)
+            except Exception:
+                logger.exception('Customer invoice failed; continuing owner order alert.')
 
             # Store Admin Notification
-            admin_email = getattr(settings, 'STORE_EMAIL', None)
+            admin_email = getattr(settings, 'ADMIN_NOTIFICATION_EMAIL', 'saharagold19@gmail.com')
             if admin_email:
-                backend_url = getattr(settings, 'BACKEND_URL', 'http://localhost:8000')
+                backend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5175')
                 admin_subject = f"🔔 [Store Alert] New Order #{order.order_id} - ৳{order.total:,.0f} (Store Invoice Ready)"
                 admin_message = (
-                    f"New order received on Sahara Gold Storefront:\n\n"
+                    f"New order received on New Sahara Gold and Diamond Storefront:\n\n"
                     f"• Order ID: #{order.order_id}\n"
                     f"• Customer: {order.customer_name} ({order.customer_phone})\n"
                     f"• Total: ৳{order.total:,.0f} BDT\n"
@@ -192,10 +206,9 @@ def send_order_confirmation_email(order_or_id):
                     f"Access Admin Orders Command Center: {backend_url}/admin/orders"
                 )
                 try:
-                    send_email_resilient(
+                    notify_store_owner(
                         subject=admin_subject,
                         body=admin_message,
-                        to_emails=[admin_email],
                     )
                 except Exception as e:
                     logger.error("Store notification email delivery error: %s", e)

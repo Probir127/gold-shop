@@ -1,190 +1,138 @@
+"""Transactional mail delivery. Success means provider acceptance, not inbox delivery."""
 from __future__ import annotations
-import os
+
 import base64
 import json
 import logging
 import mimetypes
-import urllib.request
+import os
 import urllib.error
-from typing import List, Union, Optional, Any
+import urllib.request
+from email.utils import parseaddr
+
 from django.conf import settings
-from django.core.mail.backends.smtp import EmailBackend
+from django.core.exceptions import ValidationError
 from django.core.mail import EmailMultiAlternatives
+from django.core.mail.backends.smtp import EmailBackend
+from django.core.validators import validate_email
 
 logger = logging.getLogger(__name__)
 
 
-def _send_via_resend_api(
-    subject: str,
-    body: str,
-    recipients: List[str],
-    html_message: Optional[str],
-    sender: str,
-    attachments: Optional[List[Any]],
-    api_key: str,
-) -> tuple[bool, str]:
-    """
-    Sends email via Resend HTTP API — no SMTP ports needed.
-    This is the most reliable path on Render (no outbound port restrictions).
-    """
-    payload: dict = {
-        "from": sender,
-        "to": recipients,
-        "subject": subject,
-        "text": body,
-    }
+def _attachments(attachments):
+    """Reject missing attachments instead of quietly sending an incomplete invoice."""
+    result = []
+    for attachment in attachments or []:
+        if isinstance(attachment, (str, os.PathLike)):
+            with open(attachment, 'rb') as source:
+                result.append((source.read(), os.path.basename(attachment)))
+        elif (isinstance(attachment, (tuple, list)) and len(attachment) == 2
+              and isinstance(attachment[0], bytes) and isinstance(attachment[1], str)):
+            result.append((attachment[0], os.path.basename(attachment[1])))
+        else:
+            raise ValueError('Invalid email attachment.')
+    return result
+
+
+def _send_via_resend_api(subject, body, recipients, html_message, sender, attachments, api_key, timeout=20):
+    payload = {'from': sender, 'to': recipients, 'subject': subject, 'text': body}
     if html_message:
-        payload["html"] = html_message
-
+        payload['html'] = html_message
     if attachments:
-        encoded = []
-        for att in attachments:
-            if isinstance(att, str) and os.path.exists(att):
-                with open(att, "rb") as f:
-                    data = f.read()
-                encoded.append({
-                    "filename": os.path.basename(att),
-                    "content": base64.b64encode(data).decode(),
-                })
-            elif isinstance(att, (list, tuple)) and len(att) == 2:
-                att_data, att_name = att
-                if isinstance(att_data, bytes):
-                    encoded.append({
-                        "filename": att_name,
-                        "content": base64.b64encode(att_data).decode(),
-                    })
-        if encoded:
-            payload["attachments"] = encoded
-
-    req = urllib.request.Request(
-        "https://api.resend.com/emails",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "User-Agent": "SaharaGoldApp/1.0 (Django; Python urllib)",
-        },
-        method="POST",
+        payload['attachments'] = [
+            {'filename': name, 'content': base64.b64encode(data).decode('ascii')}
+            for data, name in attachments
+        ]
+    request = urllib.request.Request(
+        'https://api.resend.com/emails', data=json.dumps(payload).encode('utf-8'),
+        headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json',
+                 'User-Agent': 'SaharaGoldApp/1.0'}, method='POST',
     )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        result = json.loads(response.read().decode('utf-8'))
+    if not isinstance(result, dict) or not result.get('id'):
+        raise ValueError('Resend returned no message ID.')
+    return True, f"Accepted by Resend API (id: {result['id']})."
+
+
+def send_email_resilient(subject, body, to_emails, html_message=None, attachments=None,
+                         from_email=None, timeout=20):
+    """Use configured Resend HTTP transport, otherwise configured encrypted SMTP.
+
+    Do not retry via a second provider after an ambiguous timeout: the first
+    provider may already have accepted the email, and a fallback duplicates it.
+    Errors intentionally exclude provider response bodies and credentials.
+    """
     try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            resp_data = json.loads(resp.read().decode("utf-8"))
-            email_id = resp_data.get("id", "unknown")
-            logger.info("Resend API delivered '%s' to %s — id: %s", subject, recipients, email_id)
-            return True, f"Delivered to {', '.join(recipients)} via Resend API (id: {email_id})"
-    except urllib.error.HTTPError as he:
-        err_body = he.read().decode("utf-8", errors="replace")
-        logger.error("Resend HTTP Error %s: %s", he.code, err_body)
-        raise RuntimeError(f"Resend HTTP {he.code}: {err_body}") from he
+        recipients = [to_emails] if isinstance(to_emails, str) else list(to_emails or [])
+        if not recipients:
+            return False, 'No recipient email addresses provided.'
+        recipients = [address.strip() for address in recipients]
+        for address in recipients:
+            validate_email(address)
+        if '\r' in subject or '\n' in subject:
+            raise ValueError('Invalid subject.')
+        sender = (from_email or getattr(settings, 'DEFAULT_FROM_EMAIL', '') or '').strip()
+        api_key = str(getattr(settings, 'RESEND_API_KEY', '') or '').strip()
+        if api_key and not from_email:
+            sender = str(getattr(settings, 'RESEND_FROM_EMAIL', '') or sender).strip()
+        if '\r' in sender or '\n' in sender:
+            raise ValueError('Invalid sender.')
+        validate_email(parseaddr(sender)[1])
+        prepared_attachments = _attachments(attachments)
+    except (ValidationError, ValueError, TypeError, AttributeError, OSError):
+        return False, 'Invalid email address, header, or attachment. Check the mail configuration and invoice file.'
 
+    capture_dir = getattr(settings, 'LOCAL_EMAIL_CAPTURE_DIR', None)
+    if capture_dir:
+        # Explicit local testing transport, never enabled by production settings.
+        from django.core.mail import get_connection
+        try:
+            connection = get_connection('django.core.mail.backends.filebased.EmailBackend', file_path=str(capture_dir))
+            message = EmailMultiAlternatives(subject, body, sender, recipients, connection=connection)
+            if html_message:
+                message.attach_alternative(html_message, 'text/html')
+            for data, name in prepared_attachments:
+                message.attach(name, data, mimetypes.guess_type(name)[0] or 'application/octet-stream')
+            if message.send() != 1:
+                return False, 'Local email capture failed.'
+            return True, 'Captured locally; no email was sent to the recipient.'
+        except Exception:
+            return False, 'Local email capture failed.'
 
-def send_email_resilient(
-    subject: str,
-    body: str,
-    to_emails: Union[str, List[str]],
-    html_message: Optional[str] = None,
-    attachments: Optional[List[Any]] = None,
-    from_email: Optional[str] = None,
-    timeout: int = 20,
-) -> tuple[bool, str]:
-    """
-    Resilient email dispatcher for Sahara Gold.
+    if api_key:
+        try:
+            return _send_via_resend_api(subject, body, recipients, html_message, sender,
+                                        prepared_attachments, api_key, timeout=timeout)
+        except urllib.error.HTTPError as error:
+            logger.warning('Resend rejected transactional email (HTTP %s).', error.code)
+            return False, f'Resend rejected the email (HTTP {error.code}). Check the verified sender and provider dashboard.'
+        except Exception as error:
+            logger.warning('Resend request failed (%s).', type(error).__name__)
+            return False, 'Resend acceptance could not be confirmed. Check the provider dashboard before retrying.'
 
-    Strategy (in order):
-      1. Resend HTTP API  — preferred: no SMTP port restrictions on Render
-      2. SMTP Port 587    — STARTTLS fallback if Resend API key unavailable
-
-    Returns (success: bool, message: str).
-    """
-    if isinstance(to_emails, str):
-        recipients = [to_emails.strip()]
-    else:
-        recipients = [e.strip() for e in to_emails if e and e.strip()]
-
-    if not recipients:
-        return False, "No recipient email addresses provided."
-
-    sender = (from_email or getattr(settings, 'DEFAULT_FROM_EMAIL', '') or '').strip()
     host = str(getattr(settings, 'EMAIL_HOST', '') or '').strip()
     user = str(getattr(settings, 'EMAIL_HOST_USER', '') or '').strip()
     password = str(getattr(settings, 'EMAIL_HOST_PASSWORD', '') or '').strip()
-    resend_api_key = str(getattr(settings, 'RESEND_API_KEY', '') or '').strip()
-    resend_from = str(getattr(settings, 'RESEND_FROM_EMAIL', '') or '').strip()
-
-    if not sender:
-        sender = "Sahara Gold <info@shaharagold.org>"
-
-    # Determine the "from" address: prefer resend_from, fallback to sender, default to info@shaharagold.org
-    from_addr = resend_from or sender
-    if not from_addr or any(d in from_addr.lower() for d in ('gmail.com', 'googlemail.com')):
-        from_addr = "info@shaharagold.org"
-    
-    if "<" in from_addr and ">" in from_addr:
-        api_sender = from_addr
-    else:
-        api_sender = f"Sahara Gold <{from_addr}>"
-
-    # ── Attempt 1: Resend HTTP API ────────────────────────────────────
-    if resend_api_key:
-        try:
-            ok, msg = _send_via_resend_api(
-                subject=subject,
-                body=body,
-                recipients=recipients,
-                html_message=html_message,
-                sender=api_sender,
-                attachments=attachments,
-                api_key=resend_api_key,
-            )
-            if ok:
-                return True, msg
-        except Exception as exc_api:
-            logger.warning("Resend API failed for '%s': %s. Trying SMTP 587…", subject, exc_api)
-            resend_err = str(exc_api)
-    else:
-        resend_err = "RESEND_API_KEY not set"
-        logger.info("RESEND_API_KEY not configured, using SMTP fallback.")
-
-    # ── Attempt 2: SMTP Port 587 (STARTTLS) ───────────────────────────
     if not host or not user or not password:
-        return False, (
-            f"Resend API failed ({resend_err}) and SMTP is not fully configured "
-            "(EMAIL_HOST / EMAIL_HOST_USER / EMAIL_HOST_PASSWORD missing)."
-        )
-
-    def _build_message(backend_conn):
-        msg = EmailMultiAlternatives(
-            subject=subject,
-            body=body,
-            from_email=sender,
-            to=recipients,
-            connection=backend_conn,
-        )
-        if html_message:
-            msg.attach_alternative(html_message, "text/html")
-        if attachments:
-            for att in attachments:
-                if isinstance(att, str) and os.path.exists(att):
-                    msg.attach_file(att)
-                elif isinstance(att, (list, tuple)) and len(att) == 2:
-                    att_data, att_name = att
-                    mime_type, _ = mimetypes.guess_type(att_name)
-                    mime_type = mime_type or 'application/octet-stream'
-                    if isinstance(att_data, bytes):
-                        msg.attach(att_name, att_data, mime_type)
-        return msg
-
+        return False, 'SMTP is not configured. Set the SMTP host, user and password, or configure Resend.'
+    use_ssl = bool(getattr(settings, 'EMAIL_USE_SSL', False))
+    use_tls = bool(getattr(settings, 'EMAIL_USE_TLS', True))
+    if use_ssl == use_tls:
+        return False, 'SMTP requires exactly one encrypted transport: SSL or STARTTLS.'
     try:
-        tls_backend = EmailBackend(
-            host=host, port=587, username=user, password=password,
-            use_ssl=False, use_tls=True, timeout=timeout,
-        )
-        _build_message(tls_backend).send(fail_silently=False)
-        logger.info("SMTP Port 587 delivered '%s' to %s", subject, recipients)
-        return True, f"Delivered to {', '.join(recipients)} via SMTP Port 587 (TLS)"
-    except Exception as exc2:
-        logger.error(
-            "All delivery attempts failed for '%s' to %s. Resend API: %s | SMTP 587: %s",
-            subject, recipients, resend_err, exc2
-        )
-        return False, f"Delivery failed. Resend API: ({resend_err}) | SMTP 587: ({exc2})"
+        port = int(getattr(settings, 'EMAIL_PORT', 465 if use_ssl else 587))
+        with EmailBackend(host=host, port=port, username=user, password=password,
+                          use_ssl=use_ssl, use_tls=use_tls, timeout=timeout) as connection:
+            message = EmailMultiAlternatives(subject=subject, body=body, from_email=sender,
+                                              to=recipients, connection=connection)
+            if html_message:
+                message.attach_alternative(html_message, 'text/html')
+            for data, name in prepared_attachments:
+                message.attach(name, data, mimetypes.guess_type(name)[0] or 'application/octet-stream')
+            if message.send(fail_silently=False) != 1:
+                return False, 'SMTP did not accept the email.'
+        return True, f'Accepted by SMTP on port {port}.'
+    except Exception as error:
+        logger.warning('SMTP request failed (%s).', type(error).__name__)
+        return False, 'SMTP acceptance could not be confirmed. Check the server configuration and logs before retrying.'

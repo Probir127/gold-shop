@@ -1,6 +1,8 @@
 from __future__ import annotations
+from core.branding import public_brand_text
 import os
 import logging
+from html import escape
 from django.template.loader import render_to_string
 from django.conf import settings
 
@@ -19,7 +21,7 @@ def generate_invoice_pdf(invoice) -> str:
     folder = os.path.join(settings.MEDIA_ROOT, 'invoices')
     os.makedirs(folder, exist_ok=True)
 
-    filename = f'{invoice.invoice_number}.pdf'
+    filename = f'{invoice.pk}.pdf'
     filepath = os.path.join(folder, filename)
 
     # 1. Try ReportLab first (pure Python, 100% reliable on Mac/Linux/Windows)
@@ -74,14 +76,14 @@ def generate_invoice_pdf(invoice) -> str:
         story = []
 
         # Header: Brand & Invoice Meta
-        tenant_name = "Sahara Gold"
+        tenant_name = "New Sahara Gold and Diamond"
         if hasattr(invoice, 'tenant') and invoice.tenant:
-            tenant_name = invoice.tenant.business_name or "Sahara Gold"
+            tenant_name = escape(public_brand_text(invoice.tenant.business_name or "New Sahara Gold and Diamond"))
 
         header_data = [
             [
                 Paragraph(f"<b>{tenant_name}</b>", title_style),
-                Paragraph(f"<b>INVOICE</b><br/><font size='10' color='#666666'>#{invoice.invoice_number}</font>", ParagraphStyle('InvNum', parent=title_style, alignment=2))
+                Paragraph(f"<b>INVOICE</b><br/><font size='10' color='#666666'>#{escape(str(invoice.invoice_number))}</font>", ParagraphStyle('InvNum', parent=title_style, alignment=2))
             ],
             [
                 Paragraph("Luxury Fine Jewelry & Bullion Exchange · Dhaka, Bangladesh", subtitle_style),
@@ -99,9 +101,9 @@ def generate_invoice_pdf(invoice) -> str:
         story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#b8860b'), spaceBefore=4, spaceAfter=14))
 
         # Client details
-        client_name = invoice.client.name if invoice.client else "Valued Customer"
-        client_phone = invoice.client.phone if invoice.client else "N/A"
-        client_email = getattr(invoice.client, 'email', '') or "N/A"
+        client_name = escape(invoice.client.name) if invoice.client else "Valued Customer"
+        client_phone = escape(invoice.client.phone) if invoice.client else "N/A"
+        client_email = escape(getattr(invoice.client, 'email', '') or 'N/A')
         due_date_str = getattr(invoice, 'due_date', None) or 'Immediate'
 
         bill_to_data = [
@@ -136,7 +138,7 @@ def generate_invoice_pdf(invoice) -> str:
         for item in items:
             name = item.get('name') or item.get('service') or item.get('product_name') or 'Gold Item'
             desc = item.get('description', '')
-            item_text = f"<b>{name}</b>" + (f"<br/><font size='8' color='#666666'>{desc}</font>" if desc else "")
+            item_text = f"<b>{escape(str(name))}</b>" + (f"<br/><font size='8' color='#666666'>{escape(str(desc))}</font>" if desc else "")
             
             qty = str(item.get('quantity', 1))
             unit_price = float(item.get('unit_price') or item.get('price') or 0)
@@ -151,7 +153,7 @@ def generate_invoice_pdf(invoice) -> str:
 
         if not items:
             items_data.append([
-                Paragraph(f"Order #{invoice.invoice_number}", normal_style),
+                Paragraph(f"Order #{escape(str(invoice.invoice_number))}", normal_style),
                 Paragraph("1", normal_style),
                 Paragraph(f"{invoice.currency} {float(invoice.subtotal):,.2f}", normal_style),
                 Paragraph(f"{invoice.currency} {float(invoice.subtotal):,.2f}", normal_style)
@@ -199,7 +201,7 @@ def generate_invoice_pdf(invoice) -> str:
             leading=11
         )
         story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#cccccc'), spaceBefore=10, spaceAfter=8))
-        story.append(Paragraph("Thank you for choosing Sahara Gold · Certified Hallmark Gold & Artisanal Jewelry", footer_style))
+        story.append(Paragraph("Thank you for choosing New Sahara Gold and Diamond · Certified Hallmark Gold & Artisanal Jewelry", footer_style))
         story.append(Paragraph("Dhaka, Bangladesh · Contact: saharagold19@gmail.com · Official Certified Invoice", footer_style))
 
         doc.build(story)

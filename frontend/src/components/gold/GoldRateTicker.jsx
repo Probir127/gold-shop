@@ -1,5 +1,5 @@
 /**
- * Sahara Gold — GoldRateTicker (Brilliant Kinetic Edition)
+ * New Sahara Gold and Diamond — GoldRateTicker (Brilliant Kinetic Edition)
  * Anime.js powered: continuous GPU linear marquee, hover pause,
  * neon laser borders, and animated rate count-up roll-ups.
  */

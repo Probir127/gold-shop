@@ -36,7 +36,7 @@ class ErrorBoundary extends React.Component {
                     <p style={{ color: '#888', marginBottom: '15px' }}>
                         We're sorry, an unexpected error occurred.
                     </p>
-                    {this.state.error && (
+                    {import.meta.env.DEV && this.state.error && (
                         <pre style={{ color: '#f87171', background: '#18181b', padding: '12px 16px', borderRadius: '8px', maxWidth: '800px', overflowX: 'auto', textAlign: 'left', fontSize: '0.85rem', marginBottom: '20px' }}>
                             {this.state.error.toString()}
                             {this.state.error.stack && `\n\n${this.state.error.stack}`}

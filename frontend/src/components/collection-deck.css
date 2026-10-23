@@ -1,0 +1,16 @@
+.collection-deck{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:9%;padding:70px 12.4%;background:#ede3d5;color:#35291e;overflow:hidden}
+.maison .deck-introduction h2{font:400 clamp(36px,3.5vw,54px)/1.08 'Cormorant Garamond',Georgia,serif;max-width:420px;margin:18px 0 25px;color:#35291e}
+.deck-all{display:inline-flex;align-items:center;gap:20px;font-size:12px;border-bottom:1px solid #9c8464;padding:0 0 10px}
+.deck-categories{display:flex;flex-direction:column;margin-top:30px;max-width:350px}
+.deck-categories button{display:flex;align-items:center;gap:18px;background:transparent;border:0;border-bottom:1px solid #caba9f;color:#6c5943;padding:13px 0;text-align:left;font:inherit;font-size:14px;cursor:pointer}
+.deck-categories button span{font-size:10px}.deck-categories button svg{margin-left:auto;opacity:0;transition:opacity .2s,transform .3s;transform:translateX(-8px)}
+.deck-categories button[aria-pressed=true]{color:#302316}.deck-categories button[aria-pressed=true] svg{opacity:1;transform:none}
+.deck-controls{display:flex;align-items:center;justify-content:space-between;gap:14px;max-width:350px;margin-top:24px}.deck-controls>span{font-size:11px}
+.deck-controls button{width:42px;height:42px;border-radius:50%;border:1px solid #a78e6e;background:transparent;color:#493621;display:grid;place-items:center;cursor:pointer;transition:background .2s,color .2s}.deck-controls button:hover{background:#735938;color:#fff8eb}.deck-controls button:disabled{opacity:.35;cursor:default}
+.deck-stage{position:relative;width:100%;max-width:430px;aspect-ratio:1/1.14;margin:20px auto;isolation:isolate}
+.deck-card{position:absolute;inset:0;background:#f9f1e4;border:1px solid #d2bea0;border-radius:6px;padding:12px;box-shadow:0 15px 35px #51391918;transform-origin:50% 85%;will-change:transform}
+.deck-card>a{display:flex;flex-direction:column;height:100%;color:inherit}.deck-image{flex:1;min-height:0;background:#e5d9c7;overflow:hidden}.deck-image img{display:block;width:100%;height:100%;object-fit:contain}
+.deck-caption{display:flex;justify-content:space-between;align-items:center;padding:17px 7px 7px;gap:16px}.deck-caption small{font-size:10px;letter-spacing:.09em;color:#715c43}.maison .deck-caption h3{font:italic 400 30px/1.15 'Cormorant Garamond',Georgia,serif;margin:5px 0 0;color:#35291e}.deck-caption>span{border:1px solid #bba380;border-radius:50%;width:39px;height:39px;display:grid;place-items:center}
+.deck-card a:focus-visible,.deck-controls button:focus-visible,.deck-categories button:focus-visible{outline:2px solid #74552b;outline-offset:5px}
+@media(max-width:700px){.collection-deck{grid-template-columns:1fr;padding:42px 8% 50px;gap:25px}.maison .deck-introduction h2{font-size:38px;max-width:320px}.deck-categories{flex-direction:row;flex-wrap:wrap;gap:6px 20px;margin-top:20px;max-width:none}.deck-categories button{gap:8px;font-size:12px}.deck-categories button svg{display:none}.deck-controls{max-width:none;margin-top:20px}.deck-stage{width:85%;max-width:330px;margin:15px auto 5px}.deck-card{padding:9px}.maison .deck-caption h3{font-size:27px}}
+@media(prefers-reduced-motion:reduce){.deck-card{will-change:auto}.deck-categories button svg,.deck-controls button{transition:none}}

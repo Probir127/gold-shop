@@ -1,37 +1,7 @@
 import React from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { CircleAlert, RotateCcw } from 'lucide-react';
-
-const reasons = {
-    cancelled: 'The payment was cancelled. Your order is still available to retry.',
-    failed: 'The payment provider could not complete the transaction.',
-    unverified: 'The payment could not be verified with the payment provider.',
-    order_mismatch: 'The payment did not match this order.',
-    amount_mismatch: 'The verified payment amount did not match this order.',
-    order_not_found: 'The order could not be found.',
-};
-
-const PaymentFailedPage = () => {
-    const [searchParams] = useSearchParams();
-    const reason = searchParams.get('reason') || 'failed';
-
-    return (
-        <div className="section result-page" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div className="container" style={{ textAlign: 'center', maxWidth: '600px' }}>
-                <CircleAlert size={80} style={{ color: '#f59e0b', margin: '0 auto 30px' }} />
-                <h1 className="section-title" style={{ marginBottom: '10px' }}>Payment not completed</h1>
-                <p style={{ color: '#888', fontSize: '1.1rem', marginBottom: '30px' }}>
-                    {reasons[reason] || reasons.failed}
-                </p>
-                <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <Link to="/checkout" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                        <RotateCcw size={17} /> Return to checkout
-                    </Link>
-                    <Link to="/track-order" className="btn btn-outline">Track order</Link>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-export default PaymentFailedPage;
+import { ArrowRight } from 'lucide-react';
+import SEO from '../components/SEO';
+import './support-v2.css';
+const reasons={cancelled:'The payment was cancelled.',failed:'The payment provider could not complete the transaction.',unverified:'We could not verify the payment with the provider.',order_mismatch:'The payment did not match this order.',amount_mismatch:'The verified payment amount did not match the order.',order_not_found:'The order could not be found.'};
+export default function PaymentFailedPage(){const [params]=useSearchParams();return <section className="sv2"><SEO title="Payment Not Completed" noindex/><div className="sv2-result"><span className="sv2-eyebrow">A pause in your journey</span><h1>Let’s take<br/><em>another look.</em></h1><p>{reasons[params.get('reason')]||reasons.failed} Check your order status before starting a new order. Our team can help with payment questions.</p><div className="sv2-result-actions"><Link className="sv2-button" to="/track-order">Check order status <ArrowRight size={16}/></Link><Link className="sv2-text-link" to="/contact">Contact our team <ArrowRight size={16}/></Link></div></div></section>;}

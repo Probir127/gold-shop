@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Order Confirmed — Sahara Gold</title>
+  <title>Order Confirmed — New Sahara Gold and Diamond</title>
 </head>
 <body style="margin:0;padding:0;background-color:#0a0a0a;font-family:'Helvetica Neue',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0a0a0a;min-height:100vh;">
@@ -14,7 +14,7 @@
           <!-- Header -->
           <tr>
             <td style="background:linear-gradient(135deg,#1a1400 0%,#2c1f00 60%,#1a1400 100%);border-top:3px solid #b8860b;border-radius:12px 12px 0 0;padding:32px 40px;text-align:center;">
-              <p style="margin:0 0 4px 0;font-size:11px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:#b8860b;">SAHARA GOLD &amp; DIAMOND</p>
+              <p style="margin:0 0 4px 0;font-size:11px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:#b8860b;">NEW SAHARA GOLD AND DIAMOND</p>
               <p style="margin:0 0 16px 0;font-size:11px;letter-spacing:2px;color:#7a6a3a;text-transform:uppercase;">Bashundhara City &bull; Dhaka</p>
               <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
                 <tr>
@@ -31,7 +31,7 @@
             <td style="background-color:#141414;padding:36px 40px;">
               <p style="margin:0 0 6px 0;font-size:22px;font-weight:700;color:#f0e6c8;">Thank you, {{ customer_name }}!</p>
               <p style="margin:0 0 28px 0;font-size:14px;color:#888;line-height:1.6;">
-                Your order <strong style="color:#d4af37;">#{{ order_id }}</strong> has been placed and confirmed. A certified PDF invoice is attached.
+                Your order <strong style="color:#d4af37;">#{{ order_id }}</strong> has been received. Status: {{ order_status }}. {% if awaiting_approval %}Call the shop for merchant payment details. Your order will be confirmed only after admin verifies your payment.{% endif %} {% if pdf_attached %}An invoice PDF is attached.{% else %}Your invoice is available at the secure link below.{% endif %}
               </p>
 
               <!-- Items Table -->
@@ -49,7 +49,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                  <td colspan="3" style="padding:12px 16px;font-size:13px;color:#666;text-align:center;">See attached invoice for full item list.</td>
+                  <td colspan="3" style="padding:12px 16px;font-size:13px;color:#666;text-align:center;">View your invoice for the full item list.</td>
                 </tr>
                 {% endfor %}
                 <tr style="background-color:#1a1400;border-top:2px solid #b8860b;">
@@ -89,7 +89,7 @@
               {% endif %}
 
               <p style="margin:0;font-size:12px;color:#555;line-height:1.7;border-top:1px solid #2a2a2a;padding-top:20px;">
-                &#128196; Your certified PDF invoice &amp; hallmark certificate is attached for your records.
+                &#128196; {% if pdf_attached %}Your invoice PDF is attached for your records.{% else %}Use the secure invoice link above to view your order details.{% endif %}
               </p>
             </td>
           </tr>
@@ -97,7 +97,7 @@
           <!-- Footer -->
           <tr>
             <td style="background-color:#0f0f0f;border-top:1px solid #2a2a2a;border-radius:0 0 12px 12px;padding:24px 40px;text-align:center;">
-              <p style="margin:0 0 4px 0;font-size:12px;color:#7a6a3a;font-weight:600;letter-spacing:1px;">SAHARA GOLD &amp; DIAMOND</p>
+              <p style="margin:0 0 4px 0;font-size:12px;color:#7a6a3a;font-weight:600;letter-spacing:1px;">NEW SAHARA GOLD AND DIAMOND</p>
               <p style="margin:0 0 4px 0;font-size:11px;color:#555;">Bashundhara City Shopping Mall, Level 7, Block-A, Shop-19, Dhaka</p>
               <p style="margin:0;font-size:11px;color:#555;">Hotline &amp; WhatsApp: <span style="color:#b8860b;">01799-281878</span></p>
             </td>
