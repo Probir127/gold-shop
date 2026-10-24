@@ -62,6 +62,21 @@ class ShopChatTests(TestCase):
         self.assertEqual(budget_from_message('৭০ হাজার টাকার মধ্যে'), 70000)
 
     @patch('core.utils.ai_bot._get_hf_client', side_effect=RuntimeError('provider down'))
+    def test_purity_quick_chip_works_without_provider(self, ai):
+        answer = self.chat('What is the difference between 22K and 18K gold?')
+        self.assertIn('91.67%', answer['reply'])
+        self.assertIn('75%', answer['reply'])
+        self.assertFalse(answer['was_fallback'])
+        ai.assert_not_called()
+
+    @patch('core.utils.ai_bot._get_hf_client', side_effect=RuntimeError('provider down'))
+    def test_provider_failure_explains_limits_without_promising_callback(self, ai):
+        answer = self.chat('Tell me a story about our anniversary')
+        self.assertTrue(answer['was_fallback'])
+        self.assertIn('temporarily unavailable', answer['reply'])
+        self.assertNotIn('get back to you', answer['reply'])
+
+    @patch('core.utils.ai_bot._get_hf_client', side_effect=RuntimeError('provider down'))
     def test_tracking_instructions_do_not_depend_on_ai(self, ai):
         self.assertIn('/track-order', self.chat('How do I track my order?')['reply'])
         ai.assert_not_called()

@@ -196,8 +196,9 @@ def _fallback_reply(tenant=None) -> str:
     biz_name = tenant.business_name if tenant else 'our team'
     website = tenant.website_url if tenant and tenant.website_url else ''
     msg = (
-        f"Thanks for your message! 😊\n\n"
-        f"{biz_name} will get back to you shortly."
+        "The AI conversation service is temporarily unavailable. "
+        "You can still ask for published gold rates, catalogue suggestions, purity comparisons, or order-tracking instructions. "
+        "For other questions, please contact the shop directly."
     )
     if website:
         msg += f"\nIn the meantime, feel free to check out {website}"

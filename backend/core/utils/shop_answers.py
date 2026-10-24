@@ -30,6 +30,18 @@ def answer_shop_question(message, tenant, request=None):
         return None
     text = message.lower().translate(DIGITS)
     bengali = bool(re.search('[\u0980-\u09ff]', message))
+    if (re.search(r'\b(?:purity|karat|carat|difference|versus|vs)\b|পার্থক্য|বিশুদ্ধতা', text)
+            and re.search(r'(?:22|21|18)\s*(?:k|karat|carat|ক্যারেট)', text)):
+        reply = (
+            '২২ ক্যারেট সোনায় প্রায় ৯১.৬৭% খাঁটি সোনা, ২১ ক্যারেটে ৮৭.৫% এবং ১৮ ক্যারেটে ৭৫% থাকে। '
+            'বাকি অংশ অন্য ধাতুর সংকর। বেশি ক্যারেটে সোনার পরিমাণ বেশি; কম ক্যারেটের সংকর সাধারণত বেশি শক্ত হয়। '
+            'নির্দিষ্ট গয়নার বিশুদ্ধতা ও মজুরি পণ্যের বিবরণে দেখুন।'
+            if bengali else
+            '22K gold contains approximately 91.67% pure gold, 21K contains 87.5%, and 18K contains 75%. '
+            'The remainder consists of alloy metals. Higher karat gold has more gold content; lower karat alloys are generally harder. '
+            'Check each product’s listed purity and making charges before choosing.'
+        )
+        return {'reply': reply, 'products': [], 'rates': None}
     if re.search(r'\b(track|tracking|order status)\b|অর্ডার.*(?:অবস্থা|ট্র্যাক)', text):
         return {'reply': 'Open the Track Order page (/track-order) and enter your order ID and the phone number used at checkout. Those details are required to view the order securely.', 'products': [], 'rates': None}
     shopping = bool(re.search(PRODUCT_WORDS, text))
