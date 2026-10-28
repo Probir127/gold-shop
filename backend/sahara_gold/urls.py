@@ -41,6 +41,7 @@ urlpatterns = [
 
     # Backend APIs
     path('api/health/', health_check),
+    path('', include('core.sitemap_urls')),
     path('api/', include('products.urls')),
     path('api/', include('orders.urls')),
     path('api/', include('rates.urls')),

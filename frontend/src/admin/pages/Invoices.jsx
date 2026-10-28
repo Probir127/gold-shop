@@ -102,7 +102,9 @@ const Invoices = () => {
     try {
       const res = await sendInvoice(id, overrideEmail ? { email: overrideEmail } : {});
       const data = res.data || {};
-      if (data.email_sent) {
+      if (data.email_queued) {
+        toast.success('Invoice queued for delivery. We will retry automatically; acceptance is not yet confirmed.');
+      } else if (data.email_sent) {
         toast.success(`Invoice email & PDF dispatched to ${data.recipient_email}!`);
       } else if (data.email_error) {
         if (data.email_error.includes('No recipient email')) {

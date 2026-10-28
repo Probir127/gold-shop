@@ -7,7 +7,10 @@ The redesign is published to GitHub main and both Render services are live. Earl
 - Fixed public chat input validation: non-object payloads, non-text/oversized messages and phone-number visitor IDs return 400 before conversation creation or inference. New visitor IDs use a full UUID. Added dedicated per-IP chat throttling (30/minute). Regressions cover malformed requests and 429/Retry-After responses; 88 backend tests pass.
 - Hugging Face key connection and account identity verified. The provider explicitly rejects inference because the account has no remaining credits. Rates, catalogue suggestions, tracking instructions and purity comparisons remain independent of the provider. No payment or provider change was made.
 - No production products, orders or media were modified by this follow-up.
-- Still incomplete/unverified: durable email retry after worker restart; real owner/customer inbox delivery; live product URLs in the sitemap; HTTP 404 status for unknown SPA routes; measured mobile performance/accessibility audit; MFA/HttpOnly token storage; business review of interim policies. These are not covered by a successful build or the backend test count.
+- Durable email outbox added: order events commit atomically with orders; PDF snapshots survive restarts; Resend retries reuse idempotency keys; ambiguous SMTP and expired retry windows require review. Gunicorn workers consume the database queue. Local tests cover retry, rollback, partial preparation, expiry and deduplication. New table migration rehearsed locally; existing store tables are unchanged.
+- Dynamic product sitemap added at backend /sitemap.xml and advertised in storefront robots.txt. It reflects in-stock products from the default store without rebuilding.
+- Fresh validation: 96 backend tests pass. Mobile browser launch is blocked by this machine’s browser sandbox, so measured performance/accessibility is unverified.
+- Still incomplete/unverified: real owner/customer inbox delivery; HTTP 404 status for unknown SPA routes; measured mobile performance/accessibility audit; MFA/HttpOnly token storage; business review of interim policies. These are not covered by a successful build or the backend test count.
 
 ## Historical audit — 30 September 2026
 

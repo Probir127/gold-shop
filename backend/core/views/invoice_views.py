@@ -93,6 +93,7 @@ class SendInvoiceView(APIView):
 
         # Step 3: Resolve customer email (from request payload, client, order, or registered account)
         email_sent = False
+        email_queued = False
         email_error = None
         client_email = override_email or getattr(invoice.client, 'email', '') or ''
         
@@ -139,7 +140,8 @@ class SendInvoiceView(APIView):
                 body=body,
                 to_emails=client_email,
                 html_message=html_message,
-                attachments=attachments
+                attachments=attachments,
+                durable=True,
             )
             from core.utils.notifications import notify_store_owner
             notify_store_owner(
@@ -153,6 +155,7 @@ class SendInvoiceView(APIView):
                 email_sent = True
                 logger.info("Invoice email successfully sent to %s for invoice %s", client_email, invoice.invoice_number)
             else:
+                email_queued = "queued" in mail_msg.lower()
                 email_error = mail_msg
                 logger.error("Could not send invoice email to %s: %s", client_email, mail_msg)
         else:
@@ -185,13 +188,14 @@ class SendInvoiceView(APIView):
                 invoice.client.save(update_fields=['status'])
 
         return Response({
-            'status': 'sent' if email_sent else ('partial' if (wa_result and not wa_result.get('error')) else 'failed'),
+            'status': 'sent' if email_sent else ('queued' if email_queued else ('partial' if (wa_result and not wa_result.get('error')) else 'failed')),
             'email_sent': email_sent,
+            'email_queued': email_queued,
             'recipient_email': client_email,
             'email_error': email_error,
             'whatsapp_response': wa_result,
             'pdf_url': pdf_url
-        }, status=200 if email_sent or (wa_result and not wa_result.get('error')) else 502)
+        }, status=202 if email_queued else 200 if email_sent or (wa_result and not wa_result.get('error')) else 502)
 
 
 class MarkInvoicePaidView(APIView):

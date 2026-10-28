@@ -10,3 +10,6 @@ Disallow: /payment-failed
 Disallow: /track-order
 
 Sitemap: https://www.shaharagold.org/sitemap.xml
+
+# Current product URLs are generated directly from the store database.
+Sitemap: https://sahara-gold-backend.onrender.com/sitemap.xml

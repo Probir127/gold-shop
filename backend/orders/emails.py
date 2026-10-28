@@ -1,9 +1,7 @@
 from __future__ import annotations
-import threading
 import os
 import logging
 from django.conf import settings
-from django.db import connection
 from django.template.loader import render_to_string
 from core.utils.mailer import send_email_resilient
 from core.utils.notifications import notify_store_owner
@@ -90,7 +88,8 @@ def send_order_invoice_now(order, recipient_email: str | None = None) -> tuple[b
             if os.path.exists(pdf_candidate):
                 pdf_full_path = pdf_candidate
     except Exception as e:
-        logger.warning("Could not generate/attach PDF for order %s: %s", order.order_id, e)
+        logger.warning("Could not prepare invoice for order %s (%s)", order.order_id, type(e).__name__)
+        raise
 
     cust_subject = f"New Sahara Gold and Diamond Invoice & Order Status - #{order.order_id}"
     cust_message = (
@@ -143,6 +142,7 @@ def send_order_invoice_now(order, recipient_email: str | None = None) -> tuple[b
         to_emails=[target_email],
         html_message=html_message,
         attachments=attachments,
+        durable=True,
     )
     notify_store_owner(
         subject=f'[Store invoice copy] Order #{order.order_id}',
@@ -161,61 +161,48 @@ def send_order_invoice_now(order, recipient_email: str | None = None) -> tuple[b
             invoice.save(update_fields=['status', 'sent_at'])
         return True, f"Invoice successfully emailed to {target_email}"
     else:
-        logger.error("Customer email delivery error for order %s: %s", order.order_id, status_msg)
+        logger.info("Customer email delivery status for order %s: %s", order.order_id, status_msg)
         return False, status_msg
 
 
 def send_order_confirmation_email(order_or_id):
-    """
-    Sends order confirmation & invoice emails in background thread via SMTP.
-    - Customer receives Customer Copy Invoice PDF attachment & download link
-    - Store Admin receives Store/Admin Copy Invoice notification
-    """
-    def _send():
-        try:
-            connection.close()  # Refresh connection in new thread
-            if isinstance(order_or_id, str):
-                from .models import Order
-                order = Order.objects.filter(order_id=order_or_id).first()
-            else:
-                from .models import Order
-                order = Order.objects.filter(pk=order_or_id.pk).first()
+    from core.mail_outbox import queue_order
+    from .models import Order
+    order = Order.objects.get(order_id=order_or_id) if isinstance(order_or_id, str) else order_or_id
+    return queue_order(order.order_id, order.payment_status)
 
-            if not order:
-                logger.warning("Order %s not found for email dispatch", order_or_id)
-                return
 
-            try:
-                send_order_invoice_now(order)
-            except Exception:
-                logger.exception('Customer invoice failed; continuing owner order alert.')
+def _send_order_confirmation_now(order_or_id):
+    try:
+        if isinstance(order_or_id, str):
+            from .models import Order
+            order = Order.objects.filter(order_id=order_or_id).first()
+        else:
+            from .models import Order
+            order = Order.objects.filter(pk=order_or_id.pk).first()
 
-            # Store Admin Notification
-            admin_email = getattr(settings, 'ADMIN_NOTIFICATION_EMAIL', 'saharagold19@gmail.com')
-            if admin_email:
-                backend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5175')
-                admin_subject = f"🔔 [Store Alert] New Order #{order.order_id} - ৳{order.total:,.0f} (Store Invoice Ready)"
-                admin_message = (
-                    f"New order received on New Sahara Gold and Diamond Storefront:\n\n"
-                    f"• Order ID: #{order.order_id}\n"
-                    f"• Customer: {order.customer_name} ({order.customer_phone})\n"
-                    f"• Total: ৳{order.total:,.0f} BDT\n"
-                    f"• Payment: {order.get_payment_method_display()} ({order.get_payment_status_display().upper()})\n"
-                    f"• City: {order.city}\n\n"
-                    f"📋 The store copy is available in the authenticated admin command center.\n\n"
-                    f"Access Admin Orders Command Center: {backend_url}/admin/orders"
-                )
-                try:
-                    notify_store_owner(
-                        subject=admin_subject,
-                        body=admin_message,
-                    )
-                except Exception as e:
-                    logger.error("Store notification email delivery error: %s", e)
-        except Exception as outer_err:
-            logger.error("Background order email thread exception: %s", outer_err)
-        finally:
-            connection.close()
+        if not order:
+            logger.warning("Order %s not found for email dispatch", order_or_id)
+            return
 
-    t = threading.Thread(target=_send, daemon=True)
-    t.start()
+        send_order_invoice_now(order)
+
+        # Store Admin Notification
+        admin_email = getattr(settings, 'ADMIN_NOTIFICATION_EMAIL', 'saharagold19@gmail.com')
+        if admin_email:
+            backend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5175')
+            admin_subject = f"🔔 [Store Alert] New Order #{order.order_id} - ৳{order.total:,.0f} (Store Invoice Ready)"
+            admin_message = (
+                f"New order received on New Sahara Gold and Diamond Storefront:\n\n"
+                f"• Order ID: #{order.order_id}\n"
+                f"• Customer: {order.customer_name} ({order.customer_phone})\n"
+                f"• Total: ৳{order.total:,.0f} BDT\n"
+                f"• Payment: {order.get_payment_method_display()} ({order.get_payment_status_display().upper()})\n"
+                f"• City: {order.city}\n\n"
+                f"📋 The store copy is available in the authenticated admin command center.\n\n"
+                f"Access Admin Orders Command Center: {backend_url}/admin/orders"
+            )
+            notify_store_owner(subject=admin_subject, body=admin_message)
+    except Exception as outer_err:
+        logger.error('Order notification preparation failed (%s).', type(outer_err).__name__)
+        raise

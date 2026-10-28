@@ -34,7 +34,7 @@ def _attachments(attachments):
     return result
 
 
-def _send_via_resend_api(subject, body, recipients, html_message, sender, attachments, api_key, timeout=20):
+def _send_via_resend_api(subject, body, recipients, html_message, sender, attachments, api_key, timeout=20, idempotency_key=None):
     payload = {'from': sender, 'to': recipients, 'subject': subject, 'text': body}
     if html_message:
         payload['html'] = html_message
@@ -43,10 +43,12 @@ def _send_via_resend_api(subject, body, recipients, html_message, sender, attach
             {'filename': name, 'content': base64.b64encode(data).decode('ascii')}
             for data, name in attachments
         ]
+    headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json', 'User-Agent': 'SaharaGoldApp/1.0'}
+    if idempotency_key:
+        headers['Idempotency-Key'] = idempotency_key
     request = urllib.request.Request(
         'https://api.resend.com/emails', data=json.dumps(payload).encode('utf-8'),
-        headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json',
-                 'User-Agent': 'SaharaGoldApp/1.0'}, method='POST',
+        headers=headers, method='POST',
     )
     with urllib.request.urlopen(request, timeout=timeout) as response:
         result = json.loads(response.read().decode('utf-8'))
@@ -56,13 +58,18 @@ def _send_via_resend_api(subject, body, recipients, html_message, sender, attach
 
 
 def send_email_resilient(subject, body, to_emails, html_message=None, attachments=None,
-                         from_email=None, timeout=20):
+                         from_email=None, timeout=20, durable=False, idempotency_key=None):
     """Use configured Resend HTTP transport, otherwise configured encrypted SMTP.
 
     Do not retry via a second provider after an ambiguous timeout: the first
     provider may already have accepted the email, and a fallback duplicates it.
     Errors intentionally exclude provider response bodies and credentials.
     """
+    if durable:
+        from core.mail_outbox import submit_email
+        return submit_email(subject=subject, body=body, to_emails=to_emails,
+                            html_message=html_message, attachments=attachments,
+                            from_email=from_email, timeout=timeout)
     try:
         recipients = [to_emails] if isinstance(to_emails, str) else list(to_emails or [])
         if not recipients:
@@ -103,7 +110,7 @@ def send_email_resilient(subject, body, to_emails, html_message=None, attachment
     if api_key:
         try:
             return _send_via_resend_api(subject, body, recipients, html_message, sender,
-                                        prepared_attachments, api_key, timeout=timeout)
+                                        prepared_attachments, api_key, timeout=timeout, idempotency_key=idempotency_key)
         except urllib.error.HTTPError as error:
             logger.warning('Resend rejected transactional email (HTTP %s).', error.code)
             return False, f'Resend rejected the email (HTTP {error.code}). Check the verified sender and provider dashboard.'

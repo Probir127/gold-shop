@@ -139,3 +139,27 @@ class StorefrontContentAdmin(admin.ModelAdmin):
         return not StorefrontContent.objects.exists() and super().has_add_permission(request)
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+from .models import DeliveryJob
+@admin.register(DeliveryJob)
+class DeliveryJobAdmin(admin.ModelAdmin):
+    list_display = ('id', 'kind', 'status', 'attempts', 'next_attempt_at', 'completed_at')
+    list_filter = ('status', 'kind')
+    readonly_fields = ('id', 'kind', 'dedupe_key', 'payload', 'status', 'attempts',
+                       'next_attempt_at', 'last_error', 'created_at', 'completed_at')
+    actions = ('retry_failed',)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    @admin.action(description='Retry failed jobs within the safe delivery window')
+    def retry_failed(self, request, queryset):
+        from datetime import timedelta
+        from django.utils import timezone
+        count = queryset.filter(status='failed', created_at__gte=timezone.now()-timedelta(hours=23)).update(
+            status='pending', attempts=0, next_attempt_at=timezone.now())
+        self.message_user(request, f'{count} failed jobs scheduled for retry. Review uncertain or expired sends against provider history.')

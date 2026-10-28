@@ -301,6 +301,8 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         from .emails import send_order_invoice_now
         ok, msg = send_order_invoice_now(order, recipient_email=recipient_email)
+        if not ok and "queued" in msg.lower():
+            return Response({"success": True, "queued": True, "recipient_email": recipient_email, "message": msg}, status=202)
         if ok:
             return Response({"success": True, "recipient_email": recipient_email, "message": msg})
         else:

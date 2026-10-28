@@ -565,3 +565,17 @@ class PaymentConfiguration(models.Model):
     ssl_store_id = models.CharField(max_length=150, blank=True)
     ssl_secret_encrypted = models.TextField(blank=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class DeliveryJob(models.Model):
+    """Persistent transactional delivery work, never exposed by public APIs."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    kind = models.CharField(max_length=20, default='email')
+    dedupe_key = models.CharField(max_length=200, unique=True, null=True, blank=True)
+    payload = models.JSONField(default=dict)
+    status = models.CharField(max_length=20, default='pending', db_index=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    next_attempt_at = models.DateTimeField(default=timezone.now, db_index=True)
+    last_error = models.CharField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
