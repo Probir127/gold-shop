@@ -13,3 +13,8 @@ class LoginThrottle(SimpleRateThrottle):
 class VerificationThrottle(LoginThrottle):
     scope = 'auth_verification'
     rate = '5/hour'
+
+
+class PublicChatThrottle(LoginThrottle):
+    scope = 'public_chat'
+    rate = '30/min'

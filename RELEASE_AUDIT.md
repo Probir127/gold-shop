@@ -1,6 +1,15 @@
-# Local release audit — 2026-09-30
+# Website release audit
 
-This is an in-progress release candidate, not a declaration of zero defects. No redesign deployment or push to main has occurred.
+## Current follow-up — 28 October 2026
+
+The redesign is published to GitHub main and both Render services are live. Earlier dated entries below are historical and do not describe the current deployment status.
+
+- Fixed public chat input validation: non-object payloads, non-text/oversized messages and phone-number visitor IDs return 400 before conversation creation or inference. New visitor IDs use a full UUID. Added dedicated per-IP chat throttling (30/minute). Regressions cover malformed requests and 429/Retry-After responses; 88 backend tests pass.
+- Hugging Face key connection and account identity verified. The provider explicitly rejects inference because the account has no remaining credits. Rates, catalogue suggestions, tracking instructions and purity comparisons remain independent of the provider. No payment or provider change was made.
+- No production products, orders or media were modified by this follow-up.
+- Still incomplete/unverified: durable email retry after worker restart; real owner/customer inbox delivery; live product URLs in the sitemap; HTTP 404 status for unknown SPA routes; measured mobile performance/accessibility audit; MFA/HttpOnly token storage; business review of interim policies. These are not covered by a successful build or the backend test count.
+
+## Historical audit — 30 September 2026
 
 ## Verified changes
 

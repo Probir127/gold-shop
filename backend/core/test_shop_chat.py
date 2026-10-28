@@ -10,13 +10,37 @@ from products.models import Category, Product
 
 
 class ShopChatTests(TestCase):
+    def test_invalid_chat_input_is_rejected_before_conversation_or_provider(self):
+        from core.models import Conversation
+        self.client.raise_request_exception = False
+        invalid = [[], {'message': None}, {'message': ['hello']},
+                   {'message': 'x' * 2001}, {'message': 'hello', 'visitor_id': '01700000000'},
+                   {'message': 'hello', 'visitor_id': {'id': 'WEB_test'}}]
+        with patch('core.utils.ai_bot.generate_reply') as ai:
+            for payload in invalid:
+                response = self.client.post('/api/public/chat/sahara-gold/', payload, format='json')
+                self.assertEqual(response.status_code, 400, payload)
+            ai.assert_not_called()
+        self.assertFalse(Conversation.objects.exists())
+
     def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
         self.client = APIClient()
         owner = get_user_model().objects.create_user(username='chat-owner')
         self.tenant = Tenant.objects.create(name='Sahara', slug='sahara-gold', business_name='Sahara Gold', owner=owner)
         self.other = Tenant.objects.create(name='Other', slug='other', business_name='Other', owner=owner)
         self.values = {'rate_22k': 21000, 'rate_21k': 19000, 'rate_18k': 17000, 'rate_traditional': 12000}
         publish_manual(self.values)
+
+    def test_public_chat_limits_requests(self):
+        from core.throttles import PublicChatThrottle
+        with patch.object(PublicChatThrottle, 'rate', '2/min'):
+            self.assertEqual(self.chat('gold rates')['rates']['rate_22k'], 21000)
+            self.chat('gold rates')
+            response = self.client.post('/api/public/chat/sahara-gold/', {'message': 'gold rates'}, format='json')
+            self.assertEqual(response.status_code, 429)
+            self.assertIn('Retry-After', response)
 
     def chat(self, message):
         response = self.client.post('/api/public/chat/sahara-gold/', {'message': message, 'visitor_id': 'WEB_test'}, format='json')
